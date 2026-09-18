@@ -18,15 +18,35 @@ const HERO_SLIDES = [
 
 // ─── Serviços ─────────────────────────────────────
 const SERVICES = [
-  { id: 'corte',             name: 'Corte',                        price: 30 },
-  { id: 'barba',             name: 'Barba',                        price: 20 },
-  { id: 'sobrancelha',       name: 'Sobrancelha',                  price: 10 },
-  { id: 'corte_barba_sob',   name: 'Corte + Barba + Sobrancelha', price: 50 },
-  { id: 'luzes',             name: 'Luzes',                        price: 60 },
-  { id: 'luzes_corte',       name: 'Luzes + Corte',                price: 80 },
-  { id: 'platinado',         name: 'Platinado',                    price: 80 },
-  { id: 'platinado_corte',   name: 'Platinado + Corte',            price: 110 },
+  { id: 'corte',             name: 'Corte',                        price: 30,  duracao: 30 },
+  { id: 'barba',             name: 'Barba',                        price: 20,  duracao: 30 },
+  { id: 'sobrancelha',       name: 'Sobrancelha',                  price: 10,  duracao: 30 },
+  { id: 'corte_barba',       name: 'Corte + Barba',                price: 45,  duracao: 40 },
+  { id: 'corte_barba_sob',   name: 'Corte + Barba + Sobrancelha', price: 50,  duracao: 45 },
+  { id: 'luzes',             name: 'Luzes',                        price: 60,  duracao: 60 },
+  { id: 'luzes_corte',       name: 'Luzes + Corte',                price: 80,  duracao: 60 },
+  { id: 'platinado',         name: 'Platinado',                    price: 80,  duracao: 60 },
+  { id: 'platinado_corte',   name: 'Platinado + Corte',            price: 110, duracao: 60 },
 ];
+
+// ─── Duração dos serviços (em minutos) ────────────
+const DURACAO_PADRAO = 30;
+// Serviços antigos que podem existir em agendamentos já gravados
+const DURACAO_LEGADO = {
+  'nevou_corte': 60, 'Nevou + Corte': 60,
+  'Corte + Sobrancelha': 30, 'corte_sobrancelha': 30,
+  'Hidratação': 30, 'Hidratacao': 30, 'hidratacao': 30,
+};
+function duracaoServico(ref) {
+  if (!ref) return DURACAO_PADRAO;
+  const sv = SERVICES.find(x => x.id === ref || x.name === ref);
+  if (sv && sv.duracao) return sv.duracao;
+  return DURACAO_LEGADO[ref] || DURACAO_PADRAO;
+}
+function horaParaMin(hhmm) {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return h * 60 + (m || 0);
+}
 
 // ─── Planos ────────────────────────────────────────
 const PLANS = [
@@ -533,21 +553,13 @@ async function carregarSlotsParaData(dataSelecionada) {
         .where('status', 'in', ['agendado', 'confirmado'])
         .get()
     ]);
-    // Monta set de slots ocupados respeitando duração do serviço
-    const SERVICOS_60MIN = ['luzes', 'Luzes', 'luzes_corte', 'platinado', 'platinado_corte', 'Luzes + Corte', 'Platinado', 'Platinado + Corte', 'nevou_corte', 'Nevou + Corte'];
-    const ocupados = new Set();
+    // Intervalos ocupados [início, fim) em minutos, respeitando a duração de cada serviço
+    const ocupados = [];
     agendSnap.docs.forEach(d => {
       const ag = d.data();
-      ocupados.add(ag.horario);
-      // Se o serviço dura 1h, bloqueia também o slot seguinte (30min depois)
-      const eh60min = SERVICOS_60MIN.includes(ag.servico) || SERVICOS_60MIN.includes(ag.servicoId);
-      if (eh60min && ag.horario) {
-        const [h, m] = ag.horario.split(':').map(Number);
-        const totalMin = h * 60 + m + 30;
-        const proxH = String(Math.floor(totalMin / 60)).padStart(2, '0');
-        const proxM = String(totalMin % 60).padStart(2, '0');
-        ocupados.add(`${proxH}:${proxM}`);
-      }
+      if (!ag.horario) return;
+      const ini = horaParaMin(ag.horario);
+      ocupados.push([ini, ini + duracaoServico(ag.servicoId || ag.servico)]);
     });
     const datasEspeciais = datasDoc.exists ? (datasDoc.data() || {}) : {};
     const dataEspecial   = datasEspeciais[dataSelecionada];
@@ -572,24 +584,23 @@ async function carregarSlotsParaData(dataSelecionada) {
     const agora = new Date();
     const hoje  = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
     const agoraMin = agora.getHours() * 60 + agora.getMinutes();
-    // Verifica se o serviço selecionado dura 1h
+    // Duração do serviço escolhido
     const servicoAtual = state && state.selected ? state.selected : null;
-    const servico60min = servicoAtual &&
-      (SERVICOS_60MIN.includes(servicoAtual.id) || SERVICOS_60MIN.includes(servicoAtual.name));
+    const duracao = servicoAtual ? duracaoServico(servicoAtual.id) : DURACAO_PADRAO;
+    const fimExpediente = horaParaMin(cfg.fim);
+    const pausaAtiva = cfg.almoco === true
+      && typeof cfg.almoco_inicio === 'string' && cfg.almoco_inicio.includes(':')
+      && typeof cfg.almoco_fim    === 'string' && cfg.almoco_fim.includes(':');
+    const pausaIni = pausaAtiva ? horaParaMin(cfg.almoco_inicio) : -1;
+    const pausaFim = pausaAtiva ? horaParaMin(cfg.almoco_fim) : -1;
 
-    const livres = slots.filter(s => {
-      if (ocupados.has(s)) return false;
-      if (dataSelecionada === hoje) {
-        const [sh, sm] = s.split(':').map(Number);
-        if (sh * 60 + sm <= agoraMin + 30) return false;
-      }
-      // Se serviço dura 1h, verifica se o próximo slot também está livre
-      if (servico60min) {
-        const [sh, sm] = s.split(':').map(Number);
-        const totalMin = sh * 60 + sm + 30;
-        const prox = `${String(Math.floor(totalMin/60)).padStart(2,'0')}:${String(totalMin%60).padStart(2,'0')}`;
-        if (ocupados.has(prox) || !slots.includes(prox)) return false;
-      }
+    const livres = slots.filter(sl => {
+      const ini = horaParaMin(sl);
+      const fim = ini + duracao;
+      if (fim > fimExpediente) return false;                              // passa do fim do expediente
+      if (pausaAtiva && ini < pausaFim && fim > pausaIni) return false;   // invade o almoço
+      if (ocupados.some(([oi, oe]) => ini < oe && fim > oi)) return false; // choca com outro agendamento
+      if (dataSelecionada === hoje && ini <= agoraMin + 30) return false; // horário que já passou
       return true;
     });
     if (!livres.length) {
