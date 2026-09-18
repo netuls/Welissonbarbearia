@@ -1,0 +1,2575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#070E24"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Wellisson Admin"/>
+  <!-- Ícone Apple (iOS/iPadOS) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="logo_180.png"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="logo_192.png"/>
+  <link rel="apple-touch-icon" sizes="512x512" href="logo_512.png"/>
+  <!-- Ícone Android / Desktop -->
+  <link rel="icon" type="image/png" sizes="512x512" href="logo_512.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="logo_192.png"/>
+  <link rel="icon" type="image/png" href="logo_512.png"/>
+  <link rel="stylesheet" href="admin.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,900;1,700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+  <style>
+    #dash-filter-de::-webkit-calendar-picker-indicator,
+    #dash-filter-ate::-webkit-calendar-picker-indicator { filter: invert(0.5) sepia(1) saturate(2) hue-rotate(5deg); cursor: pointer; }
+    #stat-card-receita-dia { animation: fadeInCard .35s ease; }
+    @keyframes fadeInCard { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    #dash-date-filter-bar input[type="date"]:focus { border-color: #EBC531 !important; box-shadow: 0 0 0 2px rgba(235,197,49,.15); }
+
+    /* ── iOS PWA Safe Area ── */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      .bottom-nav {
+        height: calc(62px + env(safe-area-inset-bottom)) !important;
+        padding-bottom: env(safe-area-inset-bottom) !important;
+      }
+      .admin-main {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+      }
+    }
+    /* Evita que conteudo fique atras do notch lateral */
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    input[type="time"] { color-scheme: dark; }
+    /* ── Badge Agendado ── */
+    .badge-agendado { background: rgba(235,197,49,.15); color: #EBC531; border: 1px solid rgba(235,197,49,.3); padding: 3px 10px; border-radius: 4px; font-size: 11px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+    .badge-confirmado { background: rgba(39,174,96,.15); color: #1f9e54; border: 1px solid rgba(39,174,96,.3); padding: 3px 10px; border-radius: 4px; font-size: 11px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+    .badge-concluido  { background: rgba(52,152,219,.15); color: #2b7bc2; border: 1px solid rgba(52,152,219,.3); padding: 3px 10px; border-radius: 4px; font-size: 11px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+    .badge-cancelado  { background: rgba(192,57,43,.15);  color: #b03030; border: 1px solid rgba(192,57,43,.3);  padding: 3px 10px; border-radius: 4px; font-size: 11px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+
+    /* ── Sidebar Logo ── */
+    .sidebar-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 0 4px;
+    }
+    .sidebar-logo {
+      width: 110px;
+      height: 110px;
+      object-fit: contain;
+      filter: none;
+      opacity: 0.93;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      display: block;
+    }
+    .sidebar-logo:hover {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    .sidebar-brand-text {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 13px;
+      letter-spacing: 5px;
+      color: rgba(240,236,228,0.4);
+      text-transform: uppercase;
+    }
+    @media (max-width: 768px) {
+      .sidebar-logo { width: 56px; height: 56px; }
+    }
+    .toggle-slider {
+      width: 44px; height: 24px; border-radius: 12px;
+      position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; display:inline-block;
+    }
+    .toggle-knob {
+      width: 18px; height: 18px; border-radius: 50%; background: #fff;
+      position: absolute; top: 3px; transition: left .2s;
+    }
+    /* Inputs inline nos painéis de horários e datas */
+    #horarios-grid input[type="time"],
+    #de-data, #de-desc, #de-tipo, #de-inicio, #de-fim,
+    #de-almoco-inicio, #de-almoco-fim {
+      background: #122452 !important;
+      border: 1px solid #233F80 !important;
+      color: #F1EAD6 !important;
+    }
+    /* Botão salvar horários */
+    #btn-salvar-horarios {
+      background: #1B3168 !important;
+      border: 1px solid #2C4E9E !important;
+      color: #F1EAD6 !important;
+      font-family: 'Oswald', sans-serif !important;
+      font-size: 12px !important;
+      letter-spacing: 2px !important;
+      text-transform: uppercase !important;
+      padding: 13px 32px !important;
+      border-radius: 6px !important;
+      cursor: pointer !important;
+      transition: background .2s !important;
+    }
+    #btn-salvar-horarios:hover { background: #233F80 !important; }
+  </style>
+</head>
+<body class="admin-body">
+
+  <!-- LOGIN -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <img src="logo.png" alt="Wellisson Barbearia" class="login-logo"/>
+      <h2>Painel Administrativo</h2>
+      <p>Entre com a senha do dono</p>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="btn-login" onclick="doLogin()">Entrar</button>
+      <p class="login-error" id="login-error"></p>
+    </div>
+  </div>
+
+  <!-- PAINEL -->
+  <div id="admin-panel" class="admin-panel" style="display:none;">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-brand">
+          <img src="logo_emblema.png" alt="" class="sidebar-logo"/>
+          <span class="sidebar-brand-text">Wellisson Barbearia</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" onclick="showTab('dashboard', this)">
+          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showTab('agendamentos', this)">
+          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span>Agendamentos</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showTab('horarios', this)">
+          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span><span>Horários</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showTab('datas', this)">
+          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><span>Datas Especiais</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showTab('clientes', this)">
+          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span><span>Clientes</span>
+        </a>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="btn-logout" onclick="doLogout()">Sair</button>
+        <a href="index.html" class="btn-site" target="_blank">Ver Site ↗</a>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <div>
+          <h1 id="page-title">Dashboard</h1>
+          <p id="admin-date"></p>
+        </div>
+        <div class="header-actions">
+          <!-- Sino de notificações -->
+          <div id="notif-bell" onclick="toggleNotifPanel()" style="position:relative;cursor:pointer;padding:8px;border-radius:4px;transition:background .2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#8496C4" stroke-width="1.5" id="bell-icon">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 01-3.46 0"/>
+            </svg>
+            <span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;background:#d45a5a;border-radius:50%;border:1.5px solid #0f0f0f;"></span>
+          </div>
+          <!-- Painel de notificações -->
+          <div id="notif-panel" style="display:none;position:absolute;top:60px;right:20px;width:340px;background:#0C1838;border:1px solid #16295C;border-radius:4px;box-shadow:0 24px 60px rgba(0,0,0,0.8);z-index:9997;overflow:hidden;max-height:480px;display:none;flex-direction:column;">
+            <div style="padding:14px 18px;border-bottom:1px solid #122452;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8496C4;">Notificações</span>
+              <button onclick="limparNotificacoes()" style="background:none;border:none;font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#284794;cursor:pointer;transition:color .2s;" onmouseover="this.style.color='#8496C4'" onmouseout="this.style.color='#284794'">Limpar</button>
+            </div>
+            <div id="notif-list" style="overflow-y:auto;max-height:400px;"></div>
+          </div>
+          <span class="badge-status">Online</span>
+        </div>
+      </header>
+
+      <!-- DASHBOARD -->
+      <div class="tab-content active" id="tab-dashboard">
+
+        <!-- FILTRO DE DATA NO TOPO DO DASHBOARD -->
+        <div id="dash-date-filter-bar" style="background:#0A1330;border:1px solid #16295C;border-radius:10px;padding:16px 22px;margin-bottom:28px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="color:#5E6E9E;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;white-space:nowrap;">Filtrar por período</span>
+            <div style="width:1px;height:20px;background:#1B3168;flex-shrink:0;"></div>
+
+            <!-- DE -->
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">De</span>
+              <input type="date" id="dash-filter-de" onchange="renderDashboard()"
+                style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:8px 12px;outline:none;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;cursor:pointer;color-scheme:dark;"/>
+            </div>
+
+            <span style="color:#2C4E9E;font-size:16px;">→</span>
+
+            <!-- ATÉ -->
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Até</span>
+              <input type="date" id="dash-filter-ate" onchange="renderDashboard()"
+                style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:8px 12px;outline:none;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;cursor:pointer;color-scheme:dark;"/>
+            </div>
+
+            <div style="width:1px;height:20px;background:#1B3168;flex-shrink:0;"></div>
+
+            <!-- Atalhos rápidos -->
+            <button onclick="setDashFilterToday()"
+              style="background:#122452;border:1px solid #233F80;color:#B4BEDC;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">
+              Hoje
+            </button>
+            <button onclick="setDashFilterWeek()"
+              style="background:#122452;border:1px solid #233F80;color:#B4BEDC;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">
+              Essa Semana
+            </button>
+            <button onclick="setDashFilterMonth()"
+              style="background:#122452;border:1px solid #233F80;color:#B4BEDC;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">
+              Este Mês
+            </button>
+            <button onclick="clearDashFilter()"
+              style="background:#122452;border:1px solid #233F80;color:#7183B4;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">
+              Limpar
+            </button>
+            <span id="dash-filter-label" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#5E6E9E;margin-left:auto;white-space:nowrap;"></span>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-hoje">0</span>
+              <span class="stat-label" id="stat-hoje-label">Agendamentos Hoje</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-agendados">0</span>
+              <span class="stat-label" id="stat-agendados-label">Agendados</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-confirmados">0</span>
+              <span class="stat-label" id="stat-confirmados-label">Confirmados</span>
+            </div>
+          </div>
+          <!-- Card de Receita do Período (aparece só quando há filtro) -->
+          <div class="stat-card gold" id="stat-card-receita-dia" style="display:none;">
+            <div class="stat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 21h8M12 17v4M17 3H7L6 8c0 3.31 2.69 6 6 6s6-2.69 6-6l-1-5z"/><path d="M6 8H3a1 1 0 00-1 1v1a4 4 0 004 4M18 8h3a1 1 0 011 1v1a4 4 0 01-4 4"/></svg></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-receita-dia">R$0</span>
+              <span class="stat-label" id="stat-receita-dia-label">Receita do Dia</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="recent-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
+            <h3 style="margin:0;" id="recent-section-title">Agendamentos Recentes</h3>
+          </div>
+          <div class="table-wrap" id="recent-list"></div>
+        </div>
+      </div>
+
+      <!-- AGENDAMENTOS -->
+      <div class="tab-content" id="tab-agendamentos">
+        <div class="tab-toolbar">
+          <div class="filter-group">
+            <select id="filter-status" onchange="applyFilters()">
+              <option value="">Todos os Status</option>
+              <option value="agendado">Agendado</option>
+              <option value="confirmado">Confirmado</option>
+              <option value="concluido">Concluído</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+            <input type="date" id="filter-date" onchange="applyFilters()"/>
+            <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Buscar cliente..."/>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn-export" onclick="exportCSV()">Exportar CSV</button>
+            <button class="btn-export" onclick="abrirModalConcluirTodos()" style="border-color:#1f9e54;color:#2db866;">Concluir Todos</button>
+            <button class="btn-export" onclick="abrirModalAvulso()" style="border-color:#EBC531;color:#EBC531;display:flex;align-items:center;gap:7px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              Atendimento Avulso
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Cliente</th><th>WhatsApp</th><th>Serviço</th>
+                <th>Data</th><th>Horário</th>
+                <th>Valor</th><th>Status</th><th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="agendamentos-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- HORÁRIOS -->
+      <div class="tab-content" id="tab-horarios">
+        <div style="max-width:800px;">
+          <div style="margin-bottom:28px;">
+            <h3 style="font-family:'Oswald',sans-serif;letter-spacing:2px;text-transform:uppercase;color:#F1EAD6;font-size:16px;margin-bottom:6px;">Configurar Horários de Atendimento</h3>
+            <p style="color:#94A4CC;font-size:13px;font-family:'Roboto',sans-serif;line-height:1.6;">Ative os dias e defina os horários de atendimento. Você pode ativar o intervalo de almoço para bloquear aquele período. Os horários aparecem automaticamente no site com intervalos de 30 minutos.</p>
+          </div>
+          <div id="horarios-grid" style="display:flex;flex-direction:column;gap:10px;margin-bottom:32px;"></div>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <button onclick="salvarHorarios()" id="btn-salvar-horarios"
+              style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:14px 36px;font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:4px;font-weight:700;">
+              Salvar Horários
+            </button>
+            <span id="horarios-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
+          </div>
+          <div style="margin-top:36px;padding:20px;background:#0C1838;border:1px solid #122452;border-radius:6px;">
+            <p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#B4BEDC;text-transform:uppercase;margin-bottom:8px;">Como funciona</p>
+            <p style="font-size:13px;color:#94A4CC;line-height:1.7;">Ao salvar, os horários ficam disponíveis no site para agendamento. Dias desativados não aparecem para o cliente. Quando o intervalo de almoço está ativo, os horários durante aquele período ficam bloqueados. O intervalo entre horários é sempre de 30 minutos.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATAS ESPECIAIS -->
+      <div class="tab-content" id="tab-datas">
+        <div style="max-width:800px;">
+          <div style="margin-bottom:28px;">
+            <h3 style="font-family:'Oswald',sans-serif;letter-spacing:2px;text-transform:uppercase;color:#F1EAD6;font-size:16px;margin-bottom:6px;">Datas Especiais de Atendimento</h3>
+            <p style="color:#94A4CC;font-size:13px;font-family:'Roboto',sans-serif;line-height:1.6;">Cadastre feriados ou datas específicas com horários diferenciados. Essas datas <strong style="color:#F1EAD6;">substituem</strong> a configuração semanal naquele dia — útil para feriados em que você vai abrir, ou dias normais que você vai fechar.</p>
+          </div>
+
+          <!-- Formulário para adicionar data -->
+          <div style="background:#0C1838;border:1px solid #16295C;border-radius:8px;padding:24px;margin-bottom:28px;">
+            <p style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;margin-bottom:18px;">Adicionar Data Especial</p>
+            <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;">
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Data</span>
+                <input type="date" id="de-data"
+                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-size:14px;outline:none;color-scheme:dark;"/>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Descrição</span>
+                <input type="text" id="de-desc" placeholder="Ex: Natal, Aniversário da cidade..."
+                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-size:14px;outline:none;width:220px;font-family:'Roboto',sans-serif;"/>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Tipo</span>
+                <select id="de-tipo" onchange="toggleDETipo()"
+                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-size:14px;outline:none;font-family:'Roboto',sans-serif;cursor:pointer;">
+                  <option value="aberto">Aberto (horário especial)</option>
+                  <option value="fechado">Fechado (dia inteiro)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Horários (visível só quando tipo=aberto) -->
+            <div id="de-horarios-wrap" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;align-items:flex-end;">
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Abertura</span>
+                <input type="time" id="de-inicio" value="08:00"
+                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 12px;color:#F1EAD6;font-size:14px;outline:none;color-scheme:dark;"/>
+              </div>
+              <span style="color:#2C4E9E;font-size:20px;padding-bottom:10px;">→</span>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Fechamento</span>
+                <input type="time" id="de-fim" value="17:00"
+                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 12px;color:#F1EAD6;font-size:14px;outline:none;color-scheme:dark;"/>
+              </div>
+              <!-- Almoço -->
+              <div style="display:flex;align-items:center;gap:8px;padding-bottom:4px;">
+                <div id="de-almoco-toggle" onclick="toggleDEAlmoco()"
+                  style="width:36px;height:20px;border-radius:10px;background:#233F80;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;">
+                  <div id="de-almoco-knob" style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left .2s;"></div>
+                </div>
+                <span style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#7183B4;">Intervalo de Almoço</span>
+              </div>
+              <div id="de-almoco-wrap" style="display:flex;gap:10px;align-items:flex-end;opacity:.3;pointer-events:none;">
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Início pausa</span>
+                  <input type="time" id="de-almoco-inicio" value="12:00"
+                    style="background:#122452;border:1px solid #16295C;border-radius:4px;padding:8px 10px;color:#F1EAD6;font-size:13px;outline:none;color-scheme:dark;"/>
+                </div>
+                <span style="color:#2C4E9E;font-size:16px;padding-bottom:10px;">→</span>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Fim pausa</span>
+                  <input type="time" id="de-almoco-fim" value="13:00"
+                    style="background:#122452;border:1px solid #16295C;border-radius:4px;padding:8px 10px;color:#F1EAD6;font-size:13px;outline:none;color-scheme:dark;"/>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="adicionarDataEspecial()"
+              style="margin-top:20px;background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:12px 28px;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:4px;font-weight:700;">
+              Adicionar Data
+            </button>
+          </div>
+
+          <!-- Lista de datas cadastradas -->
+          <div>
+            <p style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#94A4CC;text-transform:uppercase;margin-bottom:12px;">Datas Cadastradas</p>
+            <div id="datas-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+
+          <div style="margin-top:36px;padding:20px;background:#0C1838;border:1px solid #122452;border-radius:6px;">
+            <p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#B4BEDC;text-transform:uppercase;margin-bottom:8px;">Como funciona</p>
+            <p style="font-size:13px;color:#94A4CC;line-height:1.7;">As datas especiais têm <strong style="color:#F1EAD6;">prioridade total</strong> sobre a grade semanal. Se você marcar um feriado como <em>Fechado</em>, o cliente não verá horários naquele dia mesmo que seja um dia normalmente ativo. Se marcar como <em>Aberto</em>, o cliente verá os horários especiais que você definir.</p>
+            <p style="font-size:12px;color:#7183B4;line-height:1.7;margin-top:10px;">Atenção: Se aparecer "Erro ao salvar", acesse o <strong style="color:#F1EAD6;">Firebase Console → Firestore → Regras</strong> e certifique-se que a coleção <code style="background:#0F1F45;padding:2px 6px;border-radius:3px;color:#B4BEDC;">config</code> tem permissão de escrita.</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <template id="tpl-tab-clientes">
+    <div class="tab-content" id="tab-clientes">
+
+      <!-- BANNER ANIVERSARIANTES -->
+      <div id="aniversariantes-banner" style="display:none;background:#1a1208;border:1px solid #4a3800;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+        <div style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;color:#EBC531;text-transform:uppercase;margin-bottom:10px;">Aniversários Amanhã</div>
+        <div id="aniversariantes-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+
+      <!-- CADASTRO MANUAL -->
+      <details style="margin-bottom:20px;">
+        <summary style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#94A4CC;text-transform:uppercase;cursor:pointer;padding:14px 18px;background:#0A1330;border:1px solid #122452;border-radius:8px;list-style:none;display:flex;align-items:center;gap:8px;">
+          Cadastrar Cliente Manualmente
+        </summary>
+        <div style="background:#0A1330;border:1px solid #122452;border-top:none;border-radius:0 0 8px 8px;padding:20px 18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;">
+            <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Nome *</span>
+            <input type="text" id="cad-nome" placeholder="Nome e sobrenome" autocapitalize="words"
+              style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;"/>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+            <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">WhatsApp *</span>
+            <input type="tel" id="cad-tel" placeholder="85999999999" maxlength="15"
+              style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;"/>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:150px;">
+            <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Nascimento <em style="font-style:normal;color:#2C4E9E;">(opcional)</em></span>
+            <input type="date" id="cad-nasc"
+              style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 12px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;"/>
+          </div>
+          <button onclick="cadastrarClienteManual()"
+            style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:10px 24px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;white-space:nowrap;">
+            Salvar Cliente
+          </button>
+          <span id="cad-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#5E6E9E;align-self:center;"></span>
+        </div>
+      </details>
+
+      <!-- BUSCA E ORDENAÇÃO -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+        <input type="text" id="clientes-search" oninput="filtrarClientes()"
+          placeholder="Buscar cliente..."
+          style="background:#0F1F45;border:1px solid #233F80;border-radius:4px;padding:10px 16px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;flex:1;min-width:200px;"/>
+        <select id="clientes-sort" onchange="filtrarClientes()"
+          style="background:#0F1F45;border:1px solid #233F80;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;outline:none;cursor:pointer;color-scheme:dark;">
+          <option value="nome">Ordenar: Nome A-Z</option>
+          <option value="visitas">Ordenar: + Visitas</option>
+          <option value="ticket">Ordenar: Maior Ticket</option>
+          <option value="gasto">Ordenar: Maior Gasto Total</option>
+          <option value="recente">Ordenar: + Recente</option>
+        </select>
+        <button onclick="abrirModalExcluirTodosClientes()"
+          style="background:transparent;border:1px solid rgba(176,48,48,0.4);color:#d45a5a;padding:10px 18px;border-radius:4px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;white-space:nowrap;transition:all .2s;"
+          onmouseover="this.style.background='rgba(176,48,48,0.1)';this.style.borderColor='#d45a5a'"
+          onmouseout="this.style.background='transparent';this.style.borderColor='rgba(176,48,48,0.4)'">
+          Excluir Todos
+        </button>
+      </div>
+
+      <!-- RESUMO GERAL -->
+      <div id="clientes-resumo" style="border-radius:8px;overflow:hidden;margin-bottom:28px;"></div>
+
+      <!-- LISTA -->
+      <div id="clientes-lista"></div>
+
+      <!-- DRAWER DE HISTÓRICO -->
+      <div id="cliente-drawer" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);" onclick="fecharClienteDrawer(event)">
+        <div id="cliente-drawer-box" style="position:absolute;right:0;top:0;bottom:0;width:min(520px,100vw);background:#0A1330;border-left:1px solid #122452;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+          <div style="padding:28px 28px 12px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #122452;position:sticky;top:0;background:#0A1330;z-index:1;">
+            <div>
+              <div style="font-family:'Playfair Display',Georgia,serif;font-size:28px;letter-spacing:2px;color:#F1EAD6;" id="drawer-nome">—</div>
+              <div style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;" id="drawer-tel">—</div>
+              <div style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#7183B4;margin-top:4px;" id="drawer-nasc"></div>
+            </div>
+            <button onclick="fecharClienteDrawer()" style="background:none;border:none;color:#5E6E9E;font-size:18px;cursor:pointer;line-height:1;padding:4px;letter-spacing:0;">&#x2715;</button>
+          </div>
+          <div style="padding:24px 28px;" id="drawer-content"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+
+  <!-- MODAL EXCLUIR CLIENTE INDIVIDUAL -->
+  <div id="excluir-cliente-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000;align-items:center;justify-content:center;">
+    <div style="background:#0C1838;border:1px solid #1B3168;border-radius:2px;padding:40px 36px;max-width:380px;width:90%;text-align:center;box-shadow:0 40px 100px rgba(0,0,0,0.9);">
+      <div style="width:40px;height:1px;background:#b03030;margin:0 auto 28px;"></div>
+      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Excluir Cliente</h3>
+      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#8496C4;line-height:1.7;margin-bottom:28px;">
+        Tem certeza que deseja excluir <strong id="excluir-cliente-nome" style="color:#F1EAD6;"></strong>?<br/>
+        <span style="font-size:11px;color:#5E6E9E;">Esta ação não pode ser desfeita.</span>
+      </p>
+      <div style="display:flex;gap:10px;">
+        <button onclick="fecharModalExcluirCliente()"
+          style="flex:1;padding:12px;background:transparent;border:1px solid #1B3168;border-radius:4px;color:#8496C4;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;"
+          onmouseover="this.style.borderColor='#2C4E9E';this.style.color='#B4BEDC'"
+          onmouseout="this.style.borderColor='#1B3168';this.style.color='#8496C4'">
+          Cancelar
+        </button>
+        <button id="excluir-cliente-confirmar"
+          style="flex:1;padding:12px;background:rgba(176,48,48,0.15);border:1px solid rgba(176,48,48,0.5);border-radius:4px;color:#d45a5a;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;transition:all .2s;"
+          onmouseover="this.style.background='rgba(176,48,48,0.25)'"
+          onmouseout="this.style.background='rgba(176,48,48,0.15)'">
+          Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EXCLUIR TODOS OS CLIENTES -->
+  <div id="excluir-todos-clientes-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;">
+    <div style="background:#0C1838;border:1px solid #1B3168;border-radius:2px;padding:40px 36px;max-width:400px;width:90%;text-align:center;box-shadow:0 40px 100px rgba(0,0,0,0.9);">
+      <div style="width:40px;height:1px;background:#b03030;margin:0 auto 28px;"></div>
+      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Excluir Todos os Clientes</h3>
+      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#8496C4;line-height:1.7;margin-bottom:8px;">
+        Esta ação irá excluir <strong id="excluir-todos-count" style="color:#d45a5a;"></strong> da base de dados.
+      </p>
+      <p style="font-family:'Roboto',sans-serif;font-size:12px;color:#5E6E9E;line-height:1.6;margin-bottom:28px;">
+        Os agendamentos não serão afetados. Esta ação <strong style="color:#F1EAD6;">não pode ser desfeita</strong>.
+      </p>
+      <div style="margin-bottom:24px;padding:14px 18px;background:#1a0a0a;border:1px solid rgba(176,48,48,0.25);border-radius:4px;">
+        <p style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;margin-bottom:8px;">Confirme digitando</p>
+        <input type="text" id="excluir-todos-confirm-input" placeholder="EXCLUIR TUDO"
+          style="width:100%;background:#0f0f0f;border:1px solid #1B3168;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-align:center;outline:none;"
+          oninput="validarConfirmacaoExcluirTodos()"/>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="fecharModalExcluirTodosClientes()"
+          style="flex:1;padding:12px;background:transparent;border:1px solid #1B3168;border-radius:4px;color:#8496C4;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;"
+          onmouseover="this.style.borderColor='#2C4E9E';this.style.color='#B4BEDC'"
+          onmouseout="this.style.borderColor='#1B3168';this.style.color='#8496C4'">
+          Cancelar
+        </button>
+        <button id="excluir-todos-confirmar" disabled
+          style="flex:1;padding:12px;background:rgba(176,48,48,0.08);border:1px solid rgba(176,48,48,0.2);border-radius:4px;color:#7183B4;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:not-allowed;transition:all .2s;">
+          Excluir Tudo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CONCLUIR TODOS -->
+  <div id="concluir-todos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
+      
+      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Concluir Todos</h3>
+      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;line-height:1.6;margin-bottom:28px;">
+        Isso vai marcar como <strong style="color:#1f9e54;">concluído</strong> todos os <strong id="concluir-todos-count" style="color:#F1EAD6;"></strong> agendamentos agendados e confirmados. Deseja continuar?
+      </p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button onclick="fecharModalConcluirTodos()"
+          style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">
+          Cancelar
+        </button>
+        <button onclick="confirmarConcluirTodos()"
+          style="flex:1;padding:12px;background:#1f9e54;border:none;border-radius:6px;color:#fff;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMAR AGENDAMENTO -->
+  <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
+      
+      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Confirmar Agendamento</h3>
+      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;line-height:1.6;margin-bottom:28px;">
+        Deseja enviar a mensagem de confirmação para <strong id="confirm-modal-nome" style="color:#F1EAD6;"></strong> pelo WhatsApp?
+      </p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button id="confirm-modal-nao"
+          style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">
+          Não enviar
+        </button>
+        <button id="confirm-modal-sim"
+          style="flex:1;padding:12px;background:#F1EAD6;border:none;border-radius:6px;color:#070E24;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">
+          Sim, enviar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Firebase ─────────────────────────────────────
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7oHFbbLaMi5Ptwic0o4cqvuZN1jD039M",
+      authDomain: "welisson-77143.firebaseapp.com",
+      projectId: "welisson-77143",
+      storageBucket: "welisson-77143.firebasestorage.app",
+      messagingSenderId: "120956065574",
+      appId: "1:120956065574:web:40ce021fa58845c19093e7"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ── Push Notifications (FCM) ─────────────────────
+    // Chave pública VAPID deste projeto: console do Firebase >
+    // Configurações do projeto > Cloud Messaging > Certificados push da Web.
+    // Enquanto estiver vazia, o painel funciona normal e só não registra push.
+    const FCM_VAPID_KEY = 'BCuj7wsTBupV5cgMBp0jYVvmplx47ShUwyFbUwWuNxoL2NW97__UR0TVXmszcGBFygSxA5Fwaz_pIs-yDM4_RRE';
+    let _messaging = null;
+    let _fcmToken = null;
+    try {
+      _messaging = firebase.messaging();
+    } catch(e) { console.warn('FCM não suportado:', e); }
+
+    // ── Estado Global (declarado no topo para evitar TDZ) ────────────
+    let allAgendamentos = [];
+    let unsubscribe = null;
+    let _agendamentosKnownIds = null;
+    let _clientesFirestore = {};
+    let _clientListCache = [];
+    let datasEspeciais = {};
+    let deAlmocoAtivo = false;
+    let _notificacoes = [];
+    let _notifPanelOpen = false;
+
+    const DIAS_SEMANA = [
+      { key:'domingo', label:'Domingo' },
+      { key:'segunda', label:'Segunda-feira' },
+      { key:'terca',   label:'Terca-feira' },
+      { key:'quarta',  label:'Quarta-feira' },
+      { key:'quinta',  label:'Quinta-feira' },
+      { key:'sexta',   label:'Sexta-feira' },
+      { key:'sabado',  label:'Sabado' },
+    ];
+
+    const DEFAULT_HORARIOS = {
+      domingo: { ativo:false, inicio:'08:00', fim:'18:00', almoco:false, almoco_inicio:'12:00', almoco_fim:'13:00' },
+      segunda: { ativo:true,  inicio:'08:00', fim:'19:00', almoco:false, almoco_inicio:'12:00', almoco_fim:'13:00' },
+      terca:   { ativo:true,  inicio:'08:00', fim:'19:00', almoco:false, almoco_inicio:'12:00', almoco_fim:'13:00' },
+      quarta:  { ativo:true,  inicio:'08:00', fim:'19:00', almoco:false, almoco_inicio:'12:00', almoco_fim:'13:00' },
+      quinta:  { ativo:true,  inicio:'08:00', fim:'19:00', almoco:false, almoco_inicio:'12:00', almoco_fim:'13:00' },
+      sexta:   { ativo:true,  inicio:'08:00', fim:'19:00', almoco:false, almoco_inicio:'12:00', almoco_fim:'13:00' },
+      sabado:  { ativo:true,  inicio:'08:00', fim:'17:00', almoco:false, almoco_inicio:'12:00', almoco_fim:'13:00' },
+    };
+
+    let horariosConfig = JSON.parse(JSON.stringify(DEFAULT_HORARIOS));
+
+
+    // ── Login (Firebase Authentication) ──────────────
+    // O painel pede só a senha. Por trás, ela entra com este e-mail fixo,
+    // que precisa existir em Authentication > Users no console do Firebase,
+    // com a senha que você quiser. Não existe senha escrita neste arquivo.
+    const ADMIN_EMAIL = 'admin@wellissonbarbearia.app';
+    const auth = firebase.auth();
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+
+    const SERVICES = [
+      { id: 'corte',             name: 'Corte',                        price: 25 },
+      { id: 'corte_sobrancelha', name: 'Corte + Sobrancelha',         price: 30 },
+      { id: 'corte_barba',       name: 'Corte + Barba',                price: 45 },
+      { id: 'corte_barba_sob',   name: 'Corte + Barba + Sobrancelha', price: 45 },
+      { id: 'barba',             name: 'Barba',                        price: 20 },
+      { id: 'sobrancelha',       name: 'Sobrancelha',                  price: 5  },
+      { id: 'nevou_corte',       name: 'Nevou + Corte',                price: 90 },
+      { id: 'luzes_corte',       name: 'Luzes + Corte',                price: 75 },
+      { id: 'hidratacao',        name: 'Hidratacao',                   price: 10 }
+    ];
+
+    const PLANS = [
+      { name: 'Simples',       price: 50,  features: ['2x no mes','Inclui finalizacao e lavagem'] },
+      { name: 'Intermediario', price: 90,  features: ['Quantas vezes voce quiser no mes','Inclui finalizacao e lavagem'] },
+      { name: 'Senior',        price: 130, features: ['Quantas vezes voce quiser no mes','Inclui finalizacao e lavagem'] }
+    ];
+
+
+    // ── Auth ─────────────────────────────────────────
+
+    let _adminIniciado = false;
+
+    function mostrarPainel() {
+      document.getElementById('login-screen').style.cssText = 'display:none!important;';
+      document.getElementById('admin-panel').style.cssText  = 'display:flex!important;';
+      if (!_adminIniciado) { _adminIniciado = true; initAdmin(); }
+    }
+
+    function mostrarLogin() {
+      document.getElementById('login-screen').style.cssText = 'display:flex!important;';
+      document.getElementById('admin-panel').style.cssText  = 'display:none!important;';
+      const btn = document.querySelector('.btn-login');
+      if (btn) { btn.textContent = 'Entrar'; btn.disabled = false; }
+    }
+
+    function erroLoginTexto(code) {
+      switch (code) {
+        case 'auth/invalid-email':     return 'E-mail inválido.';
+        case 'auth/user-disabled':     return 'Este acesso foi desativado.';
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':return 'E-mail ou senha incorretos.';
+        case 'auth/too-many-requests': return 'Muitas tentativas. Aguarde alguns minutos.';
+        case 'auth/network-request-failed': return 'Sem conexão. Tente de novo.';
+        default: return 'Não foi possível entrar. Tente de novo.';
+      }
+    }
+
+    async function doLogin() {
+      const pass  = document.getElementById('login-pass').value;
+      const errEl = document.getElementById('login-error');
+      errEl.textContent = '';
+      if (!pass)  { errEl.textContent = 'Digite a senha.';  return; }
+      const btn = document.querySelector('.btn-login');
+      btn.textContent = 'Entrando...';
+      btn.disabled = true;
+      try {
+        await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pass);
+        // onAuthStateChanged abre o painel
+      } catch (e) {
+        errEl.textContent = erroLoginTexto(e.code);
+        btn.textContent = 'Entrar';
+        btn.disabled = false;
+      }
+    }
+
+    async function doLogout() {
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      try { await auth.signOut(); } catch(e) {}
+      document.getElementById('login-pass').value  = '';
+      document.getElementById('login-error').textContent = '';
+      location.reload();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') doLogin();
+    });
+
+    // A sessão fica salva no próprio Firebase: quem já entrou não precisa digitar de novo.
+    auth.onAuthStateChanged(user => {
+      if (user) mostrarPainel(); else mostrarLogin();
+    });
+
+    function initAdmin() {
+      const el = document.getElementById('admin-date');
+      if (el) el.textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+      loadAgendamentos();
+      verificarAniversariosGlobal();
+      solicitarPermissaoNotificacao();
+      renderNotifPanel(); // inicia painel vazio
+    }
+
+    // ── Tabs ─────────────────────────────────────────
+    function showTab(tab, el) {
+      // Injeta o tab de clientes do template na primeira vez
+      if (tab === 'clientes' && !document.getElementById('tab-clientes')) {
+        const tpl = document.getElementById('tpl-tab-clientes');
+        const clone = tpl.content.cloneNode(true);
+        document.querySelector('.admin-main').appendChild(clone);
+      }
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      if (el) el.classList.add('active');
+      const titles = { dashboard: 'Dashboard', agendamentos: 'Agendamentos', horarios: 'Horarios de Atendimento', datas: 'Datas Especiais', clientes: 'Clientes' };
+      document.getElementById('page-title').textContent = titles[tab] || tab;
+      if (tab === 'horarios') carregarHorarios();
+      if (tab === 'datas') carregarDatasEspeciais();
+      if (tab === 'clientes') renderClientes();
+      gerenciarFab(tab);
+      // Scroll para o topo no mobile
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function syncBottomNav(activeId) {
+      document.querySelectorAll('.bottom-nav-item').forEach(el => el.classList.remove('active'));
+      const el = document.getElementById(activeId);
+      if (el) el.classList.add('active');
+    }
+
+    // ── Agendamentos ─────────────────────────────────
+
+    function loadAgendamentos() {
+      unsubscribe = db.collection('agendamentos').orderBy('criadoEm', 'desc').onSnapshot(snapshot => {
+        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Detecta novos agendamentos após a primeira carga
+        if (_agendamentosKnownIds !== null) {
+          snapshot.docChanges().forEach(change => {
+            if (change.type === 'added') {
+              const a = { id: change.doc.id, ...change.doc.data() };
+              // Só notifica se foi criado há menos de 30s (evita notificar histórico no reload)
+              const criadoEm = a.criadoEm?.toDate ? a.criadoEm.toDate() : null;
+              const recente = !criadoEm || (Date.now() - criadoEm.getTime() < 30000);
+              if (recente) {
+                notificarNovoAgendamento(a);
+              }
+            }
+          });
+        } else {
+          // Primeira carga: registra IDs conhecidos
+          _agendamentosKnownIds = new Set(docs.map(d => d.id));
+        }
+
+        allAgendamentos = docs;
+        renderDashboard();
+        renderAgendamentosTable(allAgendamentos);
+      });
+    }
+
+    function clearDashFilter() {
+      document.getElementById('dash-filter-de').value = '';
+      document.getElementById('dash-filter-ate').value = '';
+      renderDashboard();
+    }
+
+    // Retorna a data local no formato YYYY-MM-DD (sem depender de UTC)
+    function localDateStr(d) {
+      const date = d || new Date();
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function setDashFilterToday() {
+      const hoje = localDateStr();
+      document.getElementById('dash-filter-de').value = hoje;
+      document.getElementById('dash-filter-ate').value = hoje;
+      renderDashboard();
+    }
+
+    function setDashFilterWeek() {
+      const now = new Date();
+      const day = now.getDay(); // 0=dom
+      const monday = new Date(now); monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+      document.getElementById('dash-filter-de').value = localDateStr(monday);
+      document.getElementById('dash-filter-ate').value = localDateStr(sunday);
+      renderDashboard();
+    }
+
+    function setDashFilterMonth() {
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      document.getElementById('dash-filter-de').value = localDateStr(first);
+      document.getElementById('dash-filter-ate').value = localDateStr(last);
+      renderDashboard();
+    }
+
+    function renderDashboard() {
+      const hoje = localDateStr();
+      const filterDe  = document.getElementById('dash-filter-de').value;
+      const filterAte = document.getElementById('dash-filter-ate').value;
+
+      // Considera filtro ativo se ao menos um campo preenchido
+      const hasFilter = !!(filterDe || filterAte);
+      // Efetivo: se só um lado preenchido, o outro assume o mesmo valor
+      const efDe  = filterDe  || filterAte;
+      const efAte = filterAte || filterDe;
+
+      // Highlight nas bordas dos inputs quando ativos
+      const styleAtivo  = 'background:#0F1F45;border:1px solid #EBC531;border-radius:6px;padding:8px 12px;outline:none;color:#F1EAD6;font-family:\'Roboto\',sans-serif;font-size:13px;cursor:pointer;color-scheme:dark;';
+      const styleNormal = 'background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:8px 12px;outline:none;color:#F1EAD6;font-family:\'Roboto\',sans-serif;font-size:13px;cursor:pointer;color-scheme:dark;';
+      document.getElementById('dash-filter-de').style.cssText  = filterDe  ? styleAtivo : styleNormal;
+      document.getElementById('dash-filter-ate').style.cssText = filterAte ? styleAtivo : styleNormal;
+
+      // ── Label do filtro ──────────────────────────────
+      const labelEl = document.getElementById('dash-filter-label');
+      if (hasFilter) {
+        const fmtDe  = efDe  ? efDe.split('-').reverse().join('/')  : '—';
+        const fmtAte = efAte ? efAte.split('-').reverse().join('/') : '—';
+        labelEl.textContent = efDe === efAte ? fmtDe : (fmtDe + ' — ' + fmtAte);
+        labelEl.style.color = '#EBC531';
+      } else {
+        labelEl.textContent = '';
+      }
+
+      // ── Filtragem por intervalo ──────────────────────
+      const agendamentosNoRange = hasFilter
+        ? allAgendamentos.filter(a => a.data >= efDe && a.data <= efAte)
+        : [];
+
+      // ── Cards ────────────────────────────────────────
+      const isSingleDay = hasFilter && efDe === efAte;
+
+      document.getElementById('stat-hoje').textContent = hasFilter
+        ? agendamentosNoRange.length
+        : allAgendamentos.filter(a => a.data === hoje).length;
+      document.getElementById('stat-hoje-label').textContent = hasFilter
+        ? (isSingleDay ? 'Agendamentos no Dia' : 'Agendamentos no Período')
+        : 'Agendamentos Hoje';
+
+      document.getElementById('stat-agendados').textContent = hasFilter
+        ? agendamentosNoRange.filter(a => a.status === 'agendado').length
+        : allAgendamentos.filter(a => a.status === 'agendado').length;
+      document.getElementById('stat-agendados-label').textContent = hasFilter ? 'Agendados no Período' : 'Agendados';
+
+      document.getElementById('stat-confirmados').textContent = hasFilter
+        ? agendamentosNoRange.filter(a => a.status === 'confirmado').length
+        : allAgendamentos.filter(a => a.status === 'confirmado').length;
+      document.getElementById('stat-confirmados-label').textContent = hasFilter ? 'Confirmados no Período' : 'Confirmados';
+
+      // ── Card de Receita do Período (aparece só com filtro) ──
+      const cardReceitaDia = document.getElementById('stat-card-receita-dia');
+      if (hasFilter) {
+        const receitaPeriodo = agendamentosNoRange
+          .filter(a => a.status === 'concluido')
+          .reduce((acc, a) => acc + (a.preco || 0), 0);
+        document.getElementById('stat-receita-dia').textContent = 'R$' + receitaPeriodo.toFixed(2).replace('.', ',');
+        document.getElementById('stat-receita-dia-label').textContent = isSingleDay
+          ? 'Receita de ' + efDe.split('-').slice(1).reverse().join('/')
+          : 'Receita do Período';
+        cardReceitaDia.style.display = '';
+      } else {
+        cardReceitaDia.style.display = 'none';
+      }
+
+      // ── Tabela ───────────────────────────────────────
+      const recent = hasFilter ? agendamentosNoRange : allAgendamentos.slice(0, 8);
+      const sectionTitle = document.getElementById('recent-section-title');
+      if (sectionTitle) {
+        sectionTitle.textContent = hasFilter
+          ? (isSingleDay ? 'Agendamentos do Dia' : 'Agendamentos do Período')
+          : 'Agendamentos Recentes';
+      }
+
+      const el = document.getElementById('recent-list');
+      if (!recent.length) {
+        el.innerHTML = '<p style="color:#5E6E9E;padding:20px;font-family:Oswald,sans-serif;letter-spacing:1px;">Nenhum agendamento encontrado para o período selecionado.</p>';
+        return;
+      }
+      el.innerHTML = `<table class="admin-table">
+        <thead><tr><th>Cliente</th><th>Servico</th><th>Data</th><th>Horario</th><th>Valor</th><th>Status</th></tr></thead>
+        <tbody>${recent.map(a => `<tr>
+          <td>${a.cliente||'--'}</td>
+          <td>${a.servico||'--'}</td>
+          <td>${a.data ? formatDate(a.data) : '--'}</td>
+          <td>${a.horario||'--'}</td>
+          <td style="color:var(--gold);font-family:var(--font-display);font-size:16px;">R$${(a.preco||0).toFixed(2).replace('.',',')}</td>
+          <td>${badgeHTML(a.status)}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+
+    function renderAgendamentosTable(data) {
+      const tbody = document.getElementById('agendamentos-body');
+      if (!tbody) return;
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#5E6E9E;padding:32px;">Nenhum agendamento encontrado.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(a => `<tr data-id="${a.id}" ${a.origem === 'avulso' ? 'style="border-left:2px solid rgba(235,197,49,0.3);"' : ''}>
+        <td data-label="Cliente"><strong style="color:var(--white)">${a.cliente||'--'}</strong>${a.origem==='avulso' ? ' <span style="font-family:\'Oswald\',sans-serif;font-size:8px;letter-spacing:1.5px;background:rgba(235,197,49,0.1);color:#EBC531;border:1px solid rgba(235,197,49,0.25);padding:2px 6px;border-radius:3px;vertical-align:middle;">AVULSO</span>' : ''}</td>
+        <td data-label="WhatsApp"><a href="https://wa.me/55${(a.telefone||'').replace(/\D/g,'')}" target="_blank" style="color:var(--gold);text-decoration:none;">${a.telefone||'--'}</a></td>
+        <td data-label="Serviço">${a.servico||'--'}</td>
+        <td data-label="Data">${a.data ? formatDate(a.data) : '--'}</td>
+        <td data-label="Horário">${a.horario||'--'}</td>
+        <td data-label="Valor" style="color:var(--gold);font-family:var(--font-display);font-size:18px;">R$${(a.preco||0).toFixed(2).replace('.',',')}</td>
+        <td data-label="Status">${badgeHTML(a.status)}</td>
+        <td>
+          <div class="action-btns">
+            ${a.status==='agendado' ? `<button class="btn-action btn-confirmar" onclick="updateStatus('${a.id}','confirmado')">Confirmar</button>` : ''}
+            ${a.status==='confirmado' ? `<button class="btn-action btn-concluir" onclick="updateStatus('${a.id}','concluido')">Concluir</button>` : ''}
+            ${['agendado','confirmado'].includes(a.status) ? `<button class="btn-action btn-cancelar" onclick="updateStatus('${a.id}','cancelado')">Cancelar</button>` : ''}
+            <a class="btn-action btn-whats" href="https://wa.me/55${(a.telefone||'').replace(/\D/g,'')}" target="_blank">WhatsApp</a>
+            <button class="btn-action btn-excluir" onclick="deleteAgendamento('${a.id}')">Excluir</button>
+          </div>
+        </td>
+      </tr>`).join('');
+    }
+
+    function applyFilters() {
+      const status = document.getElementById('filter-status').value;
+      const date   = document.getElementById('filter-date').value;
+      const search = document.getElementById('filter-search').value.toLowerCase();
+      let f = allAgendamentos;
+      if (status) f = f.filter(a => a.status === status);
+      if (date)   f = f.filter(a => a.data === date);
+      if (search) f = f.filter(a => (a.cliente||'').toLowerCase().includes(search) || (a.servico||'').toLowerCase().includes(search));
+      renderAgendamentosTable(f);
+    }
+
+    function updateStatus(id, status) {
+      if (status === 'confirmado') {
+        // Mostra modal perguntando se quer enviar mensagem ao cliente
+        const ag = allAgendamentos.find(a => a.id === id);
+        const nome = ag ? (ag.cliente || 'cliente') : 'cliente';
+        document.getElementById('confirm-modal-nome').textContent = nome;
+        document.getElementById('confirm-modal').style.display = 'flex';
+        document.getElementById('confirm-modal-sim').onclick = function() {
+          fecharConfirmModal();
+          salvarStatus(id, 'confirmado', true);
+        };
+        document.getElementById('confirm-modal-nao').onclick = function() {
+          fecharConfirmModal();
+          salvarStatus(id, 'confirmado', false);
+        };
+        return;
+      }
+      salvarStatus(id, status, false);
+    }
+
+    function fecharConfirmModal() {
+      document.getElementById('confirm-modal').style.display = 'none';
+    }
+
+    function salvarStatus(id, status, enviarWpp) {
+      // iOS Safari bloqueia window.open dentro de .then() (async).
+      // Por isso abrimos o WhatsApp ANTES da Promise, direto no clique do usuário.
+      if (enviarWpp && status === 'confirmado') {
+        const ag = allAgendamentos.find(a => a.id === id);
+        if (ag && ag.telefone) {
+          const primeiroNome = (ag.cliente || 'Cliente').split(' ')[0];
+          const phone = ag.telefone.replace(/\D/g, '');
+          const msg = [
+            'Ola, *' + primeiroNome + '*!',
+            '',
+            'Seu agendamento na *Wellisson Barbearia* foi *confirmado*!',
+            '',
+            '*Detalhes:*',
+            '*Servico:* ' + (ag.servico || '--'),
+            '*Data:* ' + (ag.data ? formatDate(ag.data) : '--'),
+            '*Horario:* ' + (ag.horario || '--'),
+            '*Valor:* R$' + (ag.preco || 0).toFixed(2).replace('.', ','),
+            '',
+            'Te esperamos! Qualquer duvida e so chamar.',
+          ].join('\n');
+          window.location.href = 'https://wa.me/55' + phone + '?text=' + encodeURIComponent(msg);
+        }
+      }
+      db.collection('agendamentos').doc(id).update({ status, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() })
+        .catch(() => alert('Erro ao atualizar status.'));
+    }
+
+    function deleteAgendamento(id) {
+      if (!confirm('Excluir este agendamento? Nao pode ser desfeito.')) return;
+      db.collection('agendamentos').doc(id).delete().catch(() => alert('Erro ao excluir.'));
+    }
+
+    function abrirModalConcluirTodos() {
+      const pendentes = allAgendamentos.filter(a => ['agendado','confirmado'].includes(a.status));
+      if (!pendentes.length) {
+        alert('Nenhum agendamento agendado ou confirmado para concluir.');
+        return;
+      }
+      document.getElementById('concluir-todos-count').textContent = pendentes.length;
+      document.getElementById('concluir-todos-modal').style.display = 'flex';
+    }
+
+    function fecharModalConcluirTodos() {
+      document.getElementById('concluir-todos-modal').style.display = 'none';
+    }
+
+    async function confirmarConcluirTodos() {
+      fecharModalConcluirTodos();
+      const btn = document.querySelector('[onclick="abrirModalConcluirTodos()"]');
+      const textoOriginal = btn.textContent;
+      btn.textContent = 'Concluindo...';
+      btn.disabled = true;
+
+      const pendentes = allAgendamentos.filter(a => ['agendado','confirmado'].includes(a.status));
+      try {
+        const batch = db.batch();
+        pendentes.forEach(a => {
+          batch.update(db.collection('agendamentos').doc(a.id), { status: 'concluido',
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+        await batch.commit();
+      } catch(e) {
+        alert('Erro ao concluir agendamentos: ' + (e.message || e));
+      } finally {
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
+      }
+    }
+
+    function exportCSV() {
+      const rows = [['Cliente','WhatsApp','Servico','Data','Horario','Valor (R$)','Status','Obs']];
+      allAgendamentos.forEach(a => rows.push([a.cliente||'',a.telefone||'',a.servico||'',a.data||'',a.horario||'',(a.preco||0).toFixed(2).replace('.',','),a.status||'',a.obs||'']));
+      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `agendamentos_vr_${new Date().toISOString().slice(0,10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ── Horários ─────────────────────────────────────
+
+
+
+    async function carregarHorarios() {
+      try {
+        const doc = await db.collection('config').doc('horarios').get();
+        if (doc.exists) {
+          const saved = doc.data();
+          // Merge saved data preserving new lunch fields from DEFAULT if missing
+          DIAS_SEMANA.forEach(dia => {
+            horariosConfig[dia.key] = Object.assign({}, DEFAULT_HORARIOS[dia.key], saved[dia.key] || {});
+          });
+        }
+      } catch(e) {}
+      renderHorariosGrid();
+    }
+
+    function gerarSlots(inicio, fim, almoco, almoco_inicio, almoco_fim) {
+      const slots = [];
+      let [h, m] = inicio.split(':').map(Number);
+      const [hf, mf] = fim.split(':').map(Number);
+      const fimMin = hf * 60 + mf;
+      const almocoInicioMin = almoco ? (parseInt(almoco_inicio.split(':')[0]) * 60 + parseInt(almoco_inicio.split(':')[1])) : -1;
+      const almocoFimMin   = almoco ? (parseInt(almoco_fim.split(':')[0])   * 60 + parseInt(almoco_fim.split(':')[1]))   : -1;
+      while (h * 60 + m < fimMin) {
+        const cur = h * 60 + m;
+        if (!almoco || cur < almocoInicioMin || cur >= almocoFimMin) {
+          slots.push(String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'));
+        }
+        m += 30; if (m >= 60) { h++; m -= 60; }
+      }
+      return slots;
+    }
+
+    function previewSlots(inicio, fim, almoco, almoco_inicio, almoco_fim) {
+      const s = gerarSlots(inicio, fim, almoco, almoco_inicio, almoco_fim);
+      if (!s.length) return '--';
+      if (s.length <= 3) return s.join(' - ');
+      return s[0] + ' - ' + s[1] + ' - ... - ' + s[s.length-1] + ' (' + s.length + ' horarios)';
+    }
+
+    function renderHorariosGrid() {
+      const grid = document.getElementById('horarios-grid');
+      if (!grid) return;
+      grid.innerHTML = DIAS_SEMANA.map(dia => {
+        const cfg = horariosConfig[dia.key];
+        const on  = cfg.ativo;
+        const alOn = cfg.almoco || false;
+        return `<div style="
+            background:#0C1838; border:1px solid ${on ? '#2C4E9E' : '#16295C'};
+            border-radius:6px; padding:16px 20px;
+            display:flex; flex-direction:column; gap:14px; transition:border .2s;">
+
+          <!-- Linha principal: toggle + horários de atendimento -->
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;min-width:170px;" onclick="toggleDia('${dia.key}')">
+              <div style="width:44px;height:24px;border-radius:12px;background:${on ? '#5E6E9E' : '#1B3168'};position:relative;transition:background .2s;flex-shrink:0;">
+                <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:${on ? '23px' : '3px'};transition:left .2s;"></div>
+              </div>
+              <span style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:1px;color:${on ? '#F1EAD6' : '#5E6E9E'};transition:color .2s;">${dia.label}</span>
+            </label>
+
+            <div style="display:flex;align-items:center;gap:12px;${on ? '' : 'opacity:.3;pointer-events:none;'}">
+              <div style="display:flex;flex-direction:column;gap:3px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Abertura</span>
+                <input type="time" id="inicio-${dia.key}" value="${cfg.inicio}"
+                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:8px 12px;color:#F1EAD6;font-size:14px;outline:none;"
+                  onchange="updateHorario('${dia.key}')"/>
+              </div>
+              <span style="color:#2C4E9E;font-size:20px;margin-top:14px;">&#8594;</span>
+              <div style="display:flex;flex-direction:column;gap:3px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Fechamento</span>
+                <input type="time" id="fim-${dia.key}" value="${cfg.fim}"
+                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:8px 12px;color:#F1EAD6;font-size:14px;outline:none;"
+                  onchange="updateHorario('${dia.key}')"/>
+              </div>
+            </div>
+
+            <div style="margin-left:auto;${on ? '' : 'opacity:.3;'}">
+              <span style="font-size:11px;color:#7183B4;font-family:'Oswald',sans-serif;letter-spacing:1px;">Horarios: </span>
+              <span style="font-size:12px;color:#B4BEDC;font-family:'Roboto',sans-serif;" id="preview-${dia.key}">${previewSlots(cfg.inicio, cfg.fim, cfg.almoco, cfg.almoco_inicio, cfg.almoco_fim)}</span>
+            </div>
+          </div>
+
+          <!-- Linha de almoço -->
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 14px;border-radius:5px;background:#0A1330;border:1px solid ${alOn ? '#233F80' : '#122452'};${on ? '' : 'opacity:.3;pointer-events:none;'}">
+            <label style="display:flex;align-items:center;gap:9px;cursor:pointer;min-width:170px;" onclick="toggleAlmoco('${dia.key}')">
+              <div style="width:36px;height:20px;border-radius:10px;background:${alOn ? '#5E6E9E' : '#1B3168'};position:relative;transition:background .2s;flex-shrink:0;">
+                <div style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:3px;left:${alOn ? '19px' : '3px'};transition:left .2s;"></div>
+              </div>
+              <span style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:${alOn ? '#F1EAD6' : '#5E6E9E'};transition:color .2s;">Intervalo de Almoço</span>
+            </label>
+
+            <div style="display:flex;align-items:center;gap:10px;${alOn ? '' : 'opacity:.3;pointer-events:none;'}">
+              <div style="display:flex;flex-direction:column;gap:3px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Início pausa</span>
+                <input type="time" id="almoco-inicio-${dia.key}" value="${cfg.almoco_inicio || '12:00'}"
+                  style="background:#0F1F45;border:1px solid #16295C;border-radius:4px;padding:6px 10px;color:#F1EAD6;font-size:13px;outline:none;"
+                  onchange="updateHorario('${dia.key}')"/>
+              </div>
+              <span style="color:#2C4E9E;font-size:16px;margin-top:14px;">&#8594;</span>
+              <div style="display:flex;flex-direction:column;gap:3px;">
+                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Fim pausa</span>
+                <input type="time" id="almoco-fim-${dia.key}" value="${cfg.almoco_fim || '13:00'}"
+                  style="background:#0F1F45;border:1px solid #16295C;border-radius:4px;padding:6px 10px;color:#F1EAD6;font-size:13px;outline:none;"
+                  onchange="updateHorario('${dia.key}')"/>
+              </div>
+              <span style="font-size:11px;color:#7183B4;font-family:'Roboto',sans-serif;margin-top:14px;">(bloqueado para clientes)</span>
+            </div>
+          </div>
+
+        </div>`;
+      }).join('');
+    }
+
+    function toggleDia(key) {
+      horariosConfig[key].ativo = !horariosConfig[key].ativo;
+      renderHorariosGrid();
+    }
+
+    function toggleAlmoco(key) {
+      horariosConfig[key].almoco = !horariosConfig[key].almoco;
+      renderHorariosGrid();
+    }
+
+    function updateHorario(key) {
+      const inicio        = document.getElementById('inicio-' + key).value;
+      const fim           = document.getElementById('fim-' + key).value;
+      const almocoInicio  = document.getElementById('almoco-inicio-' + key).value;
+      const almocoFim     = document.getElementById('almoco-fim-' + key).value;
+      horariosConfig[key].inicio        = inicio;
+      horariosConfig[key].fim           = fim;
+      horariosConfig[key].almoco_inicio = almocoInicio;
+      horariosConfig[key].almoco_fim    = almocoFim;
+      const prev = document.getElementById('preview-' + key);
+      if (prev) prev.textContent = previewSlots(inicio, fim, horariosConfig[key].almoco, almocoInicio, almocoFim);
+    }
+
+    async function salvarHorarios() {
+      const btn = document.getElementById('btn-salvar-horarios');
+      const st  = document.getElementById('horarios-status');
+      btn.textContent = 'Salvando...';
+      btn.disabled = true;
+      try {
+        await db.collection('config').doc('horarios').set({ ...horariosConfig });
+        st.textContent = 'Salvo com sucesso!';
+        st.style.color = '#F1EAD6';
+        setTimeout(() => { st.textContent = ''; }, 3000);
+      } catch(e) {
+        st.textContent = 'Erro ao salvar.';
+        st.style.color = '#b03030';
+      }
+      btn.textContent = 'Salvar Horarios';
+      btn.disabled = false;
+    }
+
+    // ── CLIENTES ─────────────────────────────────────
+
+
+    async function carregarClientesFirestore() {
+      try {
+        const snap = await db.collection('clientes').get();
+        snap.forEach(doc => { _clientesFirestore[doc.id] = doc.data(); });
+      } catch(e) { console.warn('Erro ao carregar clientes:', e); }
+    }
+
+    function buildClientMap() {
+      const map = {};
+      allAgendamentos.forEach(a => {
+        const key = (a.telefone || '').replace(/\D/g, '') || a.cliente || 'desconhecido';
+        if (!map[key]) {
+          map[key] = {
+            key,
+            nome: a.cliente || '—',
+            telefone: a.telefone || '—',
+            nascimento: '',
+            agendamentos: [],
+          };
+        }
+        if (a.cliente) map[key].nome = a.cliente;
+        map[key].agendamentos.push(a);
+      });
+      // Mescla dados do Firestore (nascimento, nome atualizado)
+      Object.keys(_clientesFirestore).forEach(key => {
+        const fs = _clientesFirestore[key];
+        if (!map[key]) {
+          map[key] = { key, nome: fs.nome || '—', telefone: fs.telefone || key, nascimento: fs.nascimento || '', agendamentos: [] };
+        } else {
+          if (fs.nascimento) map[key].nascimento = fs.nascimento;
+          if (fs.nome) map[key].nome = fs.nome;
+        }
+      });
+      return map;
+    }
+
+    function calcClientStats(agendamentos) {
+      const concluidos = agendamentos.filter(a => a.status === 'concluido');
+      const gastoTotal = concluidos.reduce((s, a) => s + (a.preco || 0), 0);
+      const ticket     = concluidos.length ? gastoTotal / concluidos.length : 0;
+      const servicoMap = {};
+      agendamentos.forEach(a => {
+        if (!a.servico) return;
+        servicoMap[a.servico] = (servicoMap[a.servico] || 0) + 1;
+      });
+      const servicoFavorito = Object.entries(servicoMap).sort((a, b) => b[1] - a[1])[0];
+      const datas = agendamentos.map(a => a.data).filter(Boolean).sort();
+      const ultimaVisita = datas[datas.length - 1];
+      return { concluidos: concluidos.length, total: agendamentos.length, gastoTotal, ticket, servicoMap, servicoFavorito, ultimaVisita };
+    }
+
+    function fmtNascimento(nasc) {
+      if (!nasc) return '';
+      const [y, m, d] = nasc.split('-');
+      return d + '/' + m + '/' + y;
+    }
+
+    function isAniversarioAmanha(nascimento) {
+      if (!nascimento) return false;
+      const amanha = new Date(); amanha.setDate(amanha.getDate() + 1);
+      const [, m, d] = nascimento.split('-');
+      return parseInt(m) === (amanha.getMonth() + 1) && parseInt(d) === amanha.getDate();
+    }
+
+    function renderAniversariantesBanner(clientes) {
+      const banner = document.getElementById('aniversariantes-banner');
+      const lista  = document.getElementById('aniversariantes-lista');
+      if (!banner || !lista) return;
+      const aniversariantes = clientes.filter(c => isAniversarioAmanha(c.nascimento));
+      if (!aniversariantes.length) { banner.style.display = 'none'; return; }
+      banner.style.display = 'block';
+      lista.innerHTML = aniversariantes.map(c => {
+        const tel = (c.telefone || '').replace(/\D/g, '');
+        const msg = encodeURIComponent('Ola ' + c.nome.split(' ')[0] + '! Amanha e seu aniversario e nos da Wellisson Barbearia queremos te desejar um dia incrivel! Que tal comemorar com um corte novo? Agende seu horario e venha nos visitar. Feliz aniversario!');
+        return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;background:#201500;border:1px solid #3a2800;border-radius:6px;">
+          
+          <div style="flex:1;">
+            <div style="font-family:'Oswald',sans-serif;font-size:14px;color:#F1EAD6;letter-spacing:1px;">${c.nome}</div>
+            <div style="font-family:'Roboto',sans-serif;font-size:11px;color:#EBC531;">Aniversário amanhã · ${fmtNascimento(c.nascimento)}</div>
+          </div>
+          ${tel ? `<a href="https://wa.me/55${tel}?text=${msg}" target="_blank"
+            style="background:#1a2e1a;border:1px solid #2a4a2a;color:#4caf50;padding:8px 16px;border-radius:6px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;white-space:nowrap;">
+            Enviar Parabens →
+          </a>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    async function cadastrarClienteManual() {
+      const nome  = (document.getElementById('cad-nome')?.value || '').trim();
+      const tel   = (document.getElementById('cad-tel')?.value  || '').replace(/\D/g, '');
+      const nasc  = (document.getElementById('cad-nasc')?.value || '').trim();
+      const st    = document.getElementById('cad-status');
+      if (!nome || !tel) { if(st) { st.textContent = 'Nome e telefone são obrigatórios.'; st.style.color='#b03030'; } return; }
+      if(st) { st.textContent = 'Salvando...'; st.style.color = '#94A4CC'; }
+      try {
+        const data = { nome, telefone: tel, criadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+        if (nasc) data.nascimento = nasc;
+        await db.collection('clientes').doc(tel).set({ ...data }, { merge: true });
+        _clientesFirestore[tel] = { ...(_clientesFirestore[tel] || {}), ...data };
+        if(st) { st.textContent = 'Cliente salvo!'; st.style.color = '#4caf50'; }
+        document.getElementById('cad-nome').value = '';
+        document.getElementById('cad-tel').value  = '';
+        document.getElementById('cad-nasc').value = '';
+        setTimeout(() => { if(st) st.textContent = ''; }, 3000);
+        renderClientes();
+      } catch(e) {
+        if(st) { st.textContent = 'Erro ao salvar.'; st.style.color = '#b03030'; }
+      }
+    }
+
+
+    async function renderClientes() {
+      await carregarClientesFirestore();
+      const map = buildClientMap();
+      const clientes = Object.values(map).map(c => ({ ...c, stats: calcClientStats(c.agendamentos) }));
+      _clientListCache = clientes;
+
+      renderAniversariantesBanner(clientes);
+
+      const totalClientes = clientes.length;
+      const totalGasto    = clientes.reduce((s, c) => s + c.stats.gastoTotal, 0);
+      const totalConc     = clientes.reduce((s, c) => s + c.stats.concluidos, 0);
+      const ticketMedio   = totalConc ? totalGasto / totalConc : 0;
+      const clienteTop    = [...clientes].sort((a, b) => b.stats.gastoTotal - a.stats.gastoTotal)[0];
+
+      const resumoEl = document.getElementById('clientes-resumo');
+      if (resumoEl) {
+        resumoEl.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.05);border-radius:8px;overflow:hidden;margin-bottom:28px;';
+        const svgClientes = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>`;
+        const svgReceita  = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`;
+        const svgTicket   = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
+        const svgTop      = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+        resumoEl.innerHTML = [
+          { icon: svgClientes, val: totalClientes,   label: 'Total de Clientes' },
+          { icon: svgReceita,  val: 'R$' + totalGasto.toFixed(2).replace('.', ','), label: 'Receita Total' },
+          { icon: svgTicket,   val: isNaN(ticketMedio)||!isFinite(ticketMedio) ? 'R$0,00' : 'R$' + ticketMedio.toFixed(2).replace('.', ','), label: 'Ticket Médio' },
+          { icon: svgTop,      val: clienteTop ? clienteTop.nome.split(' ')[0] : '—', label: 'Maior Gastador' },
+        ].map((c, i) => `
+          <div style="background:#0C1838;padding:18px 20px;border-right:${i < 3 ? '1px solid rgba(255,255,255,0.04)' : 'none'};">
+            <div style="color:#233F80;margin-bottom:10px;">${c.icon}</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:26px;color:#F1EAD6;letter-spacing:1px;line-height:1;">${c.val}</div>
+            <div style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;margin-top:6px;">${c.label}</div>
+          </div>
+        `).join('');
+      }
+
+      filtrarClientes();
+    }
+
+    function filtrarClientes() {
+      const search = (document.getElementById('clientes-search')?.value || '').toLowerCase();
+      const sort   = document.getElementById('clientes-sort')?.value || 'nome';
+      let lista = _clientListCache.filter(c =>
+        c.nome.toLowerCase().includes(search) || c.telefone.includes(search)
+      );
+      lista.sort((a, b) => {
+        if (sort === 'nome')    return a.nome.localeCompare(b.nome);
+        if (sort === 'visitas') return b.stats.total - a.stats.total;
+        if (sort === 'ticket')  return b.stats.ticket - a.stats.ticket;
+        if (sort === 'gasto')   return b.stats.gastoTotal - a.stats.gastoTotal;
+        if (sort === 'recente') return (b.stats.ultimaVisita || '').localeCompare(a.stats.ultimaVisita || '');
+        return 0;
+      });
+
+      const el = document.getElementById('clientes-lista');
+      if (!el) return;
+      if (!lista.length) {
+        el.innerHTML = '<p style="color:#2C4E9E;font-family:Oswald,sans-serif;font-size:13px;letter-spacing:1px;padding:20px 0;">Nenhum cliente encontrado.</p>';
+        return;
+      }
+
+      el.innerHTML = `
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:8px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+                <th style="font-family:'Oswald',sans-serif;font-size:8px;letter-spacing:2px;color:#1E3874;text-transform:uppercase;padding:8px 20px;font-weight:400;text-align:left;">Cliente</th>
+                <th style="font-family:'Oswald',sans-serif;font-size:8px;letter-spacing:2px;color:#1E3874;text-transform:uppercase;padding:8px 4px;font-weight:400;text-align:center;width:70px;">Visitas</th>
+                <th style="font-family:'Oswald',sans-serif;font-size:8px;letter-spacing:2px;color:#1E3874;text-transform:uppercase;padding:8px 4px;font-weight:400;text-align:center;width:80px;">Ticket</th>
+                <th style="font-family:'Oswald',sans-serif;font-size:8px;letter-spacing:2px;color:#1E3874;text-transform:uppercase;padding:8px 4px;font-weight:400;text-align:center;width:90px;">Total</th>
+                <th style="font-family:'Oswald',sans-serif;font-size:8px;letter-spacing:2px;color:#1E3874;text-transform:uppercase;padding:8px 4px;font-weight:400;text-align:center;width:120px;">Favorito</th>
+                <th style="font-family:'Oswald',sans-serif;font-size:8px;letter-spacing:2px;color:#1E3874;text-transform:uppercase;padding:8px 20px 8px 4px;font-weight:400;text-align:right;width:110px;">Última Visita</th>
+                <th style="width:24px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+          ${lista.map(c => {
+            const s = c.stats;
+            const favorito   = s.servicoFavorito ? s.servicoFavorito[0] : '—';
+            const ultimaFmt  = s.ultimaVisita ? s.ultimaVisita.split('-').reverse().join('/') : '—';
+            const nascFmt    = c.nascimento ? fmtNascimento(c.nascimento) : '';
+            const anivAmanha = isAniversarioAmanha(c.nascimento);
+            const encData    = encodeURIComponent(JSON.stringify({ nome: c.nome, telefone: c.telefone, nascimento: c.nascimento || '', agendamentos: c.agendamentos }));
+            return `<tr onclick="abrirClienteDrawer('${encData}')"
+              style="background:#0C1838;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.025);${anivAmanha ? 'border-left:3px solid #EBC531;' : ''}"
+              onmouseover="this.style.background='#1b1b1b'" onmouseout="this.style.background='#0C1838'">
+              <td style="padding:13px 20px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="width:36px;height:36px;border-radius:50%;background:${anivAmanha ? '#2a1e00' : '#122452'};border:1px solid ${anivAmanha ? '#EBC531' : '#16295C'};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',Georgia,serif;font-size:15px;color:${anivAmanha ? '#EBC531' : '#5E6E9E'};flex-shrink:0;">${(c.nome||'?')[0].toUpperCase()}</div>
+                  <div>
+                    <div style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:500;color:#F1EAD6;">${c.nome}${anivAmanha ? '&nbsp;<span style="font-size:8px;background:#2a1e00;color:#EBC531;letter-spacing:1px;padding:2px 5px;border-radius:3px;border:1px solid #4a3800;">\uD83C\uDF82 AMANHÃ</span>' : ''}</div>
+                    <div style="font-family:'Roboto',sans-serif;font-size:11px;color:#284794;margin-top:2px;">${c.telefone}${nascFmt ? ' · ' + nascFmt : ''}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="text-align:center;padding:13px 4px;">
+                <span style="font-family:'Playfair Display',Georgia,serif;font-size:20px;color:#F1EAD6;line-height:1;">${s.total}</span>
+              </td>
+              <td style="text-align:center;padding:13px 4px;">
+                <span style="font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#EBC531;line-height:1;">R$${s.ticket.toFixed(0)}</span>
+              </td>
+              <td style="text-align:center;padding:13px 4px;">
+                <span style="font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#F1EAD6;line-height:1;">R$${s.gastoTotal.toFixed(0)}</span>
+              </td>
+              <td style="text-align:center;padding:13px 4px;">
+                <span style="font-family:'Roboto',sans-serif;font-size:11px;color:#7183B4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">${favorito}</span>
+              </td>
+              <td style="text-align:right;padding:13px 20px 13px 4px;">
+                <span style="font-family:'Roboto',sans-serif;font-size:11px;color:#4a4a4a;white-space:nowrap;">${ultimaFmt}</span>
+              </td>
+              <td style="text-align:right;padding-right:12px;color:#1B3168;font-size:15px;">›</td>
+            </tr>`;
+          }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function abrirClienteDrawer(encodedData) {
+      const c = JSON.parse(decodeURIComponent(encodedData));
+      const s = calcClientStats(c.agendamentos);
+      const anivAmanha = isAniversarioAmanha(c.nascimento);
+
+      document.getElementById('drawer-nome').textContent = c.nome;
+      document.getElementById('drawer-tel').textContent  = c.telefone;
+      const drawerNasc = document.getElementById('drawer-nasc');
+      if (drawerNasc) drawerNasc.innerHTML = c.nascimento
+        ? fmtNascimento(c.nascimento) + (anivAmanha ? ' <span style="color:#EBC531;font-size:10px;letter-spacing:1px;">· AMANHÃ!</span>' : '')
+        : '';
+
+      const ags = [...c.agendamentos].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+      const servicosRank = Object.entries(s.servicoMap).sort((a, b) => b[1] - a[1]);
+      const tel = (c.telefone || '').replace(/\D/g, '');
+      const msgAniv = encodeURIComponent('Ola ' + c.nome.split(' ')[0] + '! Amanha e seu aniversario e nos da Wellisson Barbearia queremos te desejar um dia incrivel! Que tal comemorar com um corte novo? Feliz aniversario!');
+
+      document.getElementById('drawer-content').innerHTML = `
+        ${anivAmanha && tel ? `<div style="background:#1a1208;border:1px solid #4a3800;border-radius:8px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <span style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#EBC531;">Aniversário amanhã! Que tal enviar uma mensagem?</span>
+          <a href="https://wa.me/55${tel}?text=${msgAniv}" target="_blank"
+            style="background:#1a2e1a;border:1px solid #2a4a2a;color:#4caf50;padding:8px 14px;border-radius:6px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;white-space:nowrap;">
+            Enviar Parabens →
+          </a>
+        </div>` : ''}
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+          ${[
+            { icon: '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"#5E6E9E\" stroke-width=\"1.5\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/></svg>', val: s.total, label: 'Visitas' },
+            { icon: '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"#5E6E9E\" stroke-width=\"1.5\"><path d=\"M22 11.08V12a10 10 0 11-5.93-9.14\"/><polyline points=\"22 4 12 14.01 9 11.01\"/></svg>', val: s.concluidos, label: 'Concluídos' },
+            { icon: '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"#5E6E9E\" stroke-width=\"1.5\"><line x1=\"12\" y1=\"1\" x2=\"12\" y2=\"23\"/><path d=\"M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6\"/></svg>', val: 'R$' + s.gastoTotal.toFixed(2).replace('.', ','), label: 'Total Gasto' },
+            { icon: '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"#5E6E9E\" stroke-width=\"1.5\"><polyline points=\"22 12 18 12 15 21 9 3 6 12 2 12\"/></svg>', val: 'R$' + s.ticket.toFixed(2).replace('.', ','), label: 'Ticket Médio' },
+            { icon: '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"#5E6E9E\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 3\"/></svg>', val: s.ultimaVisita ? s.ultimaVisita.split('-').reverse().join('/') : '—', label: 'Última Visita' },
+            { icon: '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"#5E6E9E\" stroke-width=\"1.5\"><path d=\"M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z\"/></svg>', val: s.servicoFavorito ? s.servicoFavorito[0].split('+')[0].trim() : '—', label: 'Serviço Favorito' },
+          ].map(m => `
+            <div style="background:#0C1838;padding:14px 16px;text-align:center;">
+              <div style="display:flex;justify-content:center;margin-bottom:6px;">${m.icon}</div>
+              <div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#F1EAD6;letter-spacing:1px;line-height:1;">${m.val}</div>
+              <div style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:1.5px;color:#2C4E9E;text-transform:uppercase;margin-top:4px;">${m.label}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        ${servicosRank.length ? `<div style="margin-bottom:24px;">
+          <p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;margin-bottom:12px;">Serviços Mais Usados</p>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${servicosRank.map(([serv, qtd]) => {
+              const pct = Math.round((qtd / s.total) * 100);
+              return `<div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span style="font-family:'Roboto',sans-serif;font-size:13px;color:#B4BEDC;">${serv}</span>
+                  <span style="font-family:'Playfair Display',Georgia,serif;font-size:14px;color:#F1EAD6;">${qtd}x</span>
+                </div>
+                <div style="background:#122452;border-radius:2px;height:3px;overflow:hidden;">
+                  <div style="background:#EBC531;height:100%;width:${pct}%;"></div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
+
+        ${ags.length ? `<div>
+          <p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;margin-bottom:12px;">Histórico de Visitas</p>
+          <div style="display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden;">
+            ${ags.map(a => `
+              <div style="background:#0C1838;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                <div>
+                  <div style="font-family:'Roboto',sans-serif;font-size:13px;color:#F1EAD6;">${a.servico || '—'}</div>
+                  <div style="font-family:'Roboto',sans-serif;font-size:11px;color:#2C4E9E;margin-top:2px;">${a.data ? a.data.split('-').reverse().join('/') : '—'} ${a.horario ? '· ' + a.horario : ''}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <span style="font-family:'Playfair Display',Georgia,serif;font-size:16px;color:#EBC531;">R$${(a.preco||0).toFixed(2).replace('.',',')}</span>
+                  ${badgeHTML(a.status)}
+                  <button onclick="deleteAgendamento('${a.id}')" title="Excluir"
+                    style="background:transparent;border:1px solid rgba(176,48,48,0.3);color:#d45a5a;width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+                    onmouseover="this.style.background='rgba(176,48,48,0.15)'"
+                    onmouseout="this.style.background='transparent'">✕</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>` : ''}
+
+        ${tel ? `<a href="https://wa.me/55${tel}" target="_blank"
+          style="display:block;margin-top:24px;text-align:center;background:#122452;border:1px solid #233F80;color:#B4BEDC;padding:14px;border-radius:6px;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;"
+          onmouseover="this.style.background='#1B3168'" onmouseout="this.style.background='#122452'">
+          Abrir WhatsApp →
+        </a>` : ''}
+
+        <div style="margin-top:32px;padding-top:20px;border-top:1px solid #122452;">
+          <button onclick="confirmarExcluirCliente('${encodeURIComponent(c.nome)}', '${(c.telefone||'').replace(/\D/g,'')}')"
+            style="width:100%;background:transparent;border:1px solid rgba(176,48,48,0.35);color:#d45a5a;padding:12px;border-radius:4px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;transition:all .2s;"
+            onmouseover="this.style.background='rgba(176,48,48,0.1)';this.style.borderColor='#d45a5a'"
+            onmouseout="this.style.background='transparent';this.style.borderColor='rgba(176,48,48,0.35)'">
+            Excluir Este Cliente
+          </button>
+        </div>
+      `;
+
+      document.getElementById('cliente-drawer').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function fecharClienteDrawer(e) {
+      if (e && e.target !== document.getElementById('cliente-drawer')) return;
+      document.getElementById('cliente-drawer').style.display = 'none';
+      document.body.style.overflow = '';
+      // Close excluir-cliente modal too if open
+      const ecm = document.getElementById('excluir-cliente-modal');
+      if (ecm) ecm.style.display = 'none';
+    }
+
+    // Verifica aniversários ao carregar o admin (mesmo sem abrir a aba)
+    async function verificarAniversariosGlobal() {
+      try {
+        const snap = await db.collection('clientes').get();
+        const amanha = new Date(); amanha.setDate(amanha.getDate() + 1);
+        const aniversariantes = [];
+        snap.forEach(doc => {
+          const d = doc.data();
+          if (d.nascimento) {
+            const [, m, dia] = d.nascimento.split('-');
+            if (parseInt(m) === (amanha.getMonth() + 1) && parseInt(dia) === amanha.getDate()) {
+              aniversariantes.push(d);
+            }
+          }
+        });
+        if (aniversariantes.length) {
+          const nomes = aniversariantes.map(c => c.nome.split(' ')[0]).join(', ');
+          setTimeout(() => {
+            showAniversarioAlert(aniversariantes);
+            enviarNotificacaoBrowser(nomes);
+          }, 1500);
+        }
+      } catch(e) {}
+    }
+
+    function showAniversarioAlert(aniversariantes) {
+      // Adiciona animação CSS se não existir
+      if (!document.getElementById('aniv-alert-style')) {
+        const s = document.createElement('style');
+        s.id = 'aniv-alert-style';
+        s.textContent = '@keyframes slideInRight { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:none; } }';
+        document.head.appendChild(s);
+      }
+      let el = document.getElementById('admin-aniv-alert');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'admin-aniv-alert';
+        el.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;max-width:360px;width:calc(100vw - 40px);animation:slideInRight .35s ease;';
+        document.body.appendChild(el);
+      }
+      const lista = aniversariantes.map(c => {
+        const tel = (c.telefone || '').replace(/\D/g, '');
+        const msg = encodeURIComponent('Ol\u00e1 ' + c.nome.split(' ')[0] + '! Amanh\u00e3 \u00e9 seu anivers\u00e1rio e n\u00f3s da Wellisson Barbearia queremos te desejar um dia incr\u00edvel! Que tal comemorar com um corte novo? Feliz Anivers\u00e1rio!');
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(235,197,49,0.15);">
+          <div style="flex:1;">
+            <div style="font-family:'Oswald',sans-serif;font-size:13px;color:#F1EAD6;letter-spacing:.5px;">${c.nome}</div>
+            <div style="font-family:'Roboto',sans-serif;font-size:11px;color:#EBC531;">Anivers\u00e1rio amanh\u00e3!</div>
+          </div>
+          ${tel ? `<a href="https://wa.me/55${tel}?text=${msg}" target="_blank"
+            style="background:#1a2e1a;border:1px solid #2a4a2a;color:#4caf50;padding:6px 12px;border-radius:5px;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;white-space:nowrap;flex-shrink:0;">
+            WhatsApp \u2192
+          </a>` : ''}
+        </div>`;
+      }).join('');
+      el.innerHTML = `
+        <div style="background:#1a1208;border:1px solid #EBC531;border-radius:10px;padding:18px 20px;box-shadow:0 8px 40px rgba(0,0,0,0.8);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <span style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#EBC531;text-transform:uppercase;">\uD83C\uDF89 Anivers\u00e1rios Amanh\u00e3</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button onclick="showTab('clientes',null);syncBottomNav('bnav-clientes');document.getElementById('admin-aniv-alert').style.display='none';"
+                style="background:#EBC531;border:none;color:#070E24;padding:5px 12px;border-radius:5px;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-weight:700;">
+                Ver Clientes
+              </button>
+              <button onclick="document.getElementById('admin-aniv-alert').style.display='none';"
+                style="background:none;border:none;color:#7183B4;font-size:18px;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>
+            </div>
+          </div>
+          <div>${lista}</div>
+        </div>
+      `;
+      el.style.display = 'block';
+    }
+
+    async function enviarNotificacaoBrowser(nomes) {
+      if (!('Notification' in window)) return;
+      try {
+        let perm = Notification.permission;
+        if (perm === 'default') perm = await Notification.requestPermission();
+        if (perm !== 'granted') return;
+        const n = new Notification('\uD83C\uDF82 Wellisson Barbearia — Anivers\u00e1rio Amanh\u00e3!', {
+          body: nomes + (nomes.includes(',') ? ' fazem' : ' faz') + ' anivers\u00e1rio amanh\u00e3. Envie uma mensagem de parab\u00e9ns!',
+          icon: 'logo.png',
+          tag: 'aniversario-vr',
+          requireInteraction: true,
+        });
+        n.onclick = () => {
+          window.focus();
+          showTab('clientes', null);
+          syncBottomNav('bnav-clientes');
+          n.close();
+        };
+      } catch(e) {}
+    }
+
+    function showToast(msg, duration = 4000) { showAdminToast(msg, duration); }
+
+    function showAdminToast(msg, duration = 4000) {
+      let toast = document.getElementById('admin-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'admin-toast';
+        toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#2a1e00;border:1px solid #EBC531;color:#F1EAD6;padding:14px 24px;border-radius:8px;font-family:Oswald,sans-serif;font-size:13px;letter-spacing:1px;z-index:99999;max-width:90vw;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.7);';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => { toast.style.display = 'none'; }, duration);
+    }
+
+    function buildClienteMap() {
+      const map = {};
+      allAgendamentos.forEach(a => {
+        const key = (a.telefone || '').replace(/\D/g, '') || a.cliente || 'desconhecido';
+        if (!map[key]) {
+          map[key] = {
+            nome: a.cliente || '—',
+            telefone: a.telefone || '—',
+            agendamentos: [],
+          };
+        }
+        // Atualiza nome mais recente
+        if (a.cliente) map[key].nome = a.cliente;
+        map[key].agendamentos.push(a);
+      });
+      return map;
+    }
+
+    function formatDate(d) {
+      const [y, m, day] = d.split('-');
+      return day + '/' + m + '/' + y;
+    }
+
+    function badgeHTML(status) {
+      const labels = { agendado:'Agendado', confirmado:'Confirmado', concluido:'Concluido', cancelado:'Cancelado' };
+      return '<span class="badge badge-' + (status||'agendado') + '">' + (labels[status]||status) + '</span>';
+    }
+
+    // ── Datas Especiais ──────────────────────────────
+
+    function toggleDETipo() {
+      const tipo = document.getElementById('de-tipo').value;
+      document.getElementById('de-horarios-wrap').style.display = tipo === 'aberto' ? 'flex' : 'none';
+    }
+
+    function toggleDEAlmoco() {
+      deAlmocoAtivo = !deAlmocoAtivo;
+      const toggle = document.getElementById('de-almoco-toggle');
+      const knob   = document.getElementById('de-almoco-knob');
+      const wrap   = document.getElementById('de-almoco-wrap');
+      toggle.style.background = deAlmocoAtivo ? '#5E6E9E' : '#1B3168';
+      knob.style.left         = deAlmocoAtivo ? '19px' : '3px';
+      wrap.style.opacity      = deAlmocoAtivo ? '1' : '.3';
+      wrap.style.pointerEvents = deAlmocoAtivo ? 'auto' : 'none';
+    }
+
+    async function carregarDatasEspeciais() {
+      try {
+        const doc = await db.collection('config').doc('datas_especiais').get();
+        datasEspeciais = doc.exists ? (doc.data() || {}) : {};
+      } catch(e) { datasEspeciais = {}; }
+      renderDatasLista();
+    }
+
+    function renderDatasLista() {
+      const el = document.getElementById('datas-list');
+      if (!el) return;
+      const keys = Object.keys(datasEspeciais).sort();
+      if (!keys.length) {
+        el.innerHTML = '<p style="color:#2C4E9E;font-family:Oswald,sans-serif;font-size:13px;letter-spacing:1px;padding:16px 0;">Nenhuma data especial cadastrada.</p>';
+        return;
+      }
+      el.innerHTML = keys.map(data => {
+        const d = datasEspeciais[data];
+        const isFechado = d.tipo === 'fechado';
+        const cor = isFechado ? '#b03030' : '#1f9e54';
+        const icone = isFechado ? '—' : '+';
+        const [y, m, day] = data.split('-');
+        const dataFmt = day + '/' + m + '/' + y;
+        let horarioInfo = isFechado ? 'Fechado' : (d.inicio + ' → ' + d.fim);
+        if (!isFechado && d.almoco) horarioInfo += ' | Almoço: ' + d.almoco_inicio + '→' + d.almoco_fim;
+        return `<div style="background:#0C1838;border:1px solid #122452;border-radius:6px;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <span style="font-family:'Oswald',sans-serif;font-size:15px;color:#F1EAD6;letter-spacing:1px;min-width:100px;">${dataFmt}</span>
+          <span style="font-family:'Roboto',sans-serif;font-size:13px;color:#B4BEDC;flex:1;">${d.desc || '—'}</span>
+          <span style="font-family:'Roboto',sans-serif;font-size:12px;color:${cor};">${icone} ${horarioInfo}</span>
+          <button onclick="removerDataEspecial('${data}')"
+            style="background:#6a1a1a;border:none;color:#F1EAD6;padding:6px 14px;border-radius:4px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;white-space:nowrap;">
+            Remover
+          </button>
+        </div>`;
+      }).join('');
+    }
+
+    async function adicionarDataEspecial() {
+      const data   = document.getElementById('de-data').value;
+      const desc   = document.getElementById('de-desc').value.trim();
+      const tipo   = document.getElementById('de-tipo').value;
+      const inicio = document.getElementById('de-inicio').value;
+      const fim    = document.getElementById('de-fim').value;
+      const almocoInicio = document.getElementById('de-almoco-inicio').value;
+      const almocoFim    = document.getElementById('de-almoco-fim').value;
+
+      if (!data) { alert('Selecione uma data.'); return; }
+      if (tipo === 'aberto' && (!inicio || !fim)) { alert('Defina os horários de abertura e fechamento.'); return; }
+
+      datasEspeciais[data] = {
+        desc,
+        tipo,
+        inicio:       tipo === 'aberto' ? inicio : '',
+        fim:          tipo === 'aberto' ? fim    : '',
+        almoco:       tipo === 'aberto' ? deAlmocoAtivo : false,
+        almoco_inicio: tipo === 'aberto' && deAlmocoAtivo ? almocoInicio : '',
+        almoco_fim:    tipo === 'aberto' && deAlmocoAtivo ? almocoFim    : '',
+      };
+
+      try {
+        // Usa set com merge:true para não sobrescrever outros campos do documento
+        // e funciona mesmo se o documento ainda não existir
+        const docRef = db.collection('config').doc('datas_especiais');
+        await docRef.set({ ...datasEspeciais }, { merge: true });
+        // Reset form
+        document.getElementById('de-data').value   = '';
+        document.getElementById('de-desc').value   = '';
+        document.getElementById('de-tipo').value   = 'aberto';
+        document.getElementById('de-inicio').value = '08:00';
+        document.getElementById('de-fim').value    = '17:00';
+        toggleDETipo();
+        if (deAlmocoAtivo) toggleDEAlmoco();
+        renderDatasLista();
+      } catch(e) {
+        console.error('Erro ao salvar data especial:', e);
+        alert('Erro ao salvar: ' + (e.message || e.code || 'Verifique as regras do Firestore.'));
+      }
+    }
+
+    async function removerDataEspecial(data) {
+      if (!confirm('Remover a data ' + formatDate(data) + '?')) return;
+      try {
+        // Usa FieldValue.delete() para remover só esse campo, sem apagar os outros
+        const update = {};
+        update[data] = firebase.firestore.FieldValue.delete();
+        await db.collection('config').doc('datas_especiais').update(update);
+        delete datasEspeciais[data];
+        renderDatasLista();
+      } catch(e) {
+        console.error('Erro ao remover data especial:', e);
+        alert('Erro ao remover: ' + (e.message || e.code || 'Verifique as regras do Firestore.'));
+      }
+    }
+
+  
+
+    // ── Excluir Cliente Individual ───────────────────
+    let _excluirClienteKey = null;
+
+    function confirmarExcluirCliente(encodedNome, tel) {
+      const nome = decodeURIComponent(encodedNome);
+      _excluirClienteKey = tel;
+      document.getElementById('excluir-cliente-nome').textContent = nome;
+      const modal = document.getElementById('excluir-cliente-modal');
+      modal.style.display = 'flex';
+
+      document.getElementById('excluir-cliente-confirmar').onclick = async () => {
+        const btn = document.getElementById('excluir-cliente-confirmar');
+        btn.textContent = 'Excluindo...';
+        btn.disabled = true;
+        try {
+          // Salva o telefone ANTES de deletar do cache
+          const telParaBusca = (_clientesFirestore[_excluirClienteKey]?.telefone || _excluirClienteKey).replace(/\D/g, '');
+
+          // Exclui o cliente
+          await db.collection('clientes').doc(_excluirClienteKey).delete();
+          delete _clientesFirestore[_excluirClienteKey];
+
+          // Exclui todos os agendamentos do cliente (pelo telefone)
+          const tel = telParaBusca;
+          const agSnap = await db.collection('agendamentos')
+            .where('telefone', '==', tel)
+            .get();
+          const batch = db.batch();
+          agSnap.forEach(doc => batch.delete(doc.ref));
+          // Tenta também pelo formato com máscara
+          if (!agSnap.empty || true) {
+            // Busca pelos agendamentos já carregados em memória
+            const agsDoCli = allAgendamentos.filter(a =>
+              (a.telefone || '').replace(/\D/g,'') === tel
+            );
+            agsDoCli.forEach(a => batch.delete(db.collection('agendamentos').doc(a.id)));
+          }
+          await batch.commit();
+
+          fecharModalExcluirCliente();
+          fecharClienteDrawer();
+          showToast('Cliente e agendamentos excluídos.');
+          renderClientes();
+        } catch(e) {
+          btn.textContent = 'Excluir';
+          btn.disabled = false;
+          alert('Erro ao excluir: ' + (e.message || e.code));
+        }
+      };
+    }
+
+    function fecharModalExcluirCliente() {
+      document.getElementById('excluir-cliente-modal').style.display = 'none';
+      _excluirClienteKey = null;
+    }
+
+    // ── Excluir Todos os Clientes ────────────────────
+    function abrirModalExcluirTodosClientes() {
+      const total = _clientListCache.length;
+      if (!total) { showToast('Nenhum cliente cadastrado.'); return; }
+      document.getElementById('excluir-todos-count').textContent =
+        total === 1 ? '1 cliente' : total + ' clientes';
+      document.getElementById('excluir-todos-confirm-input').value = '';
+      const btn = document.getElementById('excluir-todos-confirmar');
+      btn.disabled = true;
+      btn.style.background = 'rgba(176,48,48,0.08)';
+      btn.style.borderColor = 'rgba(176,48,48,0.2)';
+      btn.style.color = '#7183B4';
+      btn.style.cursor = 'not-allowed';
+      document.getElementById('excluir-todos-clientes-modal').style.display = 'flex';
+    }
+
+    function validarConfirmacaoExcluirTodos() {
+      const val = (document.getElementById('excluir-todos-confirm-input')?.value || '').trim().toUpperCase();
+      const btn = document.getElementById('excluir-todos-confirmar');
+      const ok = val === 'EXCLUIR TUDO';
+      btn.disabled = !ok;
+      btn.style.background    = ok ? 'rgba(176,48,48,0.2)'   : 'rgba(176,48,48,0.08)';
+      btn.style.borderColor   = ok ? 'rgba(176,48,48,0.6)'   : 'rgba(176,48,48,0.2)';
+      btn.style.color         = ok ? '#d45a5a'                : '#7183B4';
+      btn.style.cursor        = ok ? 'pointer'                : 'not-allowed';
+
+      if (ok) {
+        btn.onclick = async () => {
+          btn.textContent = 'Excluindo...';
+          btn.disabled = true;
+          try {
+            const snap = await db.collection('clientes').get();
+            const batch = db.batch();
+            snap.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            _clientesFirestore = {};
+            fecharModalExcluirTodosClientes();
+            showToast('Todos os clientes foram excluídos.');
+            renderClientes();
+          } catch(e) {
+            btn.textContent = 'Excluir Tudo';
+            btn.disabled = false;
+            alert('Erro ao excluir: ' + (e.message || e.code));
+          }
+        };
+      }
+    }
+
+    function fecharModalExcluirTodosClientes() {
+      document.getElementById('excluir-todos-clientes-modal').style.display = 'none';
+    }
+
+
+    // ── Sistema de Notificações ──────────────────────
+
+    function notificarNovoAgendamento(a) {
+      const nome    = a.cliente || 'Cliente';
+      const servico = a.servico || 'Serviço';
+      const data    = a.data    ? a.data.split('-').reverse().join('/') : '';
+      const hora    = a.horario || '';
+
+      // Adiciona à lista interna
+      const notif = {
+        id:   a.id,
+        nome, servico, data, hora,
+        ts:   Date.now(),
+        lida: false,
+      };
+      _notificacoes.unshift(notif);
+
+      // Atualiza badge
+      atualizarBadgeNotif();
+
+      // Toca som sutil (beep via AudioContext)
+      tocarSomNotificacao();
+
+      // Toast customizado de novo agendamento
+      showToastAgendamento(nome, servico, data, hora);
+
+      // Notificação do browser (se permitido)
+      if (Notification.permission === 'granted') {
+        new Notification('Novo Agendamento — Wellisson Barbearia', {
+          body: nome + ' · ' + servico + (data ? ' · ' + data : '') + (hora ? ' às ' + hora : ''),
+          icon: 'logo.png',
+          tag:  'vr-agendamento-' + a.id,
+          silent: false,
+        });
+      }
+
+      // Renderiza painel
+      renderNotifPanel();
+    }
+
+    function atualizarBadgeNotif() {
+      const naoLidas = _notificacoes.filter(n => !n.lida).length;
+      const badge = document.getElementById('notif-badge');
+      const icon  = document.getElementById('bell-icon');
+      if (!badge || !icon) return;
+      if (naoLidas > 0) {
+        badge.style.display = 'block';
+        icon.querySelector('path').setAttribute('stroke', '#F1EAD6');
+      } else {
+        badge.style.display = 'none';
+        icon.querySelector('path').setAttribute('stroke', '#8496C4');
+      }
+    }
+
+    function renderNotifPanel() {
+      const el = document.getElementById('notif-list');
+      if (!el) return;
+      if (!_notificacoes.length) {
+        el.innerHTML = '<div style="padding:28px 18px;text-align:center;font-family:Oswald,sans-serif;font-size:11px;letter-spacing:2px;color:#1E3874;text-transform:uppercase;">Nenhuma notificação</div>';
+        return;
+      }
+      el.innerHTML = _notificacoes.map(n => {
+        const ago = formatAgo(n.ts);
+        const bgNormal = n.lida ? 'transparent' : 'rgba(255,255,255,0.025)';
+        const dotColor = n.lida ? '#1E3874' : '#d45a5a';
+        const div = document.createElement('div');
+        div.style.cssText = 'padding:14px 18px;border-bottom:1px solid #0F1F45;cursor:pointer;background:' + bgNormal + ';transition:background .2s;display:flex;gap:12px;align-items:flex-start;';
+        div.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.04)'; };
+        div.onmouseout  = function() { this.style.background = bgNormal; };
+        div.onclick     = function() { irParaAgendamento(n.id); };
+        div.innerHTML = '<div style="width:6px;height:6px;border-radius:50%;background:' + dotColor + ';flex-shrink:0;margin-top:5px;"></div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-family:Oswald,sans-serif;font-size:13px;color:#F1EAD6;letter-spacing:0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + n.nome + '</div>' +
+            '<div style="font-family:Roboto,sans-serif;font-size:12px;color:#5E6E9E;margin-top:2px;">' + n.servico + (n.data ? ' · ' + n.data : '') + (n.hora ? ' às ' + n.hora : '') + '</div>' +
+            '<div style="font-family:Roboto,sans-serif;font-size:10px;color:#1E3874;margin-top:4px;letter-spacing:0.5px;">' + ago + '</div>' +
+          '</div>';
+        return div.outerHTML;
+      }).join('');
+    }
+
+    function formatAgo(ts) {
+      const diff = Math.floor((Date.now() - ts) / 1000);
+      if (diff < 60)  return 'agora mesmo';
+      if (diff < 3600) return Math.floor(diff / 60) + ' min atrás';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h atrás';
+      return Math.floor(diff / 86400) + 'd atrás';
+    }
+
+    function toggleNotifPanel() {
+      const panel = document.getElementById('notif-panel');
+      if (!panel) return;
+      _notifPanelOpen = !_notifPanelOpen;
+      panel.style.display = _notifPanelOpen ? 'flex' : 'none';
+      if (_notifPanelOpen) {
+        // Marcar todas como lidas ao abrir
+        _notificacoes.forEach(n => n.lida = true);
+        atualizarBadgeNotif();
+        renderNotifPanel();
+        // Fechar ao clicar fora
+        setTimeout(() => {
+          document.addEventListener('click', fecharNotifPanelFora, { once: true });
+        }, 10);
+      }
+    }
+
+    function fecharNotifPanelFora(e) {
+      const panel = document.getElementById('notif-panel');
+      const bell  = document.getElementById('notif-bell');
+      if (panel && !panel.contains(e.target) && !bell.contains(e.target)) {
+        panel.style.display = 'none';
+        _notifPanelOpen = false;
+      }
+    }
+
+    function limparNotificacoes() {
+      _notificacoes = [];
+      atualizarBadgeNotif();
+      renderNotifPanel();
+    }
+
+    function irParaAgendamento(id) {
+      const panel = document.getElementById('notif-panel');
+      if (panel) panel.style.display = 'none';
+      _notifPanelOpen = false;
+      // Vai para aba de agendamentos e destaca o item
+      const navItem = document.querySelector('.nav-item[onclick*="agendamentos"]');
+      showTab('agendamentos', navItem);
+      // Destaca linha após renderizar
+      setTimeout(() => {
+        const rows = document.querySelectorAll('#agendamentos-body tr');
+        rows.forEach(row => {
+          if (row.dataset.id === id) {
+            row.style.background = 'rgba(212,90,90,0.1)';
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => { row.style.background = ''; }, 2500);
+          }
+        });
+      }, 300);
+    }
+
+    function showToastAgendamento(nome, servico, data, hora) {
+      let toast = document.getElementById('notif-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'notif-toast';
+        document.body.appendChild(toast);
+      }
+      toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#0C1838;border:1px solid #16295C;border-left:3px solid #d45a5a;color:#F1EAD6;padding:16px 20px;border-radius:4px;font-family:Oswald,sans-serif;z-index:99999;max-width:300px;box-shadow:0 16px 48px rgba(0,0,0,0.8);cursor:pointer;transition:opacity .3s;';
+      toast.innerHTML = `
+        <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#d45a5a;margin-bottom:6px;">Novo Agendamento</div>
+        <div style="font-size:14px;letter-spacing:0.5px;margin-bottom:3px;">${nome}</div>
+        <div style="font-size:12px;color:#5E6E9E;font-family:Roboto,sans-serif;">${servico}${data ? ' · ' + data : ''}${hora ? ' às ' + hora : ''}</div>
+      `;
+      toast.style.display = 'block';
+      toast.style.opacity = '1';
+      toast.onclick = () => { toast.style.opacity = '0'; setTimeout(() => { toast.style.display='none'; }, 300); };
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => { toast.style.display = 'none'; }, 300);
+      }, 7000);
+    }
+
+    function tocarSomNotificacao() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') ctx.resume();
+        const notas = [
+          { freq: 520, t: 0.00, dur: 0.13 },
+          { freq: 660, t: 0.17, dur: 0.13 },
+          { freq: 880, t: 0.34, dur: 0.25 },
+        ];
+        notas.forEach(({ freq, t, dur }) => {
+          const osc  = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + t);
+          gain.gain.setValueAtTime(0.0001, ctx.currentTime + t);
+          gain.gain.linearRampToValueAtTime(0.4,  ctx.currentTime + t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + dur);
+          osc.start(ctx.currentTime + t);
+          osc.stop(ctx.currentTime + t + dur + 0.05);
+        });
+      } catch(e) { console.warn('Som:', e); }
+    }
+
+    // ── FCM: pede permissão e registra token ─────────
+    async function iniciarPushNotifications() {
+      if (!_messaging) return;
+      if (!FCM_VAPID_KEY) { console.warn('Push desativado: falta a chave VAPID.'); return; }
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          console.warn('Notificação negada pelo usuário.');
+          return;
+        }
+        const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+        _fcmToken = await _messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+        if (_fcmToken) {
+          // Salva o token no Firestore para uso futuro
+          await db.collection('_config').doc('fcmTokens').set(
+            { [_fcmToken]: true }, { merge: true }
+          );
+          console.log('FCM token registrado.');
+        }
+        // Mensagens quando app está em foreground
+        _messaging.onMessage(payload => {
+          const { title, body } = payload.notification || {};
+          tocarSomNotificacao();
+          if (title) {
+            const n = payload.notification;
+            adicionarNotifUI({ nome: n.body || '', servico: '', data: '', hora: '', ts: Date.now(), lida: false, id: Date.now().toString() });
+          }
+        });
+      } catch(e) { console.warn('Erro FCM:', e); }
+    }
+
+    function adicionarNotifUI(notif) {
+      _notificacoes.unshift(notif);
+      atualizarBadgeNotif();
+      renderNotifPanel();
+    }
+
+    // Solicita permissão de notificação ao iniciar o admin
+    function solicitarPermissaoNotificacao() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+
+    // ── ATENDIMENTO AVULSO (walk-in) ─────────────────────────────────────
+
+    async function abrirModalAvulso() {
+      // Garante que os clientes estejam carregados para o autocomplete
+      if (!Object.keys(_clientesFirestore).length) {
+        try { await carregarClientesFirestore(); } catch(e) {}
+      }
+
+      const modal = document.getElementById('avulso-modal');
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+
+      // Preenche o select de serviços
+      const sel = document.getElementById('avulso-servico');
+      if (sel.options.length <= 1) {
+        SERVICES.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name + ' — R$' + s.price.toFixed(2).replace('.', ',');
+          opt.dataset.price = s.price;
+          opt.dataset.name  = s.name;
+          sel.appendChild(opt);
+        });
+      }
+
+      // Data e hora padrão = agora
+      const now  = new Date();
+      const yyyy = now.getFullYear();
+      const mm   = String(now.getMonth() + 1).padStart(2, '0');
+      const dd   = String(now.getDate()).padStart(2, '0');
+      const hh   = String(now.getHours()).padStart(2, '0');
+      const mi   = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('avulso-data').value = yyyy + '-' + mm + '-' + dd;
+      document.getElementById('avulso-hora').value = hh + ':' + mi;
+
+      // Limpa campos
+      document.getElementById('avulso-cliente').value = '';
+      document.getElementById('avulso-tel').value     = '';
+      document.getElementById('avulso-preco').value   = '';
+      document.getElementById('avulso-obs').value     = '';
+      document.getElementById('avulso-servico').value = '';
+      document.getElementById('avulso-sugestoes').style.display = 'none';
+      document.getElementById('avulso-preview').style.display   = 'none';
+      document.getElementById('avulso-status').style.display    = 'none';
+
+      const btn = document.getElementById('avulso-btn-salvar');
+      btn.textContent = 'Registrar Atendimento';
+      btn.disabled = false;
+
+      setTimeout(() => document.getElementById('avulso-cliente').focus(), 100);
+    }
+
+    function fecharModalAvulso() {
+      document.getElementById('avulso-modal').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    // Fecha modal ao clicar no backdrop
+    document.getElementById('avulso-modal') && document.getElementById('avulso-modal').addEventListener('click', function(e) {
+      if (e.target === this) fecharModalAvulso();
+    });
+
+    function avulsoBuscarCliente(q) {
+      const sug = document.getElementById('avulso-sugestoes');
+      if (!q || q.length < 2) { sug.style.display = 'none'; return; }
+      const lower = q.toLowerCase();
+      const matches = Object.values(_clientesFirestore)
+        .filter(c => c.nome && c.nome.toLowerCase().includes(lower))
+        .slice(0, 6);
+      if (!matches.length) { sug.style.display = 'none'; return; }
+      sug.style.display = 'block';
+      sug.innerHTML = matches.map(c => `
+        <div onclick="avulsoSelecionarCliente('${encodeURIComponent(c.nome)}','${(c.telefone||'').replace(/\D/g,'')}' )"
+          style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s;"
+          onmouseover="this.style.background='#202020'" onmouseout="this.style.background='transparent'">
+          <div style="width:30px;height:30px;border-radius:50%;background:#122452;border:1px solid #1B3168;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',Georgia,serif;font-size:14px;color:#5E6E9E;flex-shrink:0;">${(c.nome||'?')[0].toUpperCase()}</div>
+          <div>
+            <div style="font-family:'Oswald',sans-serif;font-size:13px;color:#F1EAD6;">${c.nome}</div>
+            <div style="font-family:'Roboto',sans-serif;font-size:11px;color:#2C4E9E;">${c.telefone || ''}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function avulsoSelecionarCliente(nomeEnc, tel) {
+      const nome = decodeURIComponent(nomeEnc);
+      document.getElementById('avulso-cliente').value = nome;
+      document.getElementById('avulso-tel').value     = tel;
+      document.getElementById('avulso-sugestoes').style.display = 'none';
+      avulsoAtualizarPreview();
+    }
+
+    function avulsoPreencherPreco() {
+      const sel = document.getElementById('avulso-servico');
+      const opt = sel.options[sel.selectedIndex];
+      if (opt && opt.dataset.price) {
+        document.getElementById('avulso-preco').value = opt.dataset.price;
+      }
+      avulsoAtualizarPreview();
+    }
+
+    function avulsoAtualizarPreview() {
+      const nome    = document.getElementById('avulso-cliente').value.trim();
+      const sel     = document.getElementById('avulso-servico');
+      const svcName = sel.options[sel.selectedIndex]?.dataset?.name || sel.value;
+      const preco   = parseFloat(document.getElementById('avulso-preco').value) || 0;
+      const data    = document.getElementById('avulso-data').value;
+      const hora    = document.getElementById('avulso-hora').value;
+      const obs     = document.getElementById('avulso-obs').value.trim();
+
+      const preview = document.getElementById('avulso-preview');
+      if (!nome && !svcName) { preview.style.display = 'none'; return; }
+
+      preview.style.display = 'block';
+      const dataFmt = data ? data.split('-').reverse().join('/') : '--';
+      const items = [
+        { l: 'Cliente',  v: nome   || '--' },
+        { l: 'Serviço',  v: svcName || '--' },
+        { l: 'Valor',    v: preco ? 'R$' + preco.toFixed(2).replace('.', ',') : '--' },
+        { l: 'Data',     v: dataFmt + (hora ? ' às ' + hora : '') },
+        ...(obs ? [{ l: 'Obs', v: obs }] : []),
+      ];
+      document.getElementById('avulso-preview-body').innerHTML = items.map(i => `
+        <div>
+          <div style="font-family:'Oswald',sans-serif;font-size:8px;letter-spacing:2px;color:#2C4E9E;text-transform:uppercase;margin-bottom:2px;">${i.l}</div>
+          <div style="font-family:'Roboto',sans-serif;font-size:12px;color:#B4BEDC;">${i.v}</div>
+        </div>
+      `).join('');
+    }
+
+    // Atualiza preview em tempo real nos outros campos
+    ['avulso-cliente','avulso-preco','avulso-data','avulso-hora','avulso-obs'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', avulsoAtualizarPreview);
+    });
+
+    async function salvarAtendimentoAvulso() {
+      const nome   = document.getElementById('avulso-cliente').value.trim();
+      const tel    = document.getElementById('avulso-tel').value.trim();
+      const sel    = document.getElementById('avulso-servico');
+      const svcOpt = sel.options[sel.selectedIndex];
+      const svcName = svcOpt?.dataset?.name || sel.value;
+      const preco   = parseFloat(document.getElementById('avulso-preco').value) || 0;
+      const data    = document.getElementById('avulso-data').value;
+      const hora    = document.getElementById('avulso-hora').value;
+      const obs     = document.getElementById('avulso-obs').value.trim();
+
+      const statusEl = document.getElementById('avulso-status');
+      function mostrarErro(msg) {
+        statusEl.style.display = 'block';
+        statusEl.style.background = 'rgba(176,48,48,0.1)';
+        statusEl.style.color = '#d45a5a';
+        statusEl.style.border = '1px solid rgba(176,48,48,0.25)';
+        statusEl.textContent = msg;
+      }
+
+      if (!nome)    { mostrarErro('Informe o nome do cliente.'); return; }
+      if (!svcName) { mostrarErro('Selecione um serviço.'); return; }
+      if (!data)    { mostrarErro('Informe a data do atendimento.'); return; }
+
+      const btn = document.getElementById('avulso-btn-salvar');
+      btn.textContent = 'Salvando...';
+      btn.disabled = true;
+      statusEl.style.display = 'none';
+
+      try {
+        const payload = {
+          cliente:     nome,
+          telefone:    tel || '',
+          servico:     svcName,
+          preco:       preco,
+          data:        data,
+          horario:     hora || '',
+          status:      'concluido',
+          origem:      'avulso',
+          obs:         obs,
+          criadoEm:    firebase.firestore.FieldValue.serverTimestamp(),
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+
+        await db.collection('agendamentos').add(payload);
+
+        // Atualiza histórico do cliente no Firestore (se tiver telefone)
+        if (tel) {
+          const clienteRef = db.collection('clientes').doc(tel);
+          await clienteRef.set({ nome, telefone: tel }, { merge: true });
+        }
+
+        // Feedback de sucesso
+        statusEl.style.display = 'block';
+        statusEl.style.background = 'rgba(31,158,84,0.1)';
+        statusEl.style.color = '#2db866';
+        statusEl.style.border = '1px solid rgba(31,158,84,0.25)';
+        statusEl.textContent = '✓ Atendimento registrado com sucesso!';
+        btn.textContent = '✓ Registrado';
+
+        setTimeout(() => fecharModalAvulso(), 1400);
+
+      } catch(e) {
+        mostrarErro('Erro ao salvar: ' + (e.message || e));
+        btn.textContent = 'Registrar Atendimento';
+        btn.disabled = false;
+      }
+    }
+
+    // Fecha ao pressionar ESC
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (document.getElementById('avulso-modal')?.style.display === 'flex') fecharModalAvulso();
+      }
+    });
+
+    // Botão flutuante: aparece só na aba de agendamentos/dashboard no mobile
+    function gerenciarFab(tab) {
+      const fab = document.getElementById('btn-avulso-fab');
+      if (!fab) return;
+      fab.style.display = (tab === 'agendamentos' || tab === 'dashboard') ? 'flex' : 'none';
+    }
+
+    // Registro do Service Worker (PWA)
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js")
+          .then(reg => console.log("SW registrado:", reg.scope))
+          .catch(err => console.warn("SW falhou:", err));
+      });
+    }
+
+    // Inicia push notifications após login
+    document.addEventListener('click', function unlockOnce() {
+      iniciarPushNotifications();
+      document.removeEventListener('click', unlockOnce);
+    }, { once: true });
+  
+  </script>
+  <!-- ════════════════════════════════════════════════
+       MODAL — ATENDIMENTO AVULSO (walk-in)
+       ════════════════════════════════════════════════ -->
+  <div id="avulso-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#0A1330;border:1px solid #16295C;border-radius:8px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 40px 100px rgba(0,0,0,0.9);position:relative;">
+
+      <!-- Header -->
+      <div style="padding:24px 28px 18px;border-bottom:1px solid #122452;display:flex;align-items:flex-start;justify-content:space-between;position:sticky;top:0;background:#0A1330;z-index:1;">
+        <div>
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:2px;color:#F1EAD6;">Atendimento Avulso</div>
+          <div style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;margin-top:3px;">Cliente sem agendamento · Walk-in</div>
+        </div>
+        <button onclick="fecharModalAvulso()" style="background:none;border:none;color:#2C4E9E;font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;border-radius:4px;transition:color .2s;" onmouseover="this.style.color='#F1EAD6'" onmouseout="this.style.color='#2C4E9E'">✕</button>
+      </div>
+
+      <!-- Body -->
+      <div style="padding:24px 28px;display:flex;flex-direction:column;gap:18px;">
+
+        <!-- Cliente: busca ou nome livre -->
+        <div>
+          <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Cliente</label>
+          <input type="text" id="avulso-cliente" placeholder="Nome do cliente" autocomplete="off"
+            oninput="avulsoBuscarCliente(this.value)"
+            style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;transition:border-color .2s;"
+            onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
+          <!-- Sugestões de clientes cadastrados -->
+          <div id="avulso-sugestoes" style="display:none;background:#0C1838;border:1px solid #16295C;border-top:none;border-radius:0 0 6px 6px;overflow:hidden;max-height:180px;overflow-y:auto;"></div>
+          <input type="hidden" id="avulso-tel"/>
+        </div>
+
+        <!-- Serviço -->
+        <div>
+          <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Serviço</label>
+          <select id="avulso-servico" onchange="avulsoPreencherPreco()"
+            style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;cursor:pointer;color-scheme:dark;transition:border-color .2s;"
+            onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'">
+            <option value="">Selecionar serviço...</option>
+          </select>
+        </div>
+
+        <!-- Valor + Data + Hora em linha -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Valor (R$)</label>
+            <input type="number" id="avulso-preco" placeholder="0,00" step="0.01" min="0"
+              style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 14px;color:#EBC531;font-family:'Playfair Display',Georgia,serif;font-size:18px;outline:none;letter-spacing:1px;transition:border-color .2s;"
+              onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
+          </div>
+          <div>
+            <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Data</label>
+            <input type="date" id="avulso-data"
+              style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 10px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;color-scheme:dark;transition:border-color .2s;"
+              onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
+          </div>
+          <div>
+            <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Hora</label>
+            <input type="time" id="avulso-hora"
+              style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 10px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;color-scheme:dark;transition:border-color .2s;"
+              onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
+          </div>
+        </div>
+
+        <!-- Observação -->
+        <div>
+          <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Observação <span style="color:#233F80;">(opcional)</span></label>
+          <input type="text" id="avulso-obs" placeholder="Ex: Pagamento em dinheiro, desconto aplicado..."
+            style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;transition:border-color .2s;"
+            onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
+        </div>
+
+        <!-- Preview do registro -->
+        <div id="avulso-preview" style="display:none;background:#0d0d0d;border:1px solid #122452;border-radius:6px;padding:14px 16px;">
+          <div style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#2C4E9E;text-transform:uppercase;margin-bottom:10px;">Resumo do Atendimento</div>
+          <div id="avulso-preview-body" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;"></div>
+        </div>
+
+        <!-- Feedback -->
+        <div id="avulso-status" style="display:none;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-align:center;padding:10px;border-radius:4px;"></div>
+
+        <!-- Ações -->
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button onclick="fecharModalAvulso()"
+            style="flex:1;padding:13px;background:transparent;border:1px solid #1B3168;border-radius:6px;color:#7183B4;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;"
+            onmouseover="this.style.borderColor='#2C4E9E';this.style.color='#B4BEDC'" onmouseout="this.style.borderColor='#1B3168';this.style.color='#7183B4'">
+            Cancelar
+          </button>
+          <button id="avulso-btn-salvar" onclick="salvarAtendimentoAvulso()"
+            style="flex:2;padding:13px;background:#EBC531;border:none;border-radius:6px;color:#070E24;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;cursor:pointer;transition:all .2s;"
+            onmouseover="this.style.background='#d4b87a'" onmouseout="this.style.background='#EBC531'">
+            Registrar Atendimento
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botão flutuante no dashboard -->
+  <button id="btn-avulso-fab" onclick="abrirModalAvulso()"
+    style="display:none;position:fixed;bottom:80px;right:20px;z-index:500;background:#EBC531;border:none;border-radius:50px;padding:12px 20px;color:#070E24;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;box-shadow:0 8px 32px rgba(235,197,49,.35);align-items:center;gap:8px;transition:all .2s;"
+    onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 12px 40px rgba(235,197,49,.5)'"
+    onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 8px 32px rgba(235,197,49,.35)'">
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Avulso
+  </button>
+
+  <!-- BOTTOM NAV MOBILE -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <a class="bottom-nav-item active" id="bnav-dashboard" onclick="showTab('dashboard', this); syncBottomNav('bnav-dashboard')">
+      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard
+    </a>
+    <a class="bottom-nav-item" id="bnav-agendamentos" onclick="showTab('agendamentos', this); syncBottomNav('bnav-agendamentos')">
+      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>Agenda
+    </a>
+    <a class="bottom-nav-item" id="bnav-horarios" onclick="showTab('horarios', this); syncBottomNav('bnav-horarios')">
+      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>Horários
+    </a>
+    <a class="bottom-nav-item" id="bnav-datas" onclick="showTab('datas', this); syncBottomNav('bnav-datas')">
+      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>Datas
+    </a>
+    <a class="bottom-nav-item" id="bnav-clientes" onclick="showTab('clientes', this); syncBottomNav('bnav-clientes')">
+      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span>Clientes
+    </a>
+    <a class="bottom-nav-item" id="bnav-sair" onclick="doLogout()">
+      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></span>Sair
+    </a>
+  </nav>
+
+  
+</body>
+</html>

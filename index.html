@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Wellisson Barbearia</title>
+  <!-- Ícones Android / Desktop -->
+  <link rel="icon" type="image/png" sizes="512x512" href="logo_512.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="logo_192.png"/>
+  <link rel="icon" type="image/png" href="logo_512.png"/>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest-client.json"/>
+  <meta name="theme-color" content="#070E24"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Wellisson Barbearia"/>
+  <!-- Ícones Apple (iOS/iPadOS) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="logo_180.png"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="logo_192.png"/>
+  <link rel="apple-touch-icon" sizes="512x512" href="logo_512.png"/>
+
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,900;1,700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyA7oHFbbLaMi5Ptwic0o4cqvuZN1jD039M",
+      authDomain: "welisson-77143.firebaseapp.com",
+      projectId: "welisson-77143",
+      storageBucket: "welisson-77143.firebasestorage.app",
+      messagingSenderId: "120956065574",
+      appId: "1:120956065574:web:40ce021fa58845c19093e7"
+    });
+  </script>
+
+  <style>
+    /* ── Nav Logo ── */
+    .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .nav-logo-img { height: 46px; width: auto; display: block; }
+    .nav-logo-text { display: flex; flex-direction: column; line-height: 1.05; }
+    .nav-logo-text strong {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700; font-size: 19px; color: #F1EAD6; letter-spacing: .5px;
+    }
+    .nav-logo-text em {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic; font-weight: 700; font-size: 15px; color: #EBC531; letter-spacing: 1.5px;
+    }
+    @media (max-width: 768px) {
+      .nav-logo-img { height: 38px; }
+      .nav-logo-text strong { font-size: 16px; }
+      .nav-logo-text em { font-size: 13px; }
+    }
+  </style>
+
+  <style>
+    /* ── Logo do topo ── */
+    .hero-content { position: relative; }
+    .hero-title {
+      margin: 0;
+      line-height: 0;
+    }
+    .hero-logo {
+      width: min(320px, 62vw);
+      max-height: 46svh;
+      height: auto;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+      filter: drop-shadow(0 18px 40px rgba(0,0,0,0.55));
+    }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px;
+      margin: -1px; padding: 0; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+    .hero-title, .hero-sub, .btn-hero { position: relative; z-index: 2; }
+  </style>
+
+  <style>
+    /* ── agd-status badges ── */
+    .agd-status { display:inline-block; margin-top:4px; padding:2px 10px; border-radius:3px; font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1px; }
+    .agd-status.agendado   { background:rgba(235,197,49,.15); color:#EBC531; }
+    .agd-status.confirmado { background:rgba(39,174,96,.15);   color:#27ae60; }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header class="hero">
+    <div class="hero-bg"></div>
+    <nav class="navbar">
+      <a href="#" class="nav-logo" aria-label="Wellisson Barbearia">
+        <img src="logo_emblema.png" alt="" class="nav-logo-img"/>
+        <span class="nav-logo-text"><strong>Wellisson</strong><em>Barbearia</em></span>
+      </a>
+      <!-- Hamburger mobile -->
+      <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="nav-links" id="nav-links">
+        <a href="#servicos" onclick="closeMenu()">Serviços</a>
+        <a href="#planos" onclick="closeMenu()">Planos</a>
+        <a href="#agendar" class="btn-nav" onclick="closeMenu()">Agendar</a>
+      </div>
+    </nav>
+
+    <div class="hero-content">
+      <h1 class="hero-title">
+        <img src="logo.png" alt="Wellisson Barbearia" class="hero-logo"/>
+        <span class="visually-hidden">Wellisson Barbearia</span>
+      </h1>
+      <p class="hero-sub"><span class="hero-sub-item">Barba</span><span class="hero-sub-dot">·</span><span class="hero-sub-item">Cabelo</span><span class="hero-sub-dot">·</span><span class="hero-sub-item">Estilo</span></p>
+      <a href="#agendar" class="btn-hero">Agendar Horário</a>
+    </div>
+    <div class="hero-scroll">▼</div>
+  </header>
+
+  <!-- SERVIÇOS -->
+  <section id="servicos" class="section services-section">
+    <div class="section-header">
+      <span class="section-tag">NOSSOS</span>
+      <h2>Serviços</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="services-grid" id="services-grid"></div>
+  </section>
+
+  <!-- PLANOS -->
+  <section id="planos" class="section plans-section">
+    <div class="section-header">
+      <span class="section-tag">NOSSOS</span>
+      <h2>Planos</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="plans-grid" id="plans-grid"></div>
+  </section>
+
+  <!-- AUTH BAR -->
+  <div class="auth-bar-wrap">
+    <div class="auth-bar" id="auth-bar">
+      <!-- preenchido via JS -->
+    </div>
+  </div>
+
+  <!-- AGENDAMENTO -->
+  <section id="agendar" class="section booking-section">
+    <div class="section-header">
+      <span class="section-tag">FAÇA SEU</span>
+      <h2>Agendamento</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="booking-container">
+      <div class="booking-card">
+
+        <div class="step-indicator">
+          <div class="step active" id="step-ind-1"><span>1</span><p>Serviço</p></div>
+          <div class="step-line"></div>
+          <div class="step" id="step-ind-2"><span>2</span><p>Dados</p></div>
+          <div class="step-line"></div>
+          <div class="step" id="step-ind-3"><span>3</span><p>Confirmar</p></div>
+        </div>
+
+        <!-- Passo 1 -->
+        <div class="form-step active" id="step-1">
+          <h3>Escolha o Serviço</h3>
+          <div class="options-list" id="options-list"></div>
+        </div>
+
+        <!-- Passo 2 -->
+        <div class="form-step" id="step-2">
+          <h3>Seus Dados</h3>
+          <div class="form-group">
+            <label>Nome e Sobrenome *</label>
+            <input type="text" id="client-name" placeholder="Nome e sobrenome"
+              autocomplete="name" autocorrect="off" autocapitalize="words"/>
+          </div>
+          <div class="form-group">
+            <label>WhatsApp *</label>
+            <input type="tel" id="client-phone" placeholder="(85) 99999-9999"
+              maxlength="15" inputmode="tel" autocomplete="tel"/>
+          </div>
+          <div class="form-group">
+            <label>Data Preferida *</label>
+            <input type="date" id="pref-date" style="display:none;"/>
+            <div id="cal-wrap" style="background:#0A1330;border:1px solid #1B3168;border-radius:8px;padding:16px;"></div>
+          </div>
+          <div class="form-group">
+            <label>Horário Preferido *</label>
+            <select id="pref-time" disabled>
+              <option value="">Selecione uma data primeiro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Observações</label>
+            <textarea id="obs" placeholder="Algo que queira nos informar..." rows="3"></textarea>
+          </div>
+          <div class="form-row">
+            <button class="btn-back" onclick="goBack(1)">← Voltar</button>
+            <button class="btn-next" onclick="goToConfirm()">Continuar →</button>
+          </div>
+        </div>
+
+        <!-- Passo 3 -->
+        <div class="form-step" id="step-3">
+          <h3>Confirmar Agendamento</h3>
+          <div class="confirm-summary" id="confirm-summary"></div>
+          <div class="form-row">
+            <button class="btn-back" onclick="goBack(2)">← Voltar</button>
+            <button class="btn-confirm" onclick="submitBooking()">✓ Confirmar</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL LOGIN / CADASTRO -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-box login-modal-box">
+      <div class="modal-icon">✂️</div>
+      <h3>Entrar / Cadastrar</h3>
+
+      <!-- Passo 1: telefone -->
+      <div class="login-step active" id="login-step-phone">
+        <p>Digite seu WhatsApp para entrar ou criar sua conta.</p>
+        <div class="form-group" style="text-align:left;margin-top:16px;">
+          <label>WhatsApp *</label>
+          <input type="tel" id="login-phone-input" placeholder="(85) 99999-9999"
+            maxlength="15" inputmode="tel" autocomplete="tel"/>
+        </div>
+        <p class="login-error" id="login-error-phone"></p>
+        <button class="btn-confirm" id="btn-login-next" onclick="loginCheckPhone()" style="margin-top:8px;width:100%;">Continuar →</button>
+        <button class="btn-back" onclick="closeLoginModal()" style="margin-top:8px;width:100%;">Fechar</button>
+      </div>
+
+      <!-- Passo 2: nome (só para novos) -->
+      <div class="login-step" id="login-step-name">
+        <p>Primeira vez por aqui! Qual o seu nome completo?</p>
+        <div class="form-group" style="text-align:left;margin-top:16px;">
+          <label>Nome e Sobrenome *</label>
+          <input type="text" id="login-name-input" placeholder="Nome e sobrenome"
+            autocomplete="name" autocorrect="off" autocapitalize="words"/>
+        </div>
+        <div class="form-group" style="text-align:left;margin-top:12px;">
+          <label style="display:flex;align-items:center;gap:6px;">
+            Data de Nascimento
+            <span style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:1px;color:#5E6E9E;text-transform:uppercase;background:#0F1F45;padding:2px 8px;border-radius:3px;">opcional</span>
+          </label>
+          <input type="date" id="login-birth-input"
+            style="color-scheme:dark;"
+            placeholder="dd/mm/aaaa"/>
+        </div>
+        <p class="login-error" id="login-error-name"></p>
+        <button class="btn-confirm" id="btn-login-register" onclick="loginRegister()" style="margin-top:8px;width:100%;">Cadastrar →</button>
+        <button class="btn-back" onclick="closeLoginModal()" style="margin-top:8px;width:100%;">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MEUS AGENDAMENTOS -->
+  <div class="modal-overlay" id="mybookings-modal">
+    <div class="modal-box mybookings-modal-box">
+      <div class="modal-icon">📋</div>
+      <h3>Meus Agendamentos</h3>
+      <div id="mybookings-list"></div>
+      <button class="btn-back" onclick="closeMyBookings()" style="margin-top:20px;width:100%;">Fechar</button>
+    </div>
+  </div>
+
+  <!-- MODAL PLANO -->
+  <div class="modal-overlay" id="plan-modal">
+    <div class="modal-box plan-modal-box">
+      <div class="modal-icon plan-modal-icon">✦</div>
+      <h3 id="plan-modal-title">Plano Essencial</h3>
+      <p id="plan-modal-desc">Ótima escolha! Antes de continuar, tem alguma dúvida sobre o plano? Pode perguntar agora — ou clique em <strong>Falar com a Gente</strong> e um de nós te responde pelo WhatsApp.</p>
+      <textarea id="plan-modal-question" placeholder="Escreva sua dúvida aqui (opcional)..." rows="3"></textarea>
+      <div class="plan-modal-actions">
+        <button class="btn-plan-cancel" onclick="closePlanModal()">Fechar</button>
+        <a id="plan-modal-wa" class="btn-plan-confirm" href="#" target="_blank">Falar com a Gente →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SUCESSO -->
+  <div class="modal-overlay" id="success-modal">
+    <div class="modal-box">
+      <div class="modal-icon">✓</div>
+      <h3>Agendamento Enviado!</h3>
+      <p>Seu pedido foi registrado com sucesso.</p>
+      <button onclick="closeModal()">Fechar</button>
+    </div>
+  </div>
+
+  <!-- OVERLAY MENU MOBILE -->
+  <div class="nav-overlay" id="nav-overlay" onclick="closeMenu()"></div>
+
+  <footer class="footer">
+    <p>Wellisson Barbearia &copy; 2026. Todos os direitos reservados.</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    // Menu hamburger
+    const hamburger = document.getElementById('nav-hamburger');
+    const navLinks  = document.getElementById('nav-links');
+    const overlay   = document.getElementById('nav-overlay');
+
+    hamburger.addEventListener('click', () => {
+      const open = navLinks.classList.toggle('open');
+      hamburger.classList.toggle('open', open);
+      overlay.classList.toggle('open', open);
+      document.body.style.overflow = open ? 'hidden' : '';
+    });
+
+    function closeMenu() {
+      navLinks.classList.remove('open');
+      hamburger.classList.remove('open');
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Service worker PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .catch(e => console.warn('SW:', e));
+      });
+    }
+  </script>
+</body>
+</html>

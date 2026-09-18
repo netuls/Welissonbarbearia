@@ -1,0 +1,14 @@
+# Dependências instaladas pelo Firebase CLI — não sobem pro repo,
+# quem for rodar "firebase deploy" reinstala com "npm install".
+functions/node_modules/
+functions/.env
+functions/.env.*
+
+# Logs e cache do Firebase CLI
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
