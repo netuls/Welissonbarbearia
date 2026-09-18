@@ -18,19 +18,24 @@ const HERO_SLIDES = [
 
 // ─── Serviços ─────────────────────────────────────
 const SERVICES = [
-  { id: 'corte',             name: 'Corte',                        price: 25 },
-  { id: 'corte_sobrancelha', name: 'Corte + Sobrancelha',         price: 30 },
-  { id: 'corte_barba',       name: 'Corte + Barba',               price: 45 },
-  { id: 'corte_barba_sob',   name: 'Corte + Barba + Sobrancelha', price: 45 },
+  { id: 'corte',             name: 'Corte',                        price: 30 },
   { id: 'barba',             name: 'Barba',                        price: 20 },
-  { id: 'sobrancelha',       name: 'Sobrancelha',                  price: 5  },
-  { id: 'nevou_corte',       name: 'Nevou + Corte',                price: 90 },
-  { id: 'luzes_corte',       name: 'Luzes + Corte',                price: 75 },
-  { id: 'hidratacao',        name: 'Hidratação',                   price: 10 },
+  { id: 'sobrancelha',       name: 'Sobrancelha',                  price: 10 },
+  { id: 'corte_barba_sob',   name: 'Corte + Barba + Sobrancelha', price: 50 },
+  { id: 'luzes',             name: 'Luzes',                        price: 60 },
+  { id: 'luzes_corte',       name: 'Luzes + Corte',                price: 80 },
+  { id: 'platinado',         name: 'Platinado',                    price: 80 },
+  { id: 'platinado_corte',   name: 'Platinado + Corte',            price: 110 },
 ];
 
 // ─── Planos ────────────────────────────────────────
 const PLANS = [
+  {
+    id: 'barba', name: 'Barba', price: 50, featured: false,
+    features: [
+      'Barba 1x por semana',
+    ]
+  },
   {
     id: 'simples', name: 'Simples', price: 50, featured: false,
     features: [
@@ -529,7 +534,7 @@ async function carregarSlotsParaData(dataSelecionada) {
         .get()
     ]);
     // Monta set de slots ocupados respeitando duração do serviço
-    const SERVICOS_60MIN = ['nevou_corte', 'luzes_corte', 'Nevou + Corte', 'Luzes + Corte'];
+    const SERVICOS_60MIN = ['luzes', 'Luzes', 'luzes_corte', 'platinado', 'platinado_corte', 'Luzes + Corte', 'Platinado', 'Platinado + Corte', 'nevou_corte', 'Nevou + Corte'];
     const ocupados = new Set();
     agendSnap.docs.forEach(d => {
       const ag = d.data();
