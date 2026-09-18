@@ -296,6 +296,8 @@ input, select, textarea {
   opacity: 0.6;
   animation: bounce 2s infinite;
   z-index: 10;
+}
+@keyframes bounce {
   0%, 100% { transform: translateX(-50%) translateY(0); }
   50% { transform: translateX(-50%) translateY(8px); }
 }
@@ -412,9 +414,9 @@ input, select, textarea {
 
 .plans-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1px;
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.05);
@@ -1341,4 +1343,9 @@ input, select, textarea {
   .mybookings-modal-box { max-height: 85vh; }
   .agd-card { flex-direction: column; align-items: flex-start; }
   .btn-cancelar { width: 100%; }
+}
+
+/* ================== PLANOS: TABLET (2 por linha) ================== */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .plans-grid { grid-template-columns: repeat(2, 1fr); }
 }
