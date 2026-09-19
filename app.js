@@ -59,21 +59,21 @@ const PLANS = [
   {
     id: 'simples', name: 'Simples', price: 50, featured: false,
     features: [
-      '2x no mês',
+      'Corte (2x por mês)',
       'Inclui finalização e lavagem',
     ]
   },
   {
-    id: 'intermediario', name: 'Intermediário', price: 90, featured: true, badge: 'POPULAR',
+    id: 'intermediario', name: 'Intermediário', price: 90, featured: true, badge: 'MAIS ESCOLHIDO',
     features: [
-      'Quantas vezes você quiser no mês',
+      'Corte (quantas vezes quiser no mês)',
       'Inclui finalização e lavagem',
     ]
   },
   {
-    id: 'senior', name: 'Senior', price: 130, featured: false,
+    id: 'senior', name: 'Sênior', price: 130, featured: false, badge: 'TOP ESCOLHA',
     features: [
-      'Quantas vezes você quiser no mês',
+      'Corte + Barba (quantas vezes quiser no mês)',
       'Inclui finalização e lavagem',
     ]
   }
@@ -99,6 +99,13 @@ const PLAN_COVERAGE = {
   senior:        SERVICOS_BASICOS,
 };
 
+// Limites de uso por plano: quantos atendimentos o plano cobre por 'periodo' (do pagamento ao vencimento)
+// ou por 'semana' (segunda a domingo). Plano que não aparece aqui não tem limite. Ajuste aqui se as regras mudarem.
+const PLAN_LIMITS = {
+  barba:   { qtd: 1, por: 'semana' },
+  simples: { qtd: 2, por: 'periodo' },
+};
+
 function hojeISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -121,8 +128,33 @@ function nomeDoPlano(id) {
   const p = PLANS.find(x => x.id === id);
   return p ? p.name : '';
 }
+// Conta os atendimentos do plano já usados/agendados na janela do limite (período do plano ou semana da data)
+function semanaDe(dataISO) {
+  const [y, m, d] = dataISO.split('-').map(Number);
+  const dow = (new Date(y, m - 1, d).getDay() + 6) % 7; // segunda = 0
+  const f = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  return [f(new Date(y, m - 1, d - dow)), f(new Date(y, m - 1, d - dow + 6))];
+}
+async function checarUsoPlano(data) {
+  const u = currentUser;
+  const lim = u && PLAN_LIMITS[u.plano];
+  if (!lim || DEMO_MODE || !planoAtivo(u, data)) return null;
+  const [ini, fim] = lim.por === 'semana' ? semanaDe(data) : [u.planoPagoEm || '0000-00-00', u.planoVenceEm];
+  try {
+    const snap = await firebase.firestore().collection('agendamentos')
+      .where('telefone', '==', phoneKey(u.telefone || ''))
+      .where('status', 'in', ['agendado', 'confirmado', 'concluido'])
+      .get();
+    const usados = snap.docs.map(d => d.data())
+      .filter(a => a.data >= ini && a.data <= fim && Number(a.preco) === 0 && /^Plano /.test(a.obs || '')).length;
+    return { atingido: usados >= lim.qtd, usados, qtd: lim.qtd, por: lim.por };
+  } catch (e) { console.warn('Uso do plano:', e); return null; }
+}
+function limitePlanoAtingido() {
+  return !!(typeof state !== 'undefined' && state && state.planoUso && state.planoUso.atingido);
+}
 function servicoCoberto(service) {
-  return !!service && planoAtivo(currentUser) && PLAN_COVERAGE[currentUser.plano].includes(service.id);
+  return !!service && planoAtivo(currentUser) && PLAN_COVERAGE[currentUser.plano].includes(service.id) && !limitePlanoAtingido();
 }
 function precoCobrado(service) {
   return servicoCoberto(service) ? 0 : Number(service.price);
@@ -464,6 +496,13 @@ function renderPlans() {
         Tenho Interesse
       </button>
     </div>`).join('');
+
+  // Observação dos planos (aparece uma vez, logo abaixo dos cards)
+  if (!document.getElementById('plans-note')) {
+    grid.insertAdjacentHTML('afterend',
+      '<p id="plans-note" style="max-width:1200px;margin:16px auto 0;padding:12px 16px;border:1px solid rgba(235,197,49,0.35);background:rgba(235,197,49,0.08);border-radius:6px;color:#F1EAD6;font-family:Roboto,sans-serif;font-size:13px;line-height:1.5;text-align:center;">' +
+      '<strong style="color:#EBC531;">OBS:</strong> o aniversariante do plano tem direito a trazer alguém no dia do aniversário.</p>');
+  }
 }
 
 // ─── Modal de interesse no plano ──────────────────
@@ -779,6 +818,7 @@ window.mudarMes = function(delta) {
 
 window.selecionarData = function(dateStr) {
   state.date = dateStr;
+  state.planoUso = null;
   document.querySelectorAll('.cal-dia').forEach(el => {
     const onclick = el.getAttribute('onclick') || '';
     const isSelected = onclick.includes(dateStr);
@@ -829,7 +869,7 @@ window.selectService = function(id) {
   }, 180);
 };
 
-window.goToConfirm = function() {
+window.goToConfirm = async function() {
   if (!currentUser) {
     showToast('Faça login para continuar.');
     openLoginModal();
@@ -845,6 +885,7 @@ window.goToConfirm = function() {
   }
   state.name = name; state.phone = phone; state.date = date; state.time = time;
   state.obs = document.getElementById('obs').value.trim();
+  state.planoUso = await checarUsoPlano(date); // limite de uso do plano (ex.: Simples = 2x no mês)
   renderConfirm();
   showStep(3);
 };
@@ -863,6 +904,7 @@ function renderConfirm() {
     <div class="confirm-row"><label>Data</label><span>${formatDate(state.date)}</span></div>
     <div class="confirm-row"><label>Horário</label><span>${state.time}</span></div>
     ${state.obs ? `<div class="confirm-row"><label>Obs.</label><span>${state.obs}</span></div>` : ''}
+    ${(limitePlanoAtingido() && PLAN_COVERAGE[currentUser.plano].includes(sel.id)) ? `<div class="confirm-row"><label>Plano</label><span style="font-size:13px;">Você já usou ${state.planoUso.usados} de ${state.planoUso.qtd} atendimentos do plano ${state.planoUso.por === 'semana' ? 'nesta semana' : 'neste mês'}. Este atendimento será cobrado.</span></div>` : ''}
     ${planoVenceAntesDaData(currentUser) ? `<div class="confirm-row"><label>Plano</label><span style="font-size:13px;">Seu plano vence em ${formatDate(currentUser.planoVenceEm)}, antes desta data. O serviço será cobrado.</span></div>` : ''}
     <div class="confirm-row confirm-total"><label>Valor</label>
       ${servicoCoberto(sel)
@@ -917,10 +959,13 @@ window.submitBooking = async function() {
     } else {
       const key = phoneKey(state.phone);
       await refreshPlano(); // confirma o plano no banco antes de definir o valor
+      state.planoUso = await checarUsoPlano(state.date); // e o limite de uso, na hora de gravar
       const coberto  = servicoCoberto(state.selected);
       const obsFinal = coberto
         ? 'Plano ' + nomeDoPlano(currentUser.plano) + ' - sem cobrança' + (state.obs ? ' | ' + state.obs : '')
-        : state.obs;
+        : (limitePlanoAtingido() && PLAN_COVERAGE[currentUser.plano].includes(state.selected.id)
+            ? 'Limite do plano atingido - cobrar' + (state.obs ? ' | ' + state.obs : '')
+            : state.obs);
       await firebase.firestore().collection('agendamentos').add({
         tipo: 'servico', servico: state.selected.name, preco: precoCobrado(state.selected),
         cliente: state.name, telefone: key,
