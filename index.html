@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-  <title>Wellisson Barbearia</title>
+  <title>Welisson Barber</title>
   <!-- Ícones Android / Desktop -->
   <link rel="icon" type="image/png" sizes="512x512" href="logo_512.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="logo_192.png"/>
@@ -15,7 +15,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="Wellisson Barbearia"/>
+  <meta name="apple-mobile-web-app-title" content="Welisson Barber"/>
   <!-- Ícones Apple (iOS/iPadOS) -->
   <link rel="apple-touch-icon" sizes="180x180" href="logo_180.png"/>
   <link rel="apple-touch-icon" sizes="192x192" href="logo_192.png"/>
@@ -66,13 +66,29 @@
       line-height: 0;
     }
     .hero-logo {
-      width: min(320px, 62vw);
-      max-height: 46svh;
+      width: min(250px, 56vw);
+      max-height: 40svh;
       height: auto;
       object-fit: contain;
       display: block;
       margin: 0 auto;
       filter: drop-shadow(0 18px 40px rgba(0,0,0,0.55));
+    }
+    /* Nome sob o emblema (texto real, no lugar da imagem com "Barbearia") */
+    .hero-name { display: block; text-align: center; margin-top: 14px; line-height: 1; }
+    .hero-title .hero-name-top {
+      display: block; margin: 0;
+      font-family: 'Oswald', sans-serif; font-weight: 400;
+      font-size: clamp(30px, 8.5vw, 48px); letter-spacing: 7px;
+      text-transform: uppercase; color: #F1EAD6;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.55), 0 6px 22px rgba(0,0,0,0.75);
+    }
+    .hero-title .hero-name-bottom {
+      display: block; margin: 8px 0 0;
+      font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 700;
+      font-size: clamp(44px, 12.5vw, 72px); letter-spacing: 8px;
+      text-transform: uppercase; color: #EBC531;
+      text-shadow: 0 3px 0 rgba(0,0,0,0.6), 0 8px 26px rgba(0,0,0,0.75), 0 0 28px rgba(235,197,49,0.30);
     }
     .visually-hidden {
       position: absolute; width: 1px; height: 1px;
@@ -95,9 +111,9 @@
   <header class="hero">
     <div class="hero-bg"></div>
     <nav class="navbar">
-      <a href="#" class="nav-logo" aria-label="Wellisson Barbearia">
+      <a href="#" class="nav-logo" aria-label="Welisson Barber">
         <img src="logo_emblema.png" alt="" class="nav-logo-img"/>
-        <span class="nav-logo-text"><strong>Wellisson</strong><em>Barbearia</em></span>
+        <span class="nav-logo-text"><strong>Welisson</strong><em>Barber</em></span>
       </a>
       <!-- Hamburger mobile -->
       <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
@@ -112,8 +128,12 @@
 
     <div class="hero-content">
       <h1 class="hero-title">
-        <img src="logo.png" alt="Wellisson Barbearia" class="hero-logo"/>
-        <span class="visually-hidden">Wellisson Barbearia</span>
+        <img src="logo_emblema.png" alt="" class="hero-logo"/>
+        <span class="hero-name" aria-hidden="true">
+          <span class="hero-name-top">Wellisson</span>
+          <span class="hero-name-bottom">Barber</span>
+        </span>
+        <span class="visually-hidden">Welisson Barber</span>
       </h1>
       <p class="hero-sub"><span class="hero-sub-item">Barba</span><span class="hero-sub-dot">·</span><span class="hero-sub-item">Cabelo</span><span class="hero-sub-dot">·</span><span class="hero-sub-item">Estilo</span></p>
       <a href="#agendar" class="btn-hero">Agendar Horário</a>
@@ -301,7 +321,7 @@
   <div class="nav-overlay" id="nav-overlay" onclick="closeMenu()"></div>
 
   <footer class="footer">
-    <p>Wellisson Barbearia &copy; 2026. Todos os direitos reservados.</p>
+    <p>Welisson Barber &copy; 2026. Todos os direitos reservados.</p>
   </footer>
 
   <script src="app.js"></script>
