@@ -1725,25 +1725,17 @@
     async function removerPlanoCliente(key) {
       const c = _clientesFirestore[key];
       if (!c) return;
-      if (!confirm('Remover o plano de ' + (c.nome || key) + '? Ele volta a pagar os serviços normalmente.')) return;
-      const temPagamentos = Array.isArray(c.planoPagamentos) && c.planoPagamentos.length > 0;
-      // Apagar também os pagamentos tira o status de plano do dashboard por completo
-      const apagarPagamentos = temPagamentos && confirm(
-        'Apagar também os pagamentos deste plano do financeiro?\n\n' +
-        'OK = apagar. O dashboard volta como se ele nunca tivesse tido plano (os atendimentos voltam a contar com o valor normal).\n' +
-        'Cancelar = manter o que ele já pagou no financeiro.');
+      if (!confirm('Remover o plano de ' + (c.nome || key) + '? Ele volta a pagar os serviços normalmente a partir de hoje. O histórico e os pagamentos já feitos são mantidos.')) return;
       try {
         const del = firebase.firestore.FieldValue.delete();
         const removidoEm = hojeISOAdmin();
         const upd = { plano: del, planoPagoEm: del, planoVenceEm: del, planoRemovidoEm: removidoEm };
-        if (apagarPagamentos) upd.planoPagamentos = del;
         await db.collection('clientes').doc(key).update(upd);
         delete _clientesFirestore[key].plano;
         delete _clientesFirestore[key].planoPagoEm;
         delete _clientesFirestore[key].planoVenceEm;
         _clientesFirestore[key].planoRemovidoEm = removidoEm;
-        if (apagarPagamentos) delete _clientesFirestore[key].planoPagamentos;
-        showToast(apagarPagamentos ? 'Plano e pagamentos removidos.' : 'Plano removido.');
+        showToast('Plano removido.');
         renderPlanosClientes();
         try { renderDashboard(); } catch (e) {}
         try { renderClientes(); } catch (e) {}
