@@ -1,5 +1,5 @@
 // ================================================
-//  WELLISSON BARBEARIA — App Principal (Cliente)
+//  WELLISSON BARBER — App Principal (Cliente)
 // ================================================
 
 const WHATSAPP_NUMBER = '5585982358729';
@@ -413,7 +413,7 @@ window.openPlanModal = function(planId, planName, price) {
   waBtn.onclick = function(e) {
     e.preventDefault();
     const duvida = document.getElementById('plan-modal-question').value.trim();
-    let msg = `Olá! Tenho interesse no *Plano ${planName}* da Wellisson Barbearia (R$${price}/mês).`;
+    let msg = `Olá! Tenho interesse no *Plano ${planName}* da Wellisson Barber (R$${price}/mês).`;
     if (duvida) msg += `\n\nMinha dúvida: ${duvida}`;
     else msg += `\n\nPode me passar mais informações?`;
     window.open(`https://wa.me/${WHATSAPP_NOTIFY}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -804,7 +804,7 @@ function sendClientConfirmation() {
   const primeiroNome = state.name.split(' ')[0];
   const lines = [
     `Olá, *${primeiroNome}*!`, '',
-    'Recebemos seu agendamento na *Wellisson Barbearia* e em breve entraremos em contato para confirmar o horário.', '',
+    'Recebemos seu agendamento na *Wellisson Barber* e em breve entraremos em contato para confirmar o horário.', '',
     '*Resumo do seu agendamento:*',
     '*Serviço:* ' + sel.name,
     '*Data:* ' + formatDate(state.date),
