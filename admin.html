@@ -1366,6 +1366,8 @@
       try {
         const snap = await db.collection('clientes').get();
         snap.forEach(doc => { _clientesFirestore[doc.id] = doc.data(); });
+        // O plano do cliente influencia o valor mostrado: redesenha as telas com os dados já carregados
+        try { renderDashboard(); applyFilters(); } catch (e) {}
       } catch(e) { console.warn('Erro ao carregar clientes:', e); }
     }
 
@@ -1585,9 +1587,18 @@
       return x.data >= p.ini && x.data <= p.fim && (!p.ate || x.data < p.ate) &&
         (COBERTURA_PLANO_NOMES[p.plano] || []).includes(x.servico);
     }
+    // Ordem em que o agendamento foi feito (o limite do plano vale para quem reservou primeiro, não para a data do corte)
+    function ordemCriacao(x) {
+      const t = x && x.criadoEm;
+      if (t && typeof t.toMillis === 'function') return t.toMillis();
+      if (t && typeof t.seconds === 'number') return t.seconds * 1000;
+      return 0; // sem data de criação (registros antigos): contam como os mais antigos
+    }
+    function gravadoComoLimiteAtingido(x) { return /^Limite do plano atingido/.test((x && x.obs) || ''); }
     function atendimentoCobertoPorPlano(a) {
       if (!a || !a.data) return false;
       if (agendamentoGravadoComoPlano(a)) return true;
+      if (gravadoComoLimiteAtingido(a)) return false; // o site já gravou como cobrado
       const c = _clientesFirestore[chaveTelefone(a.telefone)];
       if (!c) return false;
       const p = periodosDoPlano(c).find(pp => periodoCobre(pp, a));
@@ -1598,9 +1609,9 @@
       const [ini, fim] = lim.por === 'semana' ? semanaDeISO(a.data) : [p.ini, p.fim];
       const key = chaveTelefone(a.telefone);
       const doPlano = allAgendamentos
-        .filter(x => x.status !== 'cancelado' && chaveTelefone(x.telefone) === key && x.data >= ini && x.data <= fim &&
-                     (agendamentoGravadoComoPlano(x) || periodoCobre(p, x)))
-        .sort((x, y) => (x.data + (x.horario || '')).localeCompare(y.data + (y.horario || '')));
+        .filter(x => x.status !== 'cancelado' && !gravadoComoLimiteAtingido(x) && chaveTelefone(x.telefone) === key &&
+                     x.data >= ini && x.data <= fim && (agendamentoGravadoComoPlano(x) || periodoCobre(p, x)))
+        .sort((x, y) => (ordemCriacao(x) - ordemCriacao(y)) || (x.data + (x.horario || '')).localeCompare(y.data + (y.horario || '')));
       const idx = doPlano.findIndex(x => x === a || (a.id && x.id === a.id));
       return idx < 0 ? true : idx < lim.qtd;
     }
