@@ -276,6 +276,28 @@
           </div>
         </div>
 
+        <!-- Horários disponíveis (por dia) -->
+        <div class="recent-section" style="margin-bottom:28px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+            <h3 style="margin:0;">Horários Disponíveis</h3>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <button onclick="dispMudarDia(-1)" aria-label="Dia anterior" style="background:#122452;border:1px solid #233F80;color:#94A4CC;width:34px;height:34px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">‹</button>
+              <input type="date" id="disp-data" onchange="dispEscolherData(this.value)" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:7px 12px;outline:none;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;color-scheme:dark;"/>
+              <button onclick="dispMudarDia(1)" aria-label="Próximo dia" style="background:#122452;border:1px solid #233F80;color:#94A4CC;width:34px;height:34px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">›</button>
+              <button onclick="dispEscolherData('')" style="background:#122452;border:1px solid #233F80;color:#94A4CC;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Hoje</button>
+              <button id="disp-copiar" onclick="dispCopiarLivres()" style="background:transparent;border:1px solid #EBC53166;color:#EBC531;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Copiar livres</button>
+            </div>
+          </div>
+          <div id="disp-resumo" style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;margin-bottom:12px;"></div>
+          <div id="disp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;"></div>
+          <div id="disp-extra" style="font-family:'Roboto',sans-serif;font-size:12px;color:#e0a030;margin-top:10px;"></div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-family:'Roboto',sans-serif;font-size:11px;color:#5E6E9E;">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#123a24;border:1px solid #1f9e54;margin-right:6px;"></span>Livre</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#3a2c08;border:1px solid #EBC531;margin-right:6px;"></span>Ocupado</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#0C1838;border:1px solid #16295C;margin-right:6px;"></span>Já passou</span>
+          </div>
+        </div>
+
         <div class="recent-section">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
             <h3 style="margin:0;" id="recent-section-title">Agendamentos Recentes</h3>
@@ -1021,8 +1043,131 @@
         .reduce((s, p) => s + (Number(p.valor) || 0), 0);
     }
 
+    // ── Horários disponíveis (dashboard) ──
+    let _dispData = '';       // '' = hoje
+    let _dispCfgEstado = 0;   // 0 = não carregou, 1 = carregando, 2 = pronto
+    let _dispLivres = [];     // horários livres exibidos (para "Copiar livres")
+
+    function dispCarregarConfig() {
+      _dispCfgEstado = 1;
+      return Promise.all([
+        db.collection('config').doc('horarios').get(),
+        db.collection('config').doc('datas_especiais').get(),
+      ]).then(([h, d]) => {
+        if (h.exists) {
+          const saved = h.data();
+          DIAS_SEMANA.forEach(dia => { horariosConfig[dia.key] = Object.assign({}, DEFAULT_HORARIOS[dia.key], saved[dia.key] || {}); });
+        }
+        datasEspeciais = d.exists ? (d.data() || {}) : {};
+      }).catch(() => {}).then(() => { _dispCfgEstado = 2; });
+    }
+    function dispDataAtual() { return _dispData || localDateStr(); }
+    function dispEscolherData(v) { _dispData = v || ''; renderDisponibilidade(); }
+    function dispMudarDia(delta) {
+      const [y, m, d] = dispDataAtual().split('-').map(Number);
+      const n = new Date(y, m - 1, d + delta);
+      _dispData = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+      renderDisponibilidade();
+    }
+    // Configuração do dia: data especial vale mais que o horário da semana
+    function dispConfigDoDia(iso) {
+      const esp = datasEspeciais[iso];
+      if (esp) {
+        if (esp.tipo === 'fechado') return { fechado: true, motivo: esp.desc || 'Data especial (fechado)' };
+        return { inicio: esp.inicio, fim: esp.fim, almoco: !!esp.almoco, almoco_inicio: esp.almoco_inicio, almoco_fim: esp.almoco_fim, especial: esp.desc || 'Data especial' };
+      }
+      const [y, m, d] = iso.split('-').map(Number);
+      const cfg = horariosConfig[DIAS_SEMANA[new Date(y, m - 1, d).getDay()].key];
+      if (!cfg || !cfg.ativo) return { fechado: true, motivo: 'Dia sem atendimento' };
+      return cfg;
+    }
+    function dispNormHora(h) {
+      const mt = /(\d{1,2}):(\d{2})/.exec(String(h || ''));
+      return mt ? mt[1].padStart(2, '0') + ':' + mt[2] : '';
+    }
+    function renderDisponibilidade() {
+      const grid = document.getElementById('disp-grid');
+      if (!grid) return;
+      const resumo = document.getElementById('disp-resumo');
+      const extra = document.getElementById('disp-extra');
+      if (_dispCfgEstado === 0) { dispCarregarConfig().then(renderDisponibilidade); }
+      if (_dispCfgEstado !== 2) { resumo.textContent = 'Carregando horários...'; return; }
+
+      const iso = dispDataAtual();
+      const inp = document.getElementById('disp-data');
+      if (inp && inp.value !== iso) inp.value = iso;
+      const [y, m, d] = iso.split('-').map(Number);
+      const diaNome = DIAS_SEMANA[new Date(y, m - 1, d).getDay()].label;
+      const rotuloDia = fmtDataBR(iso) + ' · ' + diaNome;
+      _dispLivres = [];
+      extra.textContent = '';
+
+      const cfg = dispConfigDoDia(iso);
+      const marcados = allAgendamentos.filter(a => a.data === iso && a.status !== 'cancelado');
+      if (cfg.fechado) {
+        grid.innerHTML = '';
+        resumo.innerHTML = '<strong style="color:#F1EAD6;">' + escPlano(rotuloDia) + '</strong> — <span style="color:#e05555;">Fechado</span> (' + escPlano(cfg.motivo) + ')';
+        return;
+      }
+      const temAlmoco = cfg.almoco && cfg.almoco_inicio && cfg.almoco_fim;
+      const slots = gerarSlots(cfg.inicio || '08:00', cfg.fim || '18:00', !!temAlmoco, cfg.almoco_inicio || '', cfg.almoco_fim || '');
+
+      const agora = new Date();
+      const hoje = localDateStr();
+      const agoraMin = agora.getHours() * 60 + agora.getMinutes();
+      const passou = h => iso < hoje || (iso === hoje && (parseInt(h.slice(0, 2)) * 60 + parseInt(h.slice(3))) <= agoraMin);
+
+      const porHora = {};
+      marcados.forEach(a => { const h = dispNormHora(a.horario); if (h) (porHora[h] = porHora[h] || []).push(a); });
+
+      let livres = 0, ocupados = 0;
+      grid.innerHTML = slots.map(h => {
+        const ags = porHora[h];
+        if (ags) {
+          ocupados++;
+          const nome = escPlano(String(ags[0].cliente || '—').trim().split(' ')[0]);
+          const tip = escPlano(ags.map(a => (a.cliente || '—') + ' · ' + (a.servico || '')).join('\n'));
+          return '<div title="' + tip + '" style="background:#3a2c08;border:1px solid #EBC531;border-radius:6px;padding:8px 6px;text-align:center;">' +
+            '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:#EBC531;letter-spacing:.5px;">' + h + '</div>' +
+            '<div style="font-family:\'Roboto\',sans-serif;font-size:10px;color:#c9a94a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nome + (ags.length > 1 ? ' +' + (ags.length - 1) : '') + '</div></div>';
+        }
+        if (passou(h)) {
+          return '<div style="background:#0C1838;border:1px solid #16295C;border-radius:6px;padding:8px 6px;text-align:center;">' +
+            '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:#3d4d7a;text-decoration:line-through;">' + h + '</div>' +
+            '<div style="font-family:\'Roboto\',sans-serif;font-size:10px;color:#3d4d7a;">passou</div></div>';
+        }
+        livres++; _dispLivres.push(h);
+        return '<div style="background:#123a24;border:1px solid #1f9e54;border-radius:6px;padding:8px 6px;text-align:center;">' +
+          '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:#4cd984;letter-spacing:.5px;">' + h + '</div>' +
+          '<div style="font-family:\'Roboto\',sans-serif;font-size:10px;color:#2db866;">livre</div></div>';
+      }).join('');
+
+      resumo.innerHTML = '<strong style="color:#F1EAD6;">' + escPlano(rotuloDia) + '</strong> — ' +
+        '<strong style="color:#4cd984;">' + livres + ' livre' + (livres === 1 ? '' : 's') + '</strong> · ' +
+        '<strong style="color:#EBC531;">' + ocupados + ' ocupado' + (ocupados === 1 ? '' : 's') + '</strong>' +
+        ' · atendimento ' + escPlano(cfg.inicio || '') + ' às ' + escPlano(cfg.fim || '') +
+        (temAlmoco ? ' (almoço ' + escPlano(cfg.almoco_inicio) + '–' + escPlano(cfg.almoco_fim) + ')' : '') +
+        (cfg.especial ? ' · <span style="color:#EBC531;">' + escPlano(cfg.especial) + '</span>' : '');
+
+      // Agendamentos marcados em horário que não está na grade (ex.: atendimento avulso ou grade alterada depois)
+      const fora = Object.keys(porHora).filter(h => !slots.includes(h)).sort();
+      if (fora.length) {
+        extra.textContent = 'Também agendado fora da grade: ' + fora.map(h => h + ' (' + String(porHora[h][0].cliente || '—').trim().split(' ')[0] + ')').join(', ');
+      }
+    }
+    function dispCopiarLivres() {
+      if (!_dispLivres.length) { showToast('Não há horários livres nesse dia.'); return; }
+      const iso = dispDataAtual();
+      const [y, m, d] = iso.split('-').map(Number);
+      const txt = 'Horários livres em ' + fmtDataBR(iso).slice(0, 5) + ' (' + DIAS_SEMANA[new Date(y, m - 1, d).getDay()].label.split('-')[0] + '): ' + _dispLivres.join(', ');
+      const ok = () => showToast('Horários livres copiados.');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, () => prompt('Copie o texto:', txt));
+      else prompt('Copie o texto:', txt);
+    }
+
     function renderDashboard() {
       const hoje = localDateStr();
+      try { renderDisponibilidade(); } catch (e) { console.warn(e); }
       const filterDe  = document.getElementById('dash-filter-de').value;
       const filterAte = document.getElementById('dash-filter-ate').value;
 
