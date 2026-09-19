@@ -1,7 +1,7 @@
 {
-  "name": "Wellisson Barbearia",
+  "name": "Wellisson Barber",
   "short_name": "Wellisson",
-  "description": "Agende seu horário na Wellisson Barbearia",
+  "description": "Agende seu horário na Wellisson Barber",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#070E24",
