@@ -123,7 +123,7 @@
   <!-- LOGIN -->
   <div id="login-screen" class="login-screen">
     <div class="login-card">
-      <img src="logo.png" alt="Wellisson Barbearia" class="login-logo"/>
+      <img src="logo.png" alt="Wellisson Barber" class="login-logo"/>
       <h2>Painel Administrativo</h2>
       <p>Entre com a senha do dono</p>
       <div class="form-group">
@@ -141,7 +141,7 @@
       <div class="sidebar-top">
         <div class="sidebar-brand">
           <img src="logo_emblema.png" alt="" class="sidebar-logo"/>
-          <span class="sidebar-brand-text">Wellisson Barbearia</span>
+          <span class="sidebar-brand-text">Wellisson Barber</span>
         </div>
       </div>
       <nav class="sidebar-nav">
@@ -1046,7 +1046,7 @@
           const msg = [
             'Ola, *' + primeiroNome + '*!',
             '',
-            'Seu agendamento na *Wellisson Barbearia* foi *confirmado*!',
+            'Seu agendamento na *Wellisson Barber* foi *confirmado*!',
             '',
             '*Detalhes:*',
             '*Servico:* ' + (ag.servico || '--'),
@@ -1343,6 +1343,14 @@
       return parseInt(m) === (amanha.getMonth() + 1) && parseInt(d) === amanha.getDate();
     }
 
+    // Mensagem de parabéns enviada ao aniversariante (WhatsApp)
+    function mensagemAniversario(nomeCompleto) {
+      const primeiro = String(nomeCompleto || '').trim().split(' ')[0];
+      return 'Olá ' + primeiro + '! Amanhã é seu aniversário e a Wellisson Barber deseja um feliz aniversário! ' +
+        'Para comemorar, você ganha um serviço extra de cortesia, à sua escolha: lavagem ou sobrancelha. ' +
+        'É só agendar seu horário e escolher o extra no dia do atendimento. Feliz aniversário!';
+    }
+
     function renderAniversariantesBanner(clientes) {
       const banner = document.getElementById('aniversariantes-banner');
       const lista  = document.getElementById('aniversariantes-lista');
@@ -1352,7 +1360,7 @@
       banner.style.display = 'block';
       lista.innerHTML = aniversariantes.map(c => {
         const tel = (c.telefone || '').replace(/\D/g, '');
-        const msg = encodeURIComponent('Ola ' + c.nome.split(' ')[0] + '! Amanha e seu aniversario e nos da Wellisson Barbearia queremos te desejar um dia incrivel! Que tal comemorar com um corte novo? Agende seu horario e venha nos visitar. Feliz aniversario!');
+        const msg = encodeURIComponent(mensagemAniversario(c.nome));
         return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;background:#201500;border:1px solid #3a2800;border-radius:6px;">
           
           <div style="flex:1;">
@@ -1523,7 +1531,7 @@
       const ags = [...c.agendamentos].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
       const servicosRank = Object.entries(s.servicoMap).sort((a, b) => b[1] - a[1]);
       const tel = (c.telefone || '').replace(/\D/g, '');
-      const msgAniv = encodeURIComponent('Ola ' + c.nome.split(' ')[0] + '! Amanha e seu aniversario e nos da Wellisson Barbearia queremos te desejar um dia incrivel! Que tal comemorar com um corte novo? Feliz aniversario!');
+      const msgAniv = encodeURIComponent(mensagemAniversario(c.nome));
 
       document.getElementById('drawer-content').innerHTML = `
         ${anivAmanha && tel ? `<div style="background:#1a1208;border:1px solid #4a3800;border-radius:8px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -1662,7 +1670,7 @@
       }
       const lista = aniversariantes.map(c => {
         const tel = (c.telefone || '').replace(/\D/g, '');
-        const msg = encodeURIComponent('Ol\u00e1 ' + c.nome.split(' ')[0] + '! Amanh\u00e3 \u00e9 seu anivers\u00e1rio e n\u00f3s da Wellisson Barbearia queremos te desejar um dia incr\u00edvel! Que tal comemorar com um corte novo? Feliz Anivers\u00e1rio!');
+        const msg = encodeURIComponent(mensagemAniversario(c.nome));
         return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(235,197,49,0.15);">
           <div style="flex:1;">
             <div style="font-family:'Oswald',sans-serif;font-size:13px;color:#F1EAD6;letter-spacing:.5px;">${c.nome}</div>
@@ -1699,7 +1707,7 @@
         let perm = Notification.permission;
         if (perm === 'default') perm = await Notification.requestPermission();
         if (perm !== 'granted') return;
-        const n = new Notification('\uD83C\uDF82 Wellisson Barbearia — Anivers\u00e1rio Amanh\u00e3!', {
+        const n = new Notification('\uD83C\uDF82 Wellisson Barber — Anivers\u00e1rio Amanh\u00e3!', {
           body: nomes + (nomes.includes(',') ? ' fazem' : ' faz') + ' anivers\u00e1rio amanh\u00e3. Envie uma mensagem de parab\u00e9ns!',
           icon: 'logo.png',
           tag: 'aniversario-vr',
@@ -2009,7 +2017,7 @@
 
       // Notificação do browser (se permitido)
       if (Notification.permission === 'granted') {
-        new Notification('Novo Agendamento — Wellisson Barbearia', {
+        new Notification('Novo Agendamento — Wellisson Barber', {
           body: nome + ' · ' + servico + (data ? ' · ' + data : '') + (hora ? ' às ' + hora : ''),
           icon: 'logo.png',
           tag:  'vr-agendamento-' + a.id,
