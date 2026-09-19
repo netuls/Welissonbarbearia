@@ -1567,8 +1567,12 @@
       if (!a || !a.data) return false;
       const c = _clientesFirestore[chaveTelefone(a.telefone)];
       if (!c) return false;
+      // Se o plano foi removido, períodos pagos antes da remoção deixam de cobrir atendimentos a partir dessa data
+      const rem = c.planoRemovidoEm || '';
       return periodosDoPlano(c).some(p =>
-        a.data >= p.ini && a.data <= p.fim && (COBERTURA_PLANO_NOMES[p.plano] || []).includes(a.servico));
+        a.data >= p.ini && a.data <= p.fim &&
+        !(rem && p.ini < rem && a.data >= rem) &&
+        (COBERTURA_PLANO_NOMES[p.plano] || []).includes(a.servico));
     }
     function valorReceita(a) { return atendimentoCobertoPorPlano(a) ? 0 : (Number(a.preco) || 0); }
 
@@ -1730,12 +1734,14 @@
         'Cancelar = manter o que ele já pagou no financeiro.');
       try {
         const del = firebase.firestore.FieldValue.delete();
-        const upd = { plano: del, planoPagoEm: del, planoVenceEm: del };
+        const removidoEm = hojeISOAdmin();
+        const upd = { plano: del, planoPagoEm: del, planoVenceEm: del, planoRemovidoEm: removidoEm };
         if (apagarPagamentos) upd.planoPagamentos = del;
         await db.collection('clientes').doc(key).update(upd);
         delete _clientesFirestore[key].plano;
         delete _clientesFirestore[key].planoPagoEm;
         delete _clientesFirestore[key].planoVenceEm;
+        _clientesFirestore[key].planoRemovidoEm = removidoEm;
         if (apagarPagamentos) delete _clientesFirestore[key].planoPagamentos;
         showToast(apagarPagamentos ? 'Plano e pagamentos removidos.' : 'Plano removido.');
         renderPlanosClientes();
