@@ -1722,19 +1722,31 @@
       const c = _clientesFirestore[key];
       if (!c) return;
       if (!confirm('Remover o plano de ' + (c.nome || key) + '? Ele volta a pagar os serviços normalmente.')) return;
+      const temPagamentos = Array.isArray(c.planoPagamentos) && c.planoPagamentos.length > 0;
+      // Apagar também os pagamentos tira o status de plano do dashboard por completo
+      const apagarPagamentos = temPagamentos && confirm(
+        'Apagar também os pagamentos deste plano do financeiro?\n\n' +
+        'OK = apagar. O dashboard volta como se ele nunca tivesse tido plano (os atendimentos voltam a contar com o valor normal).\n' +
+        'Cancelar = manter o que ele já pagou no financeiro.');
       try {
         const del = firebase.firestore.FieldValue.delete();
-        await db.collection('clientes').doc(key).update({ plano: del, planoPagoEm: del, planoVenceEm: del });
+        const upd = { plano: del, planoPagoEm: del, planoVenceEm: del };
+        if (apagarPagamentos) upd.planoPagamentos = del;
+        await db.collection('clientes').doc(key).update(upd);
         delete _clientesFirestore[key].plano;
         delete _clientesFirestore[key].planoPagoEm;
         delete _clientesFirestore[key].planoVenceEm;
-        showToast('Plano removido.');
+        if (apagarPagamentos) delete _clientesFirestore[key].planoPagamentos;
+        showToast(apagarPagamentos ? 'Plano e pagamentos removidos.' : 'Plano removido.');
         renderPlanosClientes();
+        try { renderDashboard(); } catch (e) {}
+        try { renderClientes(); } catch (e) {}
       } catch (e) {
         console.warn(e);
         showToast('Erro ao remover o plano.');
       }
     }
+
 
     // Ao abrir o painel: avisa os planos que vencem hoje ou já venceram
     async function verificarPlanosGlobal() {
