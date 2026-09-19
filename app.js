@@ -85,6 +85,55 @@ window.state = state;
 let currentUser = null; // { nome, telefone } — preenchido após login
 
 // ══════════════════════════════════════════════════
+//  PLANOS MENSAIS
+//  Cliente com plano ativo não paga os serviços incluídos no plano.
+//  O plano é cadastrado pelo painel admin (campos plano, planoPagoEm e
+//  planoVenceEm no documento do cliente).
+// ══════════════════════════════════════════════════
+// Serviços incluídos em cada plano (ids de SERVICES). Ajuste aqui se as regras mudarem.
+const SERVICOS_BASICOS = ['corte', 'barba', 'sobrancelha', 'corte_barba', 'corte_barba_sob'];
+const PLAN_COVERAGE = {
+  barba:         ['barba'],
+  simples:       SERVICOS_BASICOS,
+  intermediario: SERVICOS_BASICOS,
+  senior:        SERVICOS_BASICOS,
+};
+
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// Plano ativo = tem plano e ainda não passou do dia do vencimento
+function planoAtivo(user) {
+  return !!(user && user.plano && PLAN_COVERAGE[user.plano] && user.planoVenceEm && user.planoVenceEm >= hojeISO());
+}
+function nomeDoPlano(id) {
+  const p = PLANS.find(x => x.id === id);
+  return p ? p.name : '';
+}
+function servicoCoberto(service) {
+  return !!service && planoAtivo(currentUser) && PLAN_COVERAGE[currentUser.plano].includes(service.id);
+}
+function precoCobrado(service) {
+  return servicoCoberto(service) ? 0 : Number(service.price);
+}
+// Relê o plano do cliente no Firestore (o dono pode ter alterado depois do login)
+async function refreshPlano() {
+  if (!currentUser || DEMO_MODE) { renderServiceOptions(); return; }
+  try {
+    const snap = await firebase.firestore().collection('clientes').doc(phoneKey(currentUser.telefone || '')).get();
+    if (snap.exists) {
+      const d = snap.data();
+      currentUser.plano        = d.plano || '';
+      currentUser.planoPagoEm  = d.planoPagoEm || '';
+      currentUser.planoVenceEm = d.planoVenceEm || '';
+      saveSession(currentUser);
+    }
+  } catch (e) { console.warn('Plano:', e); }
+  renderServiceOptions();
+}
+
+// ══════════════════════════════════════════════════
 //  SISTEMA DE CADASTRO / LOGIN
 // ══════════════════════════════════════════════════
 
@@ -126,6 +175,7 @@ function loadSession() {
 function clearSession() {
   sessionStorage.removeItem('wba_user');
   currentUser = null;
+  renderServiceOptions();
 }
 
 // Atualiza a UI do header de login
@@ -197,6 +247,7 @@ window.loginCheckPhone = async function() {
       closeLoginModal();
       renderAuthBar();
       preencherDadosAgendamento();
+      refreshPlano();
       showToast('Bem-vindo de volta, ' + currentUser.nome.split(' ')[0] + '!');
     } else {
       // Novo cliente — pede nome
@@ -228,6 +279,7 @@ window.loginRegister = async function() {
     closeLoginModal();
     renderAuthBar();
     preencherDadosAgendamento();
+    refreshPlano();
     showToast('Cadastro realizado! Bem-vindo, ' + nome.split(' ')[0] + '!');
   } catch (e) {
     mostrarErroLogin('name', 'Erro ao salvar. Tente novamente.', 'login-name-input');
@@ -323,7 +375,7 @@ window.openMyBookings = async function() {
           <div class="agd-info">
             <div class="agd-servico">${a.servico}</div>
             <div class="agd-detalhe">${formatDate(a.data)} · ${a.horario}</div>
-            <div class="agd-preco">R$${Number(a.preco).toFixed(2).replace('.',',')}</div>
+            <div class="agd-preco"${Number(a.preco) === 0 ? ' style="font-size:14px;"' : ''}>${Number(a.preco) === 0 ? 'Incluso no plano' : 'R$' + Number(a.preco).toFixed(2).replace('.',',')}</div>
             ${statusLabel}
           </div>
           <button class="btn-cancelar" onclick="cancelarAgendamento('${d.id}', '${a.servico}', '${a.data}', '${a.horario}')">
@@ -453,11 +505,33 @@ function preSelectService(serviceId) {
 function renderServiceOptions() {
   const list = document.getElementById('options-list');
   if (!list) return;
-  list.innerHTML = SERVICES.map(s => `
+
+  // Aviso do plano ativo
+  let info = document.getElementById('plano-info');
+  if (!info) {
+    info = document.createElement('p');
+    info.id = 'plano-info';
+    info.style.cssText = 'display:none;margin:0 0 16px;padding:12px 16px;border:1px solid rgba(235,197,49,0.35);background:rgba(235,197,49,0.08);border-radius:6px;color:#F1EAD6;font-family:Roboto,sans-serif;font-size:13px;line-height:1.5;';
+    list.parentNode.insertBefore(info, list);
+  }
+  if (planoAtivo(currentUser)) {
+    info.innerHTML = `Plano <strong>${nomeDoPlano(currentUser.plano)}</strong> ativo até ${formatDate(currentUser.planoVenceEm)}. Os serviços incluídos no seu plano não são cobrados.`;
+    info.style.display = 'block';
+  } else {
+    info.style.display = 'none';
+  }
+
+  list.innerHTML = SERVICES.map(s => {
+    const coberto = servicoCoberto(s);
+    const preco = coberto
+      ? '<span class="option-price" style="font-family:Oswald,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Incluso no plano</span>'
+      : `<span class="option-price">R$${s.price.toFixed(2).replace('.', ',')}</span>`;
+    return `
     <div class="option-item" id="opt-${s.id}" onclick="selectService('${s.id}')">
       <span>${s.name}</span>
-      <span class="option-price">R$${s.price.toFixed(2).replace('.', ',')}</span>
-    </div>`).join('');
+      ${preco}
+    </div>`;
+  }).join('');
 }
 
 // ─── Slideshow Seção Cortes ────────────────────────
@@ -780,7 +854,9 @@ function renderConfirm() {
     <div class="confirm-row"><label>Horário</label><span>${state.time}</span></div>
     ${state.obs ? `<div class="confirm-row"><label>Obs.</label><span>${state.obs}</span></div>` : ''}
     <div class="confirm-row confirm-total"><label>Valor</label>
-      <span>R$${Number(sel.price).toFixed(2).replace('.', ',')}</span>
+      ${servicoCoberto(sel)
+        ? `<span style="font-size:16px;">Incluso no plano ${nomeDoPlano(currentUser.plano)}</span>`
+        : `<span>R$${Number(sel.price).toFixed(2).replace('.', ',')}</span>`}
     </div>`;
 }
 
@@ -793,7 +869,9 @@ function sendWhatsAppNotification() {
     '*Servico:* ' + sel.name,
     '*Data:* ' + formatDate(state.date),
     '*Horario:* ' + state.time,
-    '*Valor:* R$' + Number(sel.price).toFixed(2).replace('.', ','),
+    servicoCoberto(sel)
+      ? '*Valor:* Incluso no plano ' + nomeDoPlano(currentUser.plano) + ' (sem cobrança)'
+      : '*Valor:* R$' + Number(sel.price).toFixed(2).replace('.', ','),
   ];
   if (state.obs) lines.push('*Obs:* ' + state.obs);
   window.open(`https://wa.me/${WHATSAPP_NOTIFY}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
@@ -827,10 +905,15 @@ window.submitBooking = async function() {
       console.log('[DEMO] Agendamento simulado:', { ...state });
     } else {
       const key = phoneKey(state.phone);
+      await refreshPlano(); // confirma o plano no banco antes de definir o valor
+      const coberto  = servicoCoberto(state.selected);
+      const obsFinal = coberto
+        ? 'Plano ' + nomeDoPlano(currentUser.plano) + ' - sem cobrança' + (state.obs ? ' | ' + state.obs : '')
+        : state.obs;
       await firebase.firestore().collection('agendamentos').add({
-        tipo: 'servico', servico: state.selected.name, preco: state.selected.price,
+        tipo: 'servico', servico: state.selected.name, preco: precoCobrado(state.selected),
         cliente: state.name, telefone: key,
-        data: state.date, horario: state.time, obs: state.obs,
+        data: state.date, horario: state.time, obs: obsFinal,
         status: 'agendado',
           criadoEm: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -874,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sessão
   currentUser = loadSession();
   renderAuthBar();
-  if (currentUser) preencherDadosAgendamento();
+  if (currentUser) { preencherDadosAgendamento(); refreshPlano(); }
 
   // Máscara telefone (apenas se usuário não estiver logado)
   const phoneInput = document.getElementById('client-phone');
