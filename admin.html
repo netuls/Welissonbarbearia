@@ -937,6 +937,7 @@
     // Valor mostrado nas listas: agendamentos de cliente com plano aparecem como "Plano"
     function fmtValorAgd(a) {
       const v = Number(a.preco) || 0;
+      if (atendimentoCobertoPorPlano(a)) return 'Plano';
       if (v === 0 && /^Plano /.test(a.obs || '')) return 'Plano';
       return 'R$' + v.toFixed(2).replace('.', ',');
     }
@@ -1013,7 +1014,7 @@
       if (hasFilter) {
         const receitaServicos = agendamentosNoRange
           .filter(a => a.status === 'concluido')
-          .reduce((acc, a) => acc + (a.preco || 0), 0);
+          .reduce((acc, a) => acc + valorReceita(a), 0);
         const receitaPlanosPeriodo = receitaDePlanos(efDe, efAte);
         const receitaPeriodo = receitaServicos + receitaPlanosPeriodo;
         document.getElementById('stat-receita-dia').textContent = 'R$' + receitaPeriodo.toFixed(2).replace('.', ',');
@@ -1399,8 +1400,9 @@
 
     function calcClientStats(agendamentos) {
       const concluidos = agendamentos.filter(a => a.status === 'concluido');
-      const gastoTotal = concluidos.reduce((s, a) => s + (a.preco || 0), 0);
-      const ticket     = concluidos.length ? gastoTotal / concluidos.length : 0;
+      const pagos      = concluidos.filter(a => !atendimentoCobertoPorPlano(a)); // fora os atendimentos do plano
+      const gastoTotal = pagos.reduce((s, a) => s + (a.preco || 0), 0);
+      const ticket     = pagos.length ? gastoTotal / pagos.length : 0;
       const servicoMap = {};
       agendamentos.forEach(a => {
         if (!a.servico) return;
@@ -1409,7 +1411,7 @@
       const servicoFavorito = Object.entries(servicoMap).sort((a, b) => b[1] - a[1])[0];
       const datas = agendamentos.map(a => a.data).filter(Boolean).sort();
       const ultimaVisita = datas[datas.length - 1];
-      return { concluidos: concluidos.length, total: agendamentos.length, gastoTotal, ticket, servicoMap, servicoFavorito, ultimaVisita };
+      return { concluidos: concluidos.length, pagos: pagos.length, total: agendamentos.length, gastoTotal, ticket, servicoMap, servicoFavorito, ultimaVisita };
     }
 
     function fmtNascimento(nasc) {
@@ -1540,6 +1542,36 @@
       if (!lista.some(p => p.data === pag.data && p.valor === pag.valor && p.plano === pag.plano)) lista.push(pag);
       return lista;
     }
+    // Serviços incluídos em cada plano, pelo nome gravado no agendamento (mesma regra do site)
+    const SERVICOS_BASICOS_NOMES = ['Corte', 'Barba', 'Sobrancelha', 'Corte + Barba', 'Corte + Barba + Sobrancelha'];
+    const COBERTURA_PLANO_NOMES = {
+      barba:         ['Barba'],
+      simples:       SERVICOS_BASICOS_NOMES,
+      intermediario: SERVICOS_BASICOS_NOMES,
+      senior:        SERVICOS_BASICOS_NOMES,
+    };
+    // Períodos de plano pagos pelo cliente: do dia do pagamento até o vencimento
+    function periodosDoPlano(c) {
+      const ps = [];
+      (Array.isArray(c.planoPagamentos) ? c.planoPagamentos : []).forEach(p => {
+        if (p.data) ps.push({ plano: p.plano || c.plano, ini: p.data, fim: somarUmMes(p.data) });
+      });
+      if (c.plano && c.planoPagoEm && c.planoVenceEm && !ps.some(x => x.ini === c.planoPagoEm)) {
+        ps.push({ plano: c.plano, ini: c.planoPagoEm, fim: c.planoVenceEm });
+      }
+      return ps;
+    }
+    // O atendimento foi feito por cliente com plano válido na data e o serviço é coberto pelo plano?
+    // Nesse caso ele não entra como receita (a receita é a mensalidade do plano).
+    function atendimentoCobertoPorPlano(a) {
+      if (!a || !a.data) return false;
+      const c = _clientesFirestore[chaveTelefone(a.telefone)];
+      if (!c) return false;
+      return periodosDoPlano(c).some(p =>
+        a.data >= p.ini && a.data <= p.fim && (COBERTURA_PLANO_NOMES[p.plano] || []).includes(a.servico));
+    }
+    function valorReceita(a) { return atendimentoCobertoPorPlano(a) ? 0 : (Number(a.preco) || 0); }
+
     function clientesComPlano() {
       return Object.entries(_clientesFirestore)
         .filter(([, c]) => c && c.plano && c.planoVenceEm)
@@ -1785,7 +1817,7 @@
 
       const totalClientes = clientes.length;
       const totalGasto    = clientes.reduce((s, c) => s + c.stats.gastoTotal, 0);
-      const totalConc     = clientes.reduce((s, c) => s + c.stats.concluidos, 0);
+      const totalConc     = clientes.reduce((s, c) => s + c.stats.pagos, 0);
       const ticketMedio   = totalConc ? totalGasto / totalConc : 0; // só atendimentos pagos
       const totalPlanos   = receitaDePlanos('', '');                 // mensalidades de planos
       const clienteTop    = [...clientes].sort((a, b) => b.stats.gastoTotal - a.stats.gastoTotal)[0];
