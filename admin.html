@@ -1545,12 +1545,11 @@
       return lista;
     }
     // Serviços incluídos em cada plano, pelo nome gravado no agendamento (mesma regra do site)
-    const SERVICOS_BASICOS_NOMES = ['Corte', 'Barba', 'Sobrancelha', 'Corte + Barba', 'Corte + Barba + Sobrancelha'];
     const COBERTURA_PLANO_NOMES = {
       barba:         ['Barba'],
-      simples:       SERVICOS_BASICOS_NOMES,
-      intermediario: SERVICOS_BASICOS_NOMES,
-      senior:        SERVICOS_BASICOS_NOMES,
+      simples:       ['Corte'],
+      intermediario: ['Corte'],
+      senior:        ['Corte', 'Barba', 'Corte + Barba'],
     };
     // Períodos de plano pagos pelo cliente: do dia do pagamento até o vencimento
     function periodosDoPlano(c) {
