@@ -1570,15 +1570,51 @@
     function agendamentoGravadoComoPlano(a) {
       return !!a && (Number(a.preco) || 0) === 0 && /^Plano /.test(a.obs || '');
     }
+    // Limites de uso por plano (mesma regra do site): qtd de atendimentos cobertos por 'periodo' ou 'semana'
+    const LIMITES_PLANO_ADMIN = {
+      barba:   { qtd: 1, por: 'semana' },
+      simples: { qtd: 2, por: 'periodo' },
+    };
+    function semanaDeISO(dataISO) {
+      const [y, m, d] = dataISO.split('-').map(Number);
+      const dow = (new Date(y, m - 1, d).getDay() + 6) % 7; // segunda = 0
+      const f = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+      return [f(new Date(y, m - 1, d - dow)), f(new Date(y, m - 1, d - dow + 6))];
+    }
+    function periodoCobre(p, x) {
+      return x.data >= p.ini && x.data <= p.fim && (!p.ate || x.data < p.ate) &&
+        (COBERTURA_PLANO_NOMES[p.plano] || []).includes(x.servico);
+    }
     function atendimentoCobertoPorPlano(a) {
       if (!a || !a.data) return false;
       if (agendamentoGravadoComoPlano(a)) return true;
       const c = _clientesFirestore[chaveTelefone(a.telefone)];
       if (!c) return false;
-      return periodosDoPlano(c).some(p =>
-        a.data >= p.ini && a.data <= p.fim &&
-        (!p.ate || a.data < p.ate) &&
-        (COBERTURA_PLANO_NOMES[p.plano] || []).includes(a.servico));
+      const p = periodosDoPlano(c).find(pp => periodoCobre(pp, a));
+      if (!p) return false;
+      const lim = LIMITES_PLANO_ADMIN[p.plano];
+      if (!lim) return true;
+      // Com limite: só os primeiros atendimentos da janela (período ou semana) ficam cobertos; o resto é cobrado
+      const [ini, fim] = lim.por === 'semana' ? semanaDeISO(a.data) : [p.ini, p.fim];
+      const key = chaveTelefone(a.telefone);
+      const doPlano = allAgendamentos
+        .filter(x => x.status !== 'cancelado' && chaveTelefone(x.telefone) === key && x.data >= ini && x.data <= fim &&
+                     (agendamentoGravadoComoPlano(x) || periodoCobre(p, x)))
+        .sort((x, y) => (x.data + (x.horario || '')).localeCompare(y.data + (y.horario || '')));
+      const idx = doPlano.findIndex(x => x === a || (a.id && x.id === a.id));
+      return idx < 0 ? true : idx < lim.qtd;
+    }
+    // "Usou X de Y" do plano atual do cliente (mostrado na lista de clientes com plano)
+    function usoPlanoHtml(c) {
+      const lim = LIMITES_PLANO_ADMIN[c.plano];
+      if (!lim) return '';
+      const [ini, fim] = lim.por === 'semana' ? semanaDeISO(hojeISOAdmin()) : [c.planoPagoEm, c.planoVenceEm];
+      const key = c.key;
+      const usados = allAgendamentos.filter(x => x.status !== 'cancelado' && chaveTelefone(x.telefone) === key &&
+        x.data >= ini && x.data <= fim && atendimentoCobertoPorPlano(x)).length;
+      const cor = usados >= lim.qtd ? '#e0a030' : '#5E6E9E';
+      return '<div style="font-family:Roboto,sans-serif;font-size:12px;color:' + cor + ';margin-top:2px;">Usou ' + usados + ' de ' + lim.qtd +
+        (lim.por === 'semana' ? ' nesta semana' : ' neste período') + '</div>';
     }
     // Data em que o plano foi removido. Remoções antigas (sem data gravada) valem a partir de hoje.
     function dataRemocaoPlano(c) {
@@ -1665,6 +1701,7 @@
             '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:#F1EAD6;letter-spacing:.5px;">' + escPlano(p.nome || p.key) + '</div>' +
             '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#7183B4;margin-top:2px;">Plano ' + escPlano(pl.nome) + ' · ' + fmtMoedaPlano(pl.preco) + '/mês</div>' +
             '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#5E6E9E;margin-top:2px;">Pagou em ' + fmtDataBR(p.planoPagoEm) + ' · Vence em ' + fmtDataBR(p.planoVenceEm) + '</div>' +
+            usoPlanoHtml(p) +
           '</div>' +
           '<span style="font-family:\'Oswald\',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:' + corStatus[st.tipo] + ';border:1px solid ' + corStatus[st.tipo] + '55;padding:4px 10px;border-radius:20px;white-space:nowrap;">' + rotulo + '</span>' +
           '<button onclick="registrarPagamentoPlano(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;">Registrar pagamento</button>' +
