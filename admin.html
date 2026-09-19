@@ -279,6 +279,7 @@
         <div class="recent-section">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
             <h3 style="margin:0;" id="recent-section-title">Agendamentos Recentes</h3>
+            <button onclick="abrirZerarReceitas()" style="background:transparent;border:1px solid rgba(200,60,60,0.35);color:#e05555;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Zerar receitas</button>
           </div>
           <div class="table-wrap" id="recent-list"></div>
         </div>
@@ -673,6 +674,26 @@
     </div>
   </div>
 
+  <div id="zerar-receitas-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;">
+    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:30px 26px;max-width:420px;width:92%;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
+      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Zerar receitas</h3>
+      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;line-height:1.6;margin-bottom:12px;">
+        Isso zera o faturamento (atendimentos concluídos e mensalidades de planos) que está no painel hoje:
+        <strong id="zerar-receitas-valor" style="color:#EBC531;"></strong>.
+      </p>
+      <p style="font-family:'Roboto',sans-serif;font-size:12px;color:#7183B4;line-height:1.6;margin-bottom:16px;">
+        Clientes, agendamentos, histórico de visitas e planos <strong style="color:#F1EAD6;">não são apagados</strong> — só o dinheiro deixa de ser contado. Atendimentos e pagamentos feitos depois disso voltam a somar normalmente. Essa ação não pode ser desfeita.
+      </p>
+      <input type="text" id="zerar-receitas-input" placeholder="Digite ZERAR para confirmar" oninput="validarZerarReceitas()" autocomplete="off"
+        style="width:100%;background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;margin-bottom:8px;"/>
+      <div id="zerar-receitas-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;min-height:16px;margin-bottom:10px;color:#94A4CC;"></div>
+      <div style="display:flex;gap:12px;">
+        <button onclick="fecharZerarReceitas()" style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">Cancelar</button>
+        <button id="zerar-receitas-confirmar" onclick="confirmarZerarReceitas()" disabled style="flex:1;padding:12px;background:rgba(176,48,48,0.08);border:1px solid rgba(176,48,48,0.2);border-radius:6px;color:#7183B4;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:not-allowed;">Zerar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="concluir-todos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
       
@@ -995,7 +1016,7 @@
     }
     function receitaDePlanos(de, ate) {
       return pagamentosDePlanos()
-        .filter(p => p.data && (!de || p.data >= de) && (!ate || p.data <= ate))
+        .filter(p => p.data && !p.zerado && (!de || p.data >= de) && (!ate || p.data <= ate))
         .reduce((s, p) => s + (Number(p.valor) || 0), 0);
     }
 
@@ -1445,7 +1466,7 @@
 
     function calcClientStats(agendamentos) {
       const concluidos = agendamentos.filter(a => a.status === 'concluido');
-      const pagos      = concluidos.filter(a => !atendimentoCobertoPorPlano(a)); // fora os atendimentos do plano
+      const pagos      = concluidos.filter(a => !a.receitaZerada && !atendimentoCobertoPorPlano(a)); // fora os do plano e os já zerados
       const gastoTotal = pagos.reduce((s, a) => s + precoAgendamento(a), 0);
       const ticket     = pagos.length ? gastoTotal / pagos.length : 0;
       const servicoMap = {};
@@ -1678,7 +1699,7 @@
     }
     // Preço do atendimento como foi gravado no agendamento (o que era plano e o que era serviço fica memorizado ali).
     function precoAgendamento(a) { return Number(a && a.preco) || 0; }
-    function valorReceita(a) { return atendimentoCobertoPorPlano(a) ? 0 : precoAgendamento(a); }
+    function valorReceita(a) { return (a && a.receitaZerada) || atendimentoCobertoPorPlano(a) ? 0 : precoAgendamento(a); }
 
     function clientesComPlano() {
       return Object.entries(_clientesFirestore)
@@ -1905,6 +1926,64 @@
       } catch (e) {
         console.warn(e);
         aviso('Erro ao trocar o plano.', '#e05555');
+      }
+    }
+
+    // ── Zerar receitas ──
+    // Marca os atendimentos concluídos (receitaZerada) e os pagamentos de plano (zerado) como já "descontados".
+    // Nada é apagado: só deixa de entrar na soma de receita.
+    function receitaAtualTotal() {
+      const serv = allAgendamentos.filter(a => a.status === 'concluido' && !a.receitaZerada).reduce((s, a) => s + valorReceita(a), 0);
+      return serv + receitaDePlanos('', '');
+    }
+    function abrirZerarReceitas() {
+      document.getElementById('zerar-receitas-valor').textContent = fmtMoedaPlano(receitaAtualTotal());
+      document.getElementById('zerar-receitas-input').value = '';
+      document.getElementById('zerar-receitas-status').textContent = '';
+      validarZerarReceitas();
+      document.getElementById('zerar-receitas-modal').style.display = 'flex';
+    }
+    function fecharZerarReceitas() { document.getElementById('zerar-receitas-modal').style.display = 'none'; }
+    function validarZerarReceitas() {
+      const ok = (document.getElementById('zerar-receitas-input').value || '').trim().toUpperCase() === 'ZERAR';
+      const btn = document.getElementById('zerar-receitas-confirmar');
+      btn.disabled = !ok;
+      btn.style.background  = ok ? 'rgba(176,48,48,0.2)' : 'rgba(176,48,48,0.08)';
+      btn.style.borderColor = ok ? 'rgba(176,48,48,0.6)' : 'rgba(176,48,48,0.2)';
+      btn.style.color       = ok ? '#d45a5a' : '#7183B4';
+      btn.style.cursor      = ok ? 'pointer' : 'not-allowed';
+    }
+    async function confirmarZerarReceitas() {
+      const st = document.getElementById('zerar-receitas-status');
+      const btn = document.getElementById('zerar-receitas-confirmar');
+      btn.disabled = true; st.style.color = '#94A4CC'; st.textContent = 'Zerando...';
+      try {
+        const ops = [];
+        allAgendamentos.filter(a => a.status === 'concluido' && !a.receitaZerada && a.id)
+          .forEach(a => ops.push({ ref: db.collection('agendamentos').doc(a.id), data: { receitaZerada: true } }));
+        const clientesAtualizados = {};
+        Object.entries(_clientesFirestore).forEach(([key, c]) => {
+          if (c && Array.isArray(c.planoPagamentos) && c.planoPagamentos.some(p => !p.zerado)) {
+            const lista = c.planoPagamentos.map(p => p.zerado ? p : { ...p, zerado: true });
+            clientesAtualizados[key] = lista;
+            ops.push({ ref: db.collection('clientes').doc(key), data: { planoPagamentos: lista } });
+          }
+        });
+        for (let i = 0; i < ops.length; i += 400) {
+          const batch = db.batch();
+          ops.slice(i, i + 400).forEach(o => batch.update(o.ref, o.data));
+          await batch.commit();
+        }
+        allAgendamentos.forEach(a => { if (a.status === 'concluido') a.receitaZerada = true; });
+        Object.entries(clientesAtualizados).forEach(([key, lista]) => { _clientesFirestore[key].planoPagamentos = lista; });
+        fecharZerarReceitas();
+        showToast('Receitas zeradas.');
+        try { renderDashboard(); } catch (e) {}
+        try { renderClientes(); } catch (e) {}
+      } catch (e) {
+        console.warn(e);
+        st.style.color = '#e05555'; st.textContent = 'Erro ao zerar: ' + (e.message || e.code || e);
+        validarZerarReceitas();
       }
     }
 
