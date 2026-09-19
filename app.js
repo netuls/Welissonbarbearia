@@ -91,12 +91,11 @@ let currentUser = null; // { nome, telefone } — preenchido após login
 //  planoVenceEm no documento do cliente).
 // ══════════════════════════════════════════════════
 // Serviços incluídos em cada plano (ids de SERVICES). Ajuste aqui se as regras mudarem.
-const SERVICOS_BASICOS = ['corte', 'barba', 'sobrancelha', 'corte_barba', 'corte_barba_sob'];
 const PLAN_COVERAGE = {
   barba:         ['barba'],
-  simples:       SERVICOS_BASICOS,
-  intermediario: SERVICOS_BASICOS,
-  senior:        SERVICOS_BASICOS,
+  simples:       ['corte'],
+  intermediario: ['corte'],
+  senior:        ['corte', 'barba', 'corte_barba'],
 };
 
 // Limites de uso por plano: quantos atendimentos o plano cobre por 'periodo' (do pagamento ao vencimento)
@@ -558,7 +557,10 @@ function renderServiceOptions() {
     list.parentNode.insertBefore(info, list);
   }
   if (planoAtivo(currentUser)) {
-    info.innerHTML = `Plano <strong>${nomeDoPlano(currentUser.plano)}</strong> ativo até ${formatDate(currentUser.planoVenceEm)}. Os serviços incluídos no seu plano não são cobrados.`;
+    const incluidos = SERVICES.filter(sv => PLAN_COVERAGE[currentUser.plano].includes(sv.id)).map(sv => sv.name).join(', ');
+    const lim = PLAN_LIMITS[currentUser.plano];
+    const limTxt = lim ? ` (${lim.qtd}x ${lim.por === 'semana' ? 'por semana' : 'no mês'})` : '';
+    info.innerHTML = `Plano <strong>${nomeDoPlano(currentUser.plano)}</strong> ativo até ${formatDate(currentUser.planoVenceEm)}. Incluso no plano: ${incluidos}${limTxt}. Os demais serviços são cobrados normalmente.`;
     info.style.display = 'block';
   } else {
     info.style.display = 'none';
