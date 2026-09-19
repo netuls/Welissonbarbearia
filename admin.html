@@ -479,6 +479,7 @@
                 <option value="simples">Simples - R$50</option>
                 <option value="intermediario">Intermediário - R$90</option>
                 <option value="senior">Senior - R$130</option>
+                <option value="neto">Neto Gostoso - Vitalício</option>
               </select>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;min-width:150px;">
@@ -1559,7 +1560,17 @@
       { id: 'simples',       nome: 'Simples',       preco: 50 },
       { id: 'intermediario', nome: 'Intermediário', preco: 90 },
       { id: 'senior',        nome: 'Senior',        preco: 130 },
+      { id: 'neto',          nome: 'Neto Gostoso',  preco: 0, vitalicio: true }, // só no painel admin
     ];
+    // Plano vitalício: sem cobrança nem vencimento (usa uma data-limite bem distante só para os cálculos)
+    const VENCIMENTO_VITALICIO = '2099-12-31';
+    function planoVitalicio(id) { return !!planoDados(id).vitalicio; }
+    function vencimentoDoPlano(id, pagoISO) { return planoVitalicio(id) ? VENCIMENTO_VITALICIO : somarUmMes(pagoISO); }
+    function vencimentoTroca(c, novoId, modo, dataISO) {
+      if (planoVitalicio(novoId)) return VENCIMENTO_VITALICIO;
+      if (modo === 'manter' && !planoVitalicio(c.plano)) return c.planoVenceEm;
+      return somarUmMes(dataISO);
+    }
     function planoDados(id) { return PLANOS_ADMIN.find(p => p.id === id) || { id, nome: id || '—', preco: 0 }; }
     function escPlano(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function chaveTelefone(raw) { return String(raw || '').replace(/\D/g, '').replace(/^55/, ''); }
@@ -1614,6 +1625,7 @@
       simples:       ['Corte'],
       intermediario: ['Corte'],
       senior:        ['Corte', 'Barba', 'Corte + Barba'],
+      neto:          ['Corte'],
     };
     // Períodos de plano pagos pelo cliente: do dia do pagamento até o vencimento
     function periodosDoPlano(c) {
@@ -1639,12 +1651,25 @@
     const LIMITES_PLANO_ADMIN = {
       barba:   { qtd: 1, por: 'semana' },
       simples: { qtd: 2, por: 'periodo' },
+      neto:    { qtd: 1, por: 'mes' }, // 1 corte por mês do calendário
     };
     function semanaDeISO(dataISO) {
       const [y, m, d] = dataISO.split('-').map(Number);
       const dow = (new Date(y, m - 1, d).getDay() + 6) % 7; // segunda = 0
       const f = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
       return [f(new Date(y, m - 1, d - dow)), f(new Date(y, m - 1, d - dow + 6))];
+    }
+    function mesDeISO(dataISO) {
+      const [y, m] = dataISO.split('-').map(Number);
+      const ult = new Date(y, m, 0).getDate();
+      const mm = String(m).padStart(2, '0');
+      return [y + '-' + mm + '-01', y + '-' + mm + '-' + String(ult).padStart(2, '0')];
+    }
+    // Janela em que o limite do plano é contado (semana, mês do calendário ou período pago)
+    function janelaLimite(lim, dataISO, ini, fim) {
+      if (lim.por === 'semana') return semanaDeISO(dataISO);
+      if (lim.por === 'mes') return mesDeISO(dataISO);
+      return [ini, fim];
     }
     function periodoCobre(p, x) {
       return x.data >= p.ini && x.data <= p.fim && (!p.ate || x.data < p.ate) &&
@@ -1669,7 +1694,7 @@
       const lim = LIMITES_PLANO_ADMIN[p.plano];
       if (!lim) return true;
       // Com limite: só os primeiros atendimentos da janela (período ou semana) ficam cobertos; o resto é cobrado
-      const [ini, fim] = lim.por === 'semana' ? semanaDeISO(a.data) : [p.ini, p.fim];
+      const [ini, fim] = janelaLimite(lim, a.data, p.ini, p.fim);
       const key = chaveTelefone(a.telefone);
       const doPlano = allAgendamentos
         .filter(x => x.status !== 'cancelado' && !gravadoComoLimiteAtingido(x) && chaveTelefone(x.telefone) === key &&
@@ -1682,13 +1707,13 @@
     function usoPlanoHtml(c) {
       const lim = LIMITES_PLANO_ADMIN[c.plano];
       if (!lim) return '';
-      const [ini, fim] = lim.por === 'semana' ? semanaDeISO(hojeISOAdmin()) : [c.planoPagoEm, c.planoVenceEm];
+      const [ini, fim] = janelaLimite(lim, hojeISOAdmin(), c.planoPagoEm, c.planoVenceEm);
       const key = c.key;
       const usados = allAgendamentos.filter(x => x.status !== 'cancelado' && chaveTelefone(x.telefone) === key &&
         x.data >= ini && x.data <= fim && atendimentoCobertoPorPlano(x)).length;
       const cor = usados >= lim.qtd ? '#e0a030' : '#5E6E9E';
       return '<div style="font-family:Roboto,sans-serif;font-size:12px;color:' + cor + ';margin-top:2px;">Usou ' + usados + ' de ' + lim.qtd +
-        (lim.por === 'semana' ? ' nesta semana' : ' neste período') + '</div>';
+        (lim.por === 'semana' ? ' nesta semana' : lim.por === 'mes' ? ' neste mês' : ' neste período') + '</div>';
     }
     // Data em que o plano foi removido. Remoções antigas (sem data gravada) valem a partir de hoje.
     function dataRemocaoPlano(c) {
@@ -1769,17 +1794,17 @@
       lista.innerHTML = planos.map(p => {
         const st = statusPlano(p.planoVenceEm);
         const pl = planoDados(p.plano);
-        const rotulo = st.tipo === 'ativo' ? 'Ativo' : st.tipo === 'hoje' ? 'Vence hoje' : 'Vencido há ' + st.dias + (st.dias === 1 ? ' dia' : ' dias');
+        const rotulo = pl.vitalicio ? 'Vitalício' : st.tipo === 'ativo' ? 'Ativo' : st.tipo === 'hoje' ? 'Vence hoje' : 'Vencido há ' + st.dias + (st.dias === 1 ? ' dia' : ' dias');
         return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:#0C1838;border:1px solid #122452;border-radius:8px;">' +
           '<div style="flex:1;min-width:180px;">' +
             '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:#F1EAD6;letter-spacing:.5px;">' + escPlano(p.nome || p.key) + '</div>' +
-            '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#7183B4;margin-top:2px;">Plano ' + escPlano(pl.nome) + ' · ' + fmtMoedaPlano(pl.preco) + '/mês</div>' +
-            '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#5E6E9E;margin-top:2px;">Pagou em ' + fmtDataBR(p.planoPagoEm) + ' · Vence em ' + fmtDataBR(p.planoVenceEm) + '</div>' +
+            '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#7183B4;margin-top:2px;">Plano ' + escPlano(pl.nome) + ' · ' + (pl.vitalicio ? 'Vitalício' : fmtMoedaPlano(pl.preco) + '/mês') + '</div>' +
+            '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#5E6E9E;margin-top:2px;">' + (pl.vitalicio ? 'Desde ' + fmtDataBR(p.planoPagoEm) + ' · Sem vencimento' : 'Pagou em ' + fmtDataBR(p.planoPagoEm) + ' · Vence em ' + fmtDataBR(p.planoVenceEm)) + '</div>' +
             (p.planoAnterior && p.planoTrocadoEm ? '<div style=\"font-family:\'Roboto\',sans-serif;font-size:12px;color:#EBC531;margin-top:2px;\">Trocou de ' + escPlano(planoDados(p.planoAnterior).nome) + ' para ' + escPlano(pl.nome) + ' em ' + fmtDataBR(p.planoTrocadoEm) + '</div>' : '') +
             usoPlanoHtml(p) +
           '</div>' +
           '<span style="font-family:\'Oswald\',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:' + corStatus[st.tipo] + ';border:1px solid ' + corStatus[st.tipo] + '55;padding:4px 10px;border-radius:20px;white-space:nowrap;">' + rotulo + '</span>' +
-          '<button onclick="registrarPagamentoPlano(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;">Registrar pagamento</button>' +
+          (pl.vitalicio ? '' : '<button onclick="registrarPagamentoPlano(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;">Registrar pagamento</button>') +
           '<button onclick=\"abrirTrocarPlano(\'' + escPlano(p.key) + '\')\" style=\"' + btnBase + 'background:transparent;border:1px solid #EBC53166;color:#EBC531;\">Trocar plano</button>' +
           '<button onclick="removerPlanoCliente(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:transparent;border:1px solid rgba(200,60,60,0.35);color:#e05555;">Remover</button>' +
         '</div>';
@@ -1806,16 +1831,17 @@
       if (!nome || key.length < 10 || !plano || !pago) { aviso('Preencha nome, WhatsApp, plano e dia do pagamento.', '#b03030'); return; }
       aviso('Salvando...', '#94A4CC');
       try {
-        const venc = somarUmMes(pago);
+        const venc = vencimentoDoPlano(plano, pago);
         const data = { nome, telefone: key, plano, planoPagoEm: pago, planoVenceEm: venc };
         if (!_clientesFirestore[key]) data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
         const pag = { data: pago, valor: planoDados(plano).preco, plano };
+        if (planoVitalicio(plano)) pag.fim = venc;
         await db.collection('clientes').doc(key).set(
           { ...data, planoPagamentos: firebase.firestore.FieldValue.arrayUnion(pag) }, { merge: true });
         _clientesFirestore[key] = { ...(_clientesFirestore[key] || {}), ...data,
           planoPagamentos: somarPagamentoLocal(_clientesFirestore[key], pag) };
         try { renderDashboard(); } catch (e) {}
-        aviso('Plano salvo! Vence em ' + fmtDataBR(venc) + '.', '#4caf50');
+        aviso(planoVitalicio(plano) ? 'Plano vitalício salvo!' : 'Plano salvo! Vence em ' + fmtDataBR(venc) + '.', '#4caf50');
         ['plano-nome', 'plano-tel'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
         const s = document.getElementById('plano-cli-select'); if (s) s.value = '';
         const dp = document.getElementById('plano-pago'); if (dp) dp.value = hojeISOAdmin();
@@ -1832,6 +1858,7 @@
       const c = _clientesFirestore[key];
       if (!c) return;
       const pl = planoDados(c.plano);
+      if (pl.vitalicio) { showToast('Plano vitalício: não tem pagamento nem vencimento.'); return; }
       if (!confirm('Registrar o pagamento de ' + (c.nome || key) + ' (' + pl.nome + ', ' + fmtMoedaPlano(pl.preco) + ') hoje?\nO novo vencimento será ' + fmtDataBR(somarUmMes(hojeISOAdmin())) + '.')) return;
       try {
         const pago = hojeISOAdmin();
@@ -1862,10 +1889,10 @@
       if (!c || !c.plano) return;
       _trocaKey = key; _trocaValorEditado = false;
       document.getElementById('troca-cliente').textContent = c.nome || key;
-      document.getElementById('troca-atual').textContent = planoDados(c.plano).nome + ' · ' + fmtMoedaPlano(planoDados(c.plano).preco) + '/mês · vence em ' + fmtDataBR(c.planoVenceEm);
+      document.getElementById('troca-atual').textContent = planoDados(c.plano).nome + (planoVitalicio(c.plano) ? ' · vitalício' : ' · ' + fmtMoedaPlano(planoDados(c.plano).preco) + '/mês · vence em ' + fmtDataBR(c.planoVenceEm));
       const sel = document.getElementById('troca-novo');
       sel.innerHTML = PLANOS_ADMIN.filter(pl => pl.id !== c.plano)
-        .map(pl => '<option value="' + pl.id + '">' + escPlano(pl.nome) + ' - ' + fmtMoedaPlano(pl.preco) + '</option>').join('');
+        .map(pl => '<option value="' + pl.id + '">' + escPlano(pl.nome) + ' - ' + (pl.vitalicio ? 'Vitalício' : fmtMoedaPlano(pl.preco)) + '</option>').join('');
       document.querySelector('input[name="troca-modo"][value="novo"]').checked = true;
       document.getElementById('troca-data').value = hojeISOAdmin();
       atualizarTrocarPlano();
@@ -1880,6 +1907,11 @@
       const c = _clientesFirestore[_trocaKey];
       if (!c) return;
       const novoId = document.getElementById('troca-novo').value;
+      // Com plano vitalício (atual ou novo) não existe "manter vencimento": sempre começa um novo ciclo
+      const semManter = planoVitalicio(c.plano) || planoVitalicio(novoId);
+      document.querySelector('input[name="troca-modo"][value="manter"]').disabled = semManter;
+      document.getElementById('troca-modo-manter').style.opacity = semManter ? '0.4' : '1';
+      if (semManter) document.querySelector('input[name="troca-modo"][value="novo"]').checked = true;
       const modo = document.querySelector('input[name="troca-modo"]:checked').value;
       const dataEl = document.getElementById('troca-data');
       const valEl = document.getElementById('troca-valor');
@@ -1887,10 +1919,10 @@
       if (origem === 'modo' || origem === 'plano') _trocaValorEditado = false;
       if (!_trocaValorEditado) valEl.value = valorPadraoTroca(c, novoId, modo).toFixed(2);
       const data = dataEl.value || hojeISOAdmin();
-      const venc = modo === 'manter' ? c.planoVenceEm : somarUmMes(data);
+      const venc = vencimentoTroca(c, novoId, modo, data);
       document.getElementById('troca-resumo').innerHTML =
         escPlano(planoDados(c.plano).nome) + ' <span style="color:#EBC531;">→</span> <strong style="color:#F1EAD6;">' + escPlano(planoDados(novoId).nome) + '</strong>' +
-        '<br>Novo vencimento: <strong style="color:#F1EAD6;">' + fmtDataBR(venc) + '</strong>';
+        '<br>Novo vencimento: <strong style="color:#F1EAD6;">' + (planoVitalicio(novoId) ? 'Vitalício (sem vencimento)' : fmtDataBR(venc)) + '</strong>';
       document.getElementById('troca-modo-novo').style.borderColor = modo === 'novo' ? '#EBC531' : '#233F80';
       document.getElementById('troca-modo-manter').style.borderColor = modo === 'manter' ? '#EBC531' : '#233F80';
     }
@@ -1908,18 +1940,18 @@
       if (modo === 'manter' && data > c.planoVenceEm) { aviso('A data da troca não pode ser depois do vencimento atual.', '#e05555'); return; }
       aviso('Salvando...', '#94A4CC');
       try {
-        const venc = modo === 'manter' ? c.planoVenceEm : somarUmMes(data);
+        const venc = vencimentoTroca(c, novoId, modo, data);
         // Pagamentos em aberto do plano antigo passam a cobrir só até o dia da troca
         const lista = (Array.isArray(c.planoPagamentos) ? c.planoPagamentos : [])
           .map(x => x.encerradoEm ? x : { ...x, encerradoEm: data });
         const pag = { data, valor, plano: novoId };
-        if (modo === 'manter') pag.fim = venc;
+        if (modo === 'manter' || planoVitalicio(novoId)) pag.fim = venc;
         lista.push(pag);
         const upd = { plano: novoId, planoPagoEm: data, planoVenceEm: venc, planoAnterior: c.plano, planoTrocadoEm: data };
         await db.collection('clientes').doc(key).set({ ...upd, planoPagamentos: lista }, { merge: true });
         _clientesFirestore[key] = { ..._clientesFirestore[key], ...upd, planoPagamentos: lista };
         fecharTrocarPlano();
-        showToast('Plano trocado para ' + planoDados(novoId).nome + '. Vence em ' + fmtDataBR(venc) + '.');
+        showToast('Plano trocado para ' + planoDados(novoId).nome + (planoVitalicio(novoId) ? '.' : '. Vence em ' + fmtDataBR(venc) + '.'));
         renderPlanosClientes();
         try { renderDashboard(); } catch (e) {}
         try { renderClientes(); } catch (e) {}
