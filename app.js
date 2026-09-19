@@ -104,8 +104,18 @@ function hojeISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 // Plano ativo = tem plano e ainda não passou do dia do vencimento
-function planoAtivo(user) {
-  return !!(user && user.plano && PLAN_COVERAGE[user.plano] && user.planoVenceEm && user.planoVenceEm >= hojeISO());
+// A checagem é feita na DATA DO ATENDIMENTO (não na data de hoje): o plano precisa valer até o dia agendado.
+function dataDoAgendamento() {
+  return (typeof state !== 'undefined' && state && state.date) ? state.date : hojeISO();
+}
+function planoAtivo(user, data) {
+  const dia = data || dataDoAgendamento();
+  return !!(user && user.plano && PLAN_COVERAGE[user.plano] && user.planoVenceEm && user.planoVenceEm >= dia && user.planoVenceEm >= hojeISO());
+}
+// Cliente tem plano cadastrado e em dia hoje, mas o dia escolhido já passa do vencimento
+function planoVenceAntesDaData(user) {
+  return !!(user && user.plano && PLAN_COVERAGE[user.plano] && user.planoVenceEm
+    && user.planoVenceEm >= hojeISO() && state && state.date && user.planoVenceEm < state.date);
 }
 function nomeDoPlano(id) {
   const p = PLANS.find(x => x.id === id);
@@ -853,6 +863,7 @@ function renderConfirm() {
     <div class="confirm-row"><label>Data</label><span>${formatDate(state.date)}</span></div>
     <div class="confirm-row"><label>Horário</label><span>${state.time}</span></div>
     ${state.obs ? `<div class="confirm-row"><label>Obs.</label><span>${state.obs}</span></div>` : ''}
+    ${planoVenceAntesDaData(currentUser) ? `<div class="confirm-row"><label>Plano</label><span style="font-size:13px;">Seu plano vence em ${formatDate(currentUser.planoVenceEm)}, antes desta data. O serviço será cobrado.</span></div>` : ''}
     <div class="confirm-row confirm-total"><label>Valor</label>
       ${servicoCoberto(sel)
         ? `<span style="font-size:16px;">Incluso no plano ${nomeDoPlano(currentUser.plano)}</span>`
