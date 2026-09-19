@@ -443,6 +443,60 @@
         <div id="aniversariantes-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
 
+      <!-- BANNER PLANOS PARA COBRAR -->
+      <div id="planos-cobrar-banner" style="display:none;background:#1a1208;border:1px solid #4a3800;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+        <div style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;color:#EBC531;text-transform:uppercase;margin-bottom:10px;">Planos para Cobrar</div>
+        <div id="planos-cobrar-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+
+      <!-- PLANOS MENSAIS -->
+      <details id="planos-details" open style="margin-bottom:20px;">
+        <summary style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#94A4CC;text-transform:uppercase;cursor:pointer;padding:14px 18px;background:#0A1330;border:1px solid #122452;border-radius:8px;list-style:none;display:flex;align-items:center;gap:8px;">
+          Clientes com Plano <span id="planos-count" style="color:#EBC531;"></span>
+        </summary>
+        <div style="background:#0A1330;border:1px solid #122452;border-top:none;border-radius:0 0 8px 8px;padding:20px 18px;">
+          <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Cliente já cadastrado <em style="font-style:normal;color:#2C4E9E;">(opcional)</em></span>
+              <select id="plano-cli-select" onchange="preencherClientePlano(this.value)"
+                style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;">
+                <option value="">Selecionar...</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Nome *</span>
+              <input type="text" id="plano-nome" placeholder="Nome e sobrenome" autocapitalize="words" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;"/>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">WhatsApp *</span>
+              <input type="tel" id="plano-tel" placeholder="85999999999" maxlength="15" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;"/>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:170px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Plano *</span>
+              <select id="plano-tipo" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;">
+                <option value="barba">Barba - R$50</option>
+                <option value="simples">Simples - R$50</option>
+                <option value="intermediario">Intermediário - R$90</option>
+                <option value="senior">Senior - R$130</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:150px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Dia do pagamento *</span>
+              <input type="date" id="plano-pago" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;"/>
+            </div>
+            <button onclick="salvarPlanoCliente()"
+              style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:10px 24px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;white-space:nowrap;">
+              Salvar Plano
+            </button>
+            <span id="plano-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#5E6E9E;align-self:center;"></span>
+          </div>
+          <div style="font-family:'Roboto',sans-serif;font-size:12px;color:#5E6E9E;margin-top:12px;line-height:1.5;">
+            O vencimento é calculado automaticamente: mesmo dia do mês seguinte. Para renovar, use "Registrar pagamento" na lista ou salve novamente com a nova data.
+          </div>
+          <div id="planos-lista" style="margin-top:20px;display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </details>
+
       <!-- CADASTRO MANUAL -->
       <details style="margin-bottom:20px;">
         <summary style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#94A4CC;text-transform:uppercase;cursor:pointer;padding:14px 18px;background:#0A1330;border:1px solid #122452;border-radius:8px;list-style:none;display:flex;align-items:center;gap:8px;">
@@ -773,6 +827,7 @@
       if (el) el.textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
       loadAgendamentos();
       verificarAniversariosGlobal();
+      verificarPlanosGlobal();
       solicitarPermissaoNotificacao();
       if ('Notification' in window && Notification.permission === 'granted') iniciarPushNotifications();
       atualizarBotaoPush();
@@ -1399,6 +1454,285 @@
     }
 
 
+
+    // ══════════════════════════════════════════════════
+    //  PLANOS MENSAIS
+    //  Guardados em clientes/{telefone}: plano, planoPagoEm, planoVenceEm
+    // ══════════════════════════════════════════════════
+    const PLANOS_ADMIN = [
+      { id: 'barba',         nome: 'Barba',         preco: 50 },
+      { id: 'simples',       nome: 'Simples',       preco: 50 },
+      { id: 'intermediario', nome: 'Intermediário', preco: 90 },
+      { id: 'senior',        nome: 'Senior',        preco: 130 },
+    ];
+    function planoDados(id) { return PLANOS_ADMIN.find(p => p.id === id) || { id, nome: id || '—', preco: 0 }; }
+    function escPlano(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function chaveTelefone(raw) { return String(raw || '').replace(/\D/g, '').replace(/^55/, ''); }
+    function hojeISOAdmin() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function fmtDataBR(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = iso.split('-');
+      return d + '/' + m + '/' + y;
+    }
+    function fmtMoedaPlano(v) { return 'R$' + Number(v).toFixed(2).replace('.', ','); }
+    // Mesmo dia do mês seguinte (se o mês seguinte for mais curto, usa o último dia dele)
+    function somarUmMes(iso) {
+      const [y, m, d] = iso.split('-').map(Number);
+      let ny = y, nm = m + 1;
+      if (nm > 12) { nm = 1; ny++; }
+      const ultimoDia = new Date(ny, nm, 0).getDate();
+      const nd = Math.min(d, ultimoDia);
+      return ny + '-' + String(nm).padStart(2, '0') + '-' + String(nd).padStart(2, '0');
+    }
+    function diasEntreISO(aISO, bISO) {
+      const [ay, am, ad] = aISO.split('-').map(Number);
+      const [by, bm, bd] = bISO.split('-').map(Number);
+      return Math.round((new Date(by, bm - 1, bd) - new Date(ay, am - 1, ad)) / 86400000);
+    }
+    // { tipo: 'ativo' | 'hoje' | 'vencido', dias }
+    function statusPlano(venceISO) {
+      const dif = diasEntreISO(hojeISOAdmin(), venceISO); // >0 futuro, 0 hoje, <0 atrasado
+      if (dif === 0) return { tipo: 'hoje', dias: 0 };
+      if (dif < 0)   return { tipo: 'vencido', dias: -dif };
+      return { tipo: 'ativo', dias: dif };
+    }
+    function mensagemCobrancaPlano(nomeCompleto, planoId, venceISO) {
+      const primeiro = String(nomeCompleto || '').trim().split(' ')[0];
+      const p = planoDados(planoId);
+      const st = statusPlano(venceISO);
+      const quando = st.tipo === 'vencido' ? 'venceu em ' + fmtDataBR(venceISO) : 'vence hoje';
+      return 'Olá ' + primeiro + '! Passando para lembrar que o seu plano ' + p.nome + ' da Wellisson Barber (' +
+        fmtMoedaPlano(p.preco) + '/mês) ' + quando + '. Para renovar, é só realizar o pagamento e nos avisar por aqui. Obrigado!';
+    }
+    function clientesComPlano() {
+      return Object.entries(_clientesFirestore)
+        .filter(([, c]) => c && c.plano && c.planoVenceEm)
+        .map(([key, c]) => ({ key, ...c }))
+        .sort((a, b) => a.planoVenceEm.localeCompare(b.planoVenceEm));
+    }
+
+    function renderPlanosClientes() {
+      const lista = document.getElementById('planos-lista');
+      const bannerLista = document.getElementById('planos-cobrar-lista');
+      const banner = document.getElementById('planos-cobrar-banner');
+      if (!lista) return;
+
+      // Data padrão do formulário
+      const dataEl = document.getElementById('plano-pago');
+      if (dataEl && !dataEl.value) dataEl.value = hojeISOAdmin();
+
+      // Lista de clientes cadastrados no seletor
+      const sel = document.getElementById('plano-cli-select');
+      if (sel) {
+        const atual = sel.value;
+        const opts = Object.entries(_clientesFirestore)
+          .filter(([, c]) => c && c.nome)
+          .sort((a, b) => a[1].nome.localeCompare(b[1].nome))
+          .map(([k, c]) => '<option value="' + escPlano(k) + '">' + escPlano(c.nome) + '</option>');
+        sel.innerHTML = '<option value="">Selecionar...</option>' + opts.join('');
+        sel.value = atual;
+      }
+
+      const planos = clientesComPlano();
+      const cnt = document.getElementById('planos-count');
+      if (cnt) cnt.textContent = planos.length ? '(' + planos.length + ')' : '';
+
+      const corStatus = { ativo: '#6dcc85', hoje: '#EBC531', vencido: '#e05555' };
+      const btnBase = "border-radius:5px;padding:7px 12px;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;white-space:nowrap;text-decoration:none;";
+
+      // Banner: planos vencendo hoje ou atrasados
+      const cobrar = planos.filter(p => statusPlano(p.planoVenceEm).tipo !== 'ativo');
+      if (banner && bannerLista) {
+        if (!cobrar.length) { banner.style.display = 'none'; }
+        else {
+          banner.style.display = 'block';
+          bannerLista.innerHTML = cobrar.map(p => {
+            const st = statusPlano(p.planoVenceEm);
+            const pl = planoDados(p.plano);
+            const tel = chaveTelefone(p.telefone || p.key);
+            const msg = encodeURIComponent(mensagemCobrancaPlano(p.nome, p.plano, p.planoVenceEm));
+            const txt = st.tipo === 'hoje' ? 'Vence hoje' : 'Vencido há ' + st.dias + (st.dias === 1 ? ' dia' : ' dias');
+            return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid rgba(235,197,49,0.15);">' +
+              '<div style="flex:1;min-width:160px;">' +
+                '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:#F1EAD6;letter-spacing:.5px;">' + escPlano(p.nome) + '</div>' +
+                '<div style="font-family:\'Roboto\',sans-serif;font-size:11px;color:' + corStatus[st.tipo] + ';">' + txt + ' · Plano ' + escPlano(pl.nome) + ' · ' + fmtMoedaPlano(pl.preco) + '</div>' +
+              '</div>' +
+              (tel ? '<a href="https://wa.me/55' + tel + '?text=' + msg + '" target="_blank" style="' + btnBase + 'background:#1a2e1a;border:1px solid #2a4a2a;color:#4caf50;">Cobrar →</a>' : '') +
+              '<button onclick="registrarPagamentoPlano(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:#EBC531;border:1px solid #F5DC4A;color:#070E24;font-weight:700;">Registrar pagamento</button>' +
+            '</div>';
+          }).join('');
+        }
+      }
+
+      // Lista completa
+      if (!planos.length) {
+        lista.innerHTML = '<div style="font-family:\'Roboto\',sans-serif;font-size:13px;color:#5E6E9E;">Nenhum cliente com plano ainda.</div>';
+        return;
+      }
+      lista.innerHTML = planos.map(p => {
+        const st = statusPlano(p.planoVenceEm);
+        const pl = planoDados(p.plano);
+        const rotulo = st.tipo === 'ativo' ? 'Ativo' : st.tipo === 'hoje' ? 'Vence hoje' : 'Vencido há ' + st.dias + (st.dias === 1 ? ' dia' : ' dias');
+        return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:#0C1838;border:1px solid #122452;border-radius:8px;">' +
+          '<div style="flex:1;min-width:180px;">' +
+            '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:#F1EAD6;letter-spacing:.5px;">' + escPlano(p.nome || p.key) + '</div>' +
+            '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#7183B4;margin-top:2px;">Plano ' + escPlano(pl.nome) + ' · ' + fmtMoedaPlano(pl.preco) + '/mês</div>' +
+            '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#5E6E9E;margin-top:2px;">Pagou em ' + fmtDataBR(p.planoPagoEm) + ' · Vence em ' + fmtDataBR(p.planoVenceEm) + '</div>' +
+          '</div>' +
+          '<span style="font-family:\'Oswald\',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:' + corStatus[st.tipo] + ';border:1px solid ' + corStatus[st.tipo] + '55;padding:4px 10px;border-radius:20px;white-space:nowrap;">' + rotulo + '</span>' +
+          '<button onclick="registrarPagamentoPlano(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;">Registrar pagamento</button>' +
+          '<button onclick="removerPlanoCliente(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:transparent;border:1px solid rgba(200,60,60,0.35);color:#e05555;">Remover</button>' +
+        '</div>';
+      }).join('');
+    }
+
+    function preencherClientePlano(key) {
+      const c = _clientesFirestore[key];
+      if (!c) return;
+      const n = document.getElementById('plano-nome');
+      const t = document.getElementById('plano-tel');
+      if (n) n.value = c.nome || '';
+      if (t) t.value = c.telefone || key;
+      if (c.plano) { const s = document.getElementById('plano-tipo'); if (s) s.value = c.plano; }
+    }
+
+    async function salvarPlanoCliente() {
+      const nome = (document.getElementById('plano-nome')?.value || '').trim();
+      const key  = chaveTelefone(document.getElementById('plano-tel')?.value);
+      const plano = document.getElementById('plano-tipo')?.value || '';
+      const pago  = document.getElementById('plano-pago')?.value || '';
+      const st = document.getElementById('plano-status');
+      const aviso = (t, cor) => { if (st) { st.textContent = t; st.style.color = cor; } };
+      if (!nome || key.length < 10 || !plano || !pago) { aviso('Preencha nome, WhatsApp, plano e dia do pagamento.', '#b03030'); return; }
+      aviso('Salvando...', '#94A4CC');
+      try {
+        const venc = somarUmMes(pago);
+        const data = { nome, telefone: key, plano, planoPagoEm: pago, planoVenceEm: venc };
+        if (!_clientesFirestore[key]) data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('clientes').doc(key).set(data, { merge: true });
+        _clientesFirestore[key] = { ...(_clientesFirestore[key] || {}), ...data };
+        aviso('Plano salvo! Vence em ' + fmtDataBR(venc) + '.', '#4caf50');
+        ['plano-nome', 'plano-tel'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+        const s = document.getElementById('plano-cli-select'); if (s) s.value = '';
+        const dp = document.getElementById('plano-pago'); if (dp) dp.value = hojeISOAdmin();
+        setTimeout(() => aviso('', '#5E6E9E'), 4000);
+        renderPlanosClientes();
+      } catch (e) {
+        console.warn(e);
+        aviso('Erro ao salvar o plano.', '#b03030');
+      }
+    }
+
+    // Renova: pagamento hoje, vencimento no mesmo dia do mês seguinte
+    async function registrarPagamentoPlano(key) {
+      const c = _clientesFirestore[key];
+      if (!c) return;
+      const pl = planoDados(c.plano);
+      if (!confirm('Registrar o pagamento de ' + (c.nome || key) + ' (' + pl.nome + ', ' + fmtMoedaPlano(pl.preco) + ') hoje?\nO novo vencimento será ' + fmtDataBR(somarUmMes(hojeISOAdmin())) + '.')) return;
+      try {
+        const pago = hojeISOAdmin();
+        const upd = { planoPagoEm: pago, planoVenceEm: somarUmMes(pago) };
+        await db.collection('clientes').doc(key).set(upd, { merge: true });
+        _clientesFirestore[key] = { ..._clientesFirestore[key], ...upd };
+        showToast('Pagamento registrado. Vence em ' + fmtDataBR(upd.planoVenceEm) + '.');
+        renderPlanosClientes();
+      } catch (e) {
+        console.warn(e);
+        showToast('Erro ao registrar o pagamento.');
+      }
+    }
+
+    async function removerPlanoCliente(key) {
+      const c = _clientesFirestore[key];
+      if (!c) return;
+      if (!confirm('Remover o plano de ' + (c.nome || key) + '? Ele volta a pagar os serviços normalmente.')) return;
+      try {
+        const del = firebase.firestore.FieldValue.delete();
+        await db.collection('clientes').doc(key).update({ plano: del, planoPagoEm: del, planoVenceEm: del });
+        delete _clientesFirestore[key].plano;
+        delete _clientesFirestore[key].planoPagoEm;
+        delete _clientesFirestore[key].planoVenceEm;
+        showToast('Plano removido.');
+        renderPlanosClientes();
+      } catch (e) {
+        console.warn(e);
+        showToast('Erro ao remover o plano.');
+      }
+    }
+
+    // Ao abrir o painel: avisa os planos que vencem hoje ou já venceram
+    async function verificarPlanosGlobal() {
+      try {
+        const snap = await db.collection('clientes').get();
+        const cobrar = [];
+        snap.forEach(doc => {
+          const d = doc.data();
+          if (d.plano && d.planoVenceEm && statusPlano(d.planoVenceEm).tipo !== 'ativo') cobrar.push({ key: doc.id, ...d });
+        });
+        if (!cobrar.length) return;
+        cobrar.sort((a, b) => a.planoVenceEm.localeCompare(b.planoVenceEm));
+        const nomes = cobrar.map(c => (c.nome || '').split(' ')[0]).join(', ');
+        setTimeout(() => {
+          showPlanoAlert(cobrar);
+          enviarNotificacaoPlano(nomes, cobrar.length);
+        }, 3000);
+      } catch (e) {}
+    }
+
+    function showPlanoAlert(cobrar) {
+      let el = document.getElementById('admin-plano-alert');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'admin-plano-alert';
+        document.body.appendChild(el);
+      }
+      const aniv = document.getElementById('admin-aniv-alert');
+      const top = (aniv && aniv.style.display !== 'none' && aniv.offsetHeight) ? aniv.offsetHeight + 32 : 20;
+      el.style.cssText = 'position:fixed;top:' + top + 'px;right:20px;z-index:99998;max-width:360px;width:calc(100vw - 40px);';
+      const lista = cobrar.map(c => {
+        const st = statusPlano(c.planoVenceEm);
+        const pl = planoDados(c.plano);
+        const tel = chaveTelefone(c.telefone || c.key);
+        const msg = encodeURIComponent(mensagemCobrancaPlano(c.nome, c.plano, c.planoVenceEm));
+        const txt = st.tipo === 'hoje' ? 'Vence hoje' : 'Vencido há ' + st.dias + (st.dias === 1 ? ' dia' : ' dias');
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(235,197,49,0.15);">' +
+          '<div style="flex:1;">' +
+            '<div style="font-family:\'Oswald\',sans-serif;font-size:13px;color:#F1EAD6;letter-spacing:.5px;">' + escPlano(c.nome) + '</div>' +
+            '<div style="font-family:\'Roboto\',sans-serif;font-size:11px;color:#EBC531;">' + txt + ' · ' + escPlano(pl.nome) + ' · ' + fmtMoedaPlano(pl.preco) + '</div>' +
+          '</div>' +
+          (tel ? '<a href="https://wa.me/55' + tel + '?text=' + msg + '" target="_blank" style="background:#1a2e1a;border:1px solid #2a4a2a;color:#4caf50;padding:6px 12px;border-radius:5px;font-family:\'Oswald\',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;white-space:nowrap;flex-shrink:0;">Cobrar →</a>' : '') +
+        '</div>';
+      }).join('');
+      el.innerHTML =
+        '<div style="background:#1a1208;border:1px solid #EBC531;border-radius:10px;padding:18px 20px;box-shadow:0 8px 40px rgba(0,0,0,0.8);">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+            '<span style="font-family:\'Oswald\',sans-serif;font-size:11px;letter-spacing:2px;color:#EBC531;text-transform:uppercase;">Planos para Cobrar</span>' +
+            '<div style="display:flex;gap:8px;align-items:center;">' +
+              '<button onclick="showTab(\'clientes\',null);syncBottomNav(\'bnav-clientes\');document.getElementById(\'admin-plano-alert\').style.display=\'none\';" style="background:#EBC531;border:none;color:#070E24;padding:5px 12px;border-radius:5px;font-family:\'Oswald\',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-weight:700;">Ver Planos</button>' +
+              '<button onclick="document.getElementById(\'admin-plano-alert\').style.display=\'none\';" style="background:none;border:none;color:#7183B4;font-size:18px;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>' +
+            '</div>' +
+          '</div>' +
+          '<div>' + lista + '</div>' +
+        '</div>';
+      el.style.display = 'block';
+    }
+
+    async function enviarNotificacaoPlano(nomes, qtd) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        const n = new Notification('Wellisson Barber — Plano para cobrar', {
+          body: nomes + (qtd > 1 ? ': planos vencidos ou vencendo hoje. Hora de cobrar!' : ': plano vence hoje ou já venceu. Hora de cobrar!'),
+          icon: 'logo.png',
+          tag: 'plano-vencimento',
+          requireInteraction: true,
+        });
+        n.onclick = () => { window.focus(); showTab('clientes', null); syncBottomNav('bnav-clientes'); n.close(); };
+      } catch (e) {}
+    }
+
     async function renderClientes() {
       await carregarClientesFirestore();
       const map = buildClientMap();
@@ -1406,6 +1740,7 @@
       _clientListCache = clientes;
 
       renderAniversariantesBanner(clientes);
+      renderPlanosClientes();
 
       const totalClientes = clientes.length;
       const totalGasto    = clientes.reduce((s, c) => s + c.stats.gastoTotal, 0);
