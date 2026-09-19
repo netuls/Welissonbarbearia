@@ -497,12 +497,6 @@ function renderPlans() {
       </button>
     </div>`).join('');
 
-  // Observação dos planos (aparece uma vez, logo abaixo dos cards)
-  if (!document.getElementById('plans-note')) {
-    grid.insertAdjacentHTML('afterend',
-      '<p id="plans-note" style="max-width:1200px;margin:16px auto 0;padding:12px 16px;border:1px solid rgba(235,197,49,0.35);background:rgba(235,197,49,0.08);border-radius:6px;color:#F1EAD6;font-family:Roboto,sans-serif;font-size:13px;line-height:1.5;text-align:center;">' +
-      '<strong style="color:#EBC531;">OBS:</strong> o aniversariante do plano tem direito a trazer alguém no dia do aniversário.</p>');
-  }
 }
 
 // ─── Modal de interesse no plano ──────────────────
