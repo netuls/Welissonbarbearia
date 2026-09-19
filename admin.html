@@ -630,6 +630,49 @@
   </div>
 
   <!-- MODAL CONCLUIR TODOS -->
+  <div id="troca-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:28px 26px;max-width:440px;width:92%;max-height:92vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
+      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:6px;">Trocar plano</h3>
+      <div id="troca-cliente" style="font-family:'Oswald',sans-serif;font-size:15px;color:#EBC531;letter-spacing:.5px;"></div>
+      <div style="font-family:'Roboto',sans-serif;font-size:12px;color:#7183B4;margin:2px 0 18px;">Plano atual: <span id="troca-atual"></span></div>
+
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;">
+        <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Novo plano</span>
+        <select id="troca-novo" onchange="atualizarTrocarPlano('plano')" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;"></select>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+        <label id="troca-modo-novo" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid #233F80;border-radius:6px;cursor:pointer;">
+          <input type="radio" name="troca-modo" value="novo" checked onchange="atualizarTrocarPlano('modo')" style="margin-top:3px;accent-color:#EBC531;">
+          <span style="font-family:'Roboto',sans-serif;font-size:12px;color:#94A4CC;line-height:1.5;"><strong style="color:#F1EAD6;">Começar novo ciclo</strong><br>Cobra o valor do novo plano e o vencimento passa a ser 1 mês depois da data da troca.</span>
+        </label>
+        <label id="troca-modo-manter" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid #233F80;border-radius:6px;cursor:pointer;">
+          <input type="radio" name="troca-modo" value="manter" onchange="atualizarTrocarPlano('modo')" style="margin-top:3px;accent-color:#EBC531;">
+          <span style="font-family:'Roboto',sans-serif;font-size:12px;color:#94A4CC;line-height:1.5;"><strong style="color:#F1EAD6;">Manter o vencimento atual</strong><br>Troca agora e o vencimento continua o mesmo. Por padrão cobra só a diferença de preço (se o novo plano for mais caro).</span>
+        </label>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-bottom:14px;">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+          <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Data da troca</span>
+          <input type="date" id="troca-data" onchange="atualizarTrocarPlano('data')" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 12px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;width:100%;"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+          <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Valor no financeiro (R$)</span>
+          <input type="number" id="troca-valor" min="0" step="0.01" oninput="atualizarTrocarPlano('valor')" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 12px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;width:100%;"/>
+        </div>
+      </div>
+
+      <div id="troca-resumo" style="font-family:'Roboto',sans-serif;font-size:12px;color:#94A4CC;line-height:1.6;padding:10px 12px;background:#0A1330;border:1px solid #122452;border-radius:6px;margin-bottom:6px;"></div>
+      <div id="troca-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;min-height:16px;margin-bottom:12px;"></div>
+
+      <div style="display:flex;gap:12px;">
+        <button onclick="fecharTrocarPlano()" style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">Cancelar</button>
+        <button onclick="confirmarTrocarPlano()" style="flex:1;padding:12px;background:#EBC531;border:none;border-radius:6px;color:#070E24;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">Trocar plano</button>
+      </div>
+    </div>
+  </div>
+
   <div id="concluir-todos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
       
@@ -1557,7 +1600,7 @@
       // Pagamentos de um plano já removido ficam no histórico, mas só cobrem atendimentos antes da remoção (encerradoEm)
       const legado = dataRemocaoPlano(c); // remoções antigas, sem data gravada no pagamento
       (Array.isArray(c.planoPagamentos) ? c.planoPagamentos : []).forEach(p => {
-        if (p.data) ps.push({ plano: p.plano || c.plano, ini: p.data, fim: somarUmMes(p.data), ate: p.encerradoEm || (!c.plano ? legado : '') });
+        if (p.data) ps.push({ plano: p.plano || c.plano, ini: p.data, fim: p.fim || somarUmMes(p.data), ate: p.encerradoEm || (!c.plano ? legado : '') });
       });
       if (c.plano && c.planoPagoEm && c.planoVenceEm && !ps.some(x => x.ini === c.planoPagoEm && !x.ate)) {
         ps.push({ plano: c.plano, ini: c.planoPagoEm, fim: c.planoVenceEm, ate: '' });
@@ -1711,10 +1754,12 @@
             '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:#F1EAD6;letter-spacing:.5px;">' + escPlano(p.nome || p.key) + '</div>' +
             '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#7183B4;margin-top:2px;">Plano ' + escPlano(pl.nome) + ' · ' + fmtMoedaPlano(pl.preco) + '/mês</div>' +
             '<div style="font-family:\'Roboto\',sans-serif;font-size:12px;color:#5E6E9E;margin-top:2px;">Pagou em ' + fmtDataBR(p.planoPagoEm) + ' · Vence em ' + fmtDataBR(p.planoVenceEm) + '</div>' +
+            (p.planoAnterior && p.planoTrocadoEm ? '<div style=\"font-family:\'Roboto\',sans-serif;font-size:12px;color:#EBC531;margin-top:2px;\">Trocou de ' + escPlano(planoDados(p.planoAnterior).nome) + ' para ' + escPlano(pl.nome) + ' em ' + fmtDataBR(p.planoTrocadoEm) + '</div>' : '') +
             usoPlanoHtml(p) +
           '</div>' +
           '<span style="font-family:\'Oswald\',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:' + corStatus[st.tipo] + ';border:1px solid ' + corStatus[st.tipo] + '55;padding:4px 10px;border-radius:20px;white-space:nowrap;">' + rotulo + '</span>' +
           '<button onclick="registrarPagamentoPlano(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;">Registrar pagamento</button>' +
+          '<button onclick=\"abrirTrocarPlano(\'' + escPlano(p.key) + '\')\" style=\"' + btnBase + 'background:transparent;border:1px solid #EBC53166;color:#EBC531;\">Trocar plano</button>' +
           '<button onclick="removerPlanoCliente(\'' + escPlano(p.key) + '\')" style="' + btnBase + 'background:transparent;border:1px solid rgba(200,60,60,0.35);color:#e05555;">Remover</button>' +
         '</div>';
       }).join('');
@@ -1781,6 +1826,85 @@
       } catch (e) {
         console.warn(e);
         showToast('Erro ao registrar o pagamento.');
+      }
+    }
+
+    // ── Trocar plano (migrar o cliente para outro plano) ──
+    let _trocaKey = null;
+    let _trocaValorEditado = false;
+    function valorPadraoTroca(c, novoId, modo) {
+      const novo = planoDados(novoId).preco, atual = planoDados(c.plano).preco;
+      return modo === 'manter' ? Math.max(0, novo - atual) : novo;
+    }
+    function abrirTrocarPlano(key) {
+      const c = _clientesFirestore[key];
+      if (!c || !c.plano) return;
+      _trocaKey = key; _trocaValorEditado = false;
+      document.getElementById('troca-cliente').textContent = c.nome || key;
+      document.getElementById('troca-atual').textContent = planoDados(c.plano).nome + ' · ' + fmtMoedaPlano(planoDados(c.plano).preco) + '/mês · vence em ' + fmtDataBR(c.planoVenceEm);
+      const sel = document.getElementById('troca-novo');
+      sel.innerHTML = PLANOS_ADMIN.filter(pl => pl.id !== c.plano)
+        .map(pl => '<option value="' + pl.id + '">' + escPlano(pl.nome) + ' - ' + fmtMoedaPlano(pl.preco) + '</option>').join('');
+      document.querySelector('input[name="troca-modo"][value="novo"]').checked = true;
+      document.getElementById('troca-data').value = hojeISOAdmin();
+      atualizarTrocarPlano();
+      document.getElementById('troca-status').textContent = '';
+      document.getElementById('troca-modal').style.display = 'flex';
+    }
+    function fecharTrocarPlano() {
+      document.getElementById('troca-modal').style.display = 'none';
+      _trocaKey = null;
+    }
+    function atualizarTrocarPlano(origem) {
+      const c = _clientesFirestore[_trocaKey];
+      if (!c) return;
+      const novoId = document.getElementById('troca-novo').value;
+      const modo = document.querySelector('input[name="troca-modo"]:checked').value;
+      const dataEl = document.getElementById('troca-data');
+      const valEl = document.getElementById('troca-valor');
+      if (origem === 'valor') _trocaValorEditado = true;
+      if (origem === 'modo' || origem === 'plano') _trocaValorEditado = false;
+      if (!_trocaValorEditado) valEl.value = valorPadraoTroca(c, novoId, modo).toFixed(2);
+      const data = dataEl.value || hojeISOAdmin();
+      const venc = modo === 'manter' ? c.planoVenceEm : somarUmMes(data);
+      document.getElementById('troca-resumo').innerHTML =
+        escPlano(planoDados(c.plano).nome) + ' <span style="color:#EBC531;">→</span> <strong style="color:#F1EAD6;">' + escPlano(planoDados(novoId).nome) + '</strong>' +
+        '<br>Novo vencimento: <strong style="color:#F1EAD6;">' + fmtDataBR(venc) + '</strong>';
+      document.getElementById('troca-modo-novo').style.borderColor = modo === 'novo' ? '#EBC531' : '#233F80';
+      document.getElementById('troca-modo-manter').style.borderColor = modo === 'manter' ? '#EBC531' : '#233F80';
+    }
+    async function confirmarTrocarPlano() {
+      const key = _trocaKey, c = _clientesFirestore[key];
+      const st = document.getElementById('troca-status');
+      const aviso = (t, cor) => { st.textContent = t; st.style.color = cor; };
+      if (!c) return;
+      const novoId = document.getElementById('troca-novo').value;
+      const modo = document.querySelector('input[name="troca-modo"]:checked').value;
+      const data = document.getElementById('troca-data').value;
+      const valor = Number(String(document.getElementById('troca-valor').value).replace(',', '.'));
+      if (!novoId || !data) { aviso('Escolha o novo plano e a data da troca.', '#e05555'); return; }
+      if (!(valor >= 0)) { aviso('Valor inválido.', '#e05555'); return; }
+      if (modo === 'manter' && data > c.planoVenceEm) { aviso('A data da troca não pode ser depois do vencimento atual.', '#e05555'); return; }
+      aviso('Salvando...', '#94A4CC');
+      try {
+        const venc = modo === 'manter' ? c.planoVenceEm : somarUmMes(data);
+        // Pagamentos em aberto do plano antigo passam a cobrir só até o dia da troca
+        const lista = (Array.isArray(c.planoPagamentos) ? c.planoPagamentos : [])
+          .map(x => x.encerradoEm ? x : { ...x, encerradoEm: data });
+        const pag = { data, valor, plano: novoId };
+        if (modo === 'manter') pag.fim = venc;
+        lista.push(pag);
+        const upd = { plano: novoId, planoPagoEm: data, planoVenceEm: venc, planoAnterior: c.plano, planoTrocadoEm: data };
+        await db.collection('clientes').doc(key).set({ ...upd, planoPagamentos: lista }, { merge: true });
+        _clientesFirestore[key] = { ..._clientesFirestore[key], ...upd, planoPagamentos: lista };
+        fecharTrocarPlano();
+        showToast('Plano trocado para ' + planoDados(novoId).nome + '. Vence em ' + fmtDataBR(venc) + '.');
+        renderPlanosClientes();
+        try { renderDashboard(); } catch (e) {}
+        try { renderClientes(); } catch (e) {}
+      } catch (e) {
+        console.warn(e);
+        aviso('Erro ao trocar o plano.', '#e05555');
       }
     }
 
