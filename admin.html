@@ -1565,8 +1565,14 @@
     }
     // O atendimento foi feito por cliente com plano válido na data e o serviço é coberto pelo plano?
     // Nesse caso ele não entra como receita (a receita é a mensalidade do plano).
+    // Agendamento gravado como plano na hora da reserva (preço 0 + obs "Plano ...") continua sendo plano para sempre,
+    // mesmo que o cliente saia do plano depois.
+    function agendamentoGravadoComoPlano(a) {
+      return !!a && (Number(a.preco) || 0) === 0 && /^Plano /.test(a.obs || '');
+    }
     function atendimentoCobertoPorPlano(a) {
       if (!a || !a.data) return false;
+      if (agendamentoGravadoComoPlano(a)) return true;
       const c = _clientesFirestore[chaveTelefone(a.telefone)];
       if (!c) return false;
       return periodosDoPlano(c).some(p =>
@@ -1581,18 +1587,8 @@
       if (!c.plano && Array.isArray(c.planoPagamentos) && c.planoPagamentos.length) return hojeISOAdmin();
       return '';
     }
-    // Preço real do atendimento. Agendamentos feitos enquanto o cliente tinha plano foram gravados com
-    // preço 0 e obs "Plano ..."; se o plano já foi removido na data do atendimento, vale o preço normal do serviço.
-    function precoAgendamento(a) {
-      const v = Number(a.preco) || 0;
-      if (v !== 0 || !/^Plano /.test(a.obs || '') || !a.data) return v;
-      const c = _clientesFirestore[chaveTelefone(a.telefone)];
-      if (!c || c.plano) return v;
-      const rem = dataRemocaoPlano(c);
-      if (!rem || a.data < rem) return v;
-      const sv = SERVICES.find(x => x.name === a.servico);
-      return sv ? sv.price : v;
-    }
+    // Preço do atendimento como foi gravado no agendamento (o que era plano e o que era serviço fica memorizado ali).
+    function precoAgendamento(a) { return Number(a && a.preco) || 0; }
     function valorReceita(a) { return atendimentoCobertoPorPlano(a) ? 0 : precoAgendamento(a); }
 
     function clientesComPlano() {
