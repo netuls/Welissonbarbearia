@@ -1,7 +1,7 @@
 {
-  "name": "Wellisson Barbearia Admin",
+  "name": "Wellisson Barber Admin",
   "short_name": "Wellisson Admin",
-  "description": "Painel administrativo Wellisson Barbearia",
+  "description": "Painel administrativo Wellisson Barber",
   "start_url": "./admin.html",
   "display": "standalone",
   "background_color": "#070E24",
