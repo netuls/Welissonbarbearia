@@ -1539,7 +1539,7 @@
     // Atualiza a cópia local da lista de pagamentos (sem duplicar o mesmo pagamento)
     function somarPagamentoLocal(cliente, pag) {
       const lista = Array.isArray(cliente && cliente.planoPagamentos) ? cliente.planoPagamentos.slice() : [];
-      if (!lista.some(p => p.data === pag.data && p.valor === pag.valor && p.plano === pag.plano)) lista.push(pag);
+      if (!lista.some(p => !p.encerradoEm && p.data === pag.data && p.valor === pag.valor && p.plano === pag.plano)) lista.push(pag);
       return lista;
     }
     // Serviços incluídos em cada plano, pelo nome gravado no agendamento (mesma regra do site)
@@ -1553,11 +1553,13 @@
     // Períodos de plano pagos pelo cliente: do dia do pagamento até o vencimento
     function periodosDoPlano(c) {
       const ps = [];
+      // Pagamentos de um plano já removido ficam no histórico, mas só cobrem atendimentos antes da remoção (encerradoEm)
+      const legado = dataRemocaoPlano(c); // remoções antigas, sem data gravada no pagamento
       (Array.isArray(c.planoPagamentos) ? c.planoPagamentos : []).forEach(p => {
-        if (p.data) ps.push({ plano: p.plano || c.plano, ini: p.data, fim: somarUmMes(p.data) });
+        if (p.data) ps.push({ plano: p.plano || c.plano, ini: p.data, fim: somarUmMes(p.data), ate: p.encerradoEm || (!c.plano ? legado : '') });
       });
-      if (c.plano && c.planoPagoEm && c.planoVenceEm && !ps.some(x => x.ini === c.planoPagoEm)) {
-        ps.push({ plano: c.plano, ini: c.planoPagoEm, fim: c.planoVenceEm });
+      if (c.plano && c.planoPagoEm && c.planoVenceEm && !ps.some(x => x.ini === c.planoPagoEm && !x.ate)) {
+        ps.push({ plano: c.plano, ini: c.planoPagoEm, fim: c.planoVenceEm, ate: '' });
       }
       return ps;
     }
@@ -1567,11 +1569,9 @@
       if (!a || !a.data) return false;
       const c = _clientesFirestore[chaveTelefone(a.telefone)];
       if (!c) return false;
-      // Se o plano foi removido, períodos pagos antes da remoção deixam de cobrir atendimentos a partir dessa data
-      const rem = dataRemocaoPlano(c);
       return periodosDoPlano(c).some(p =>
         a.data >= p.ini && a.data <= p.fim &&
-        !(rem && p.ini < rem && a.data >= rem) &&
+        (!p.ate || a.data < p.ate) &&
         (COBERTURA_PLANO_NOMES[p.plano] || []).includes(a.servico));
     }
     // Data em que o plano foi removido. Remoções antigas (sem data gravada) valem a partir de hoje.
@@ -1748,12 +1748,16 @@
       try {
         const del = firebase.firestore.FieldValue.delete();
         const removidoEm = hojeISOAdmin();
+        const pagamentos = (Array.isArray(c.planoPagamentos) ? c.planoPagamentos : [])
+          .map(p => p.encerradoEm ? p : { ...p, encerradoEm: removidoEm });
         const upd = { plano: del, planoPagoEm: del, planoVenceEm: del, planoRemovidoEm: removidoEm };
+        if (pagamentos.length) upd.planoPagamentos = pagamentos;
         await db.collection('clientes').doc(key).update(upd);
         delete _clientesFirestore[key].plano;
         delete _clientesFirestore[key].planoPagoEm;
         delete _clientesFirestore[key].planoVenceEm;
         _clientesFirestore[key].planoRemovidoEm = removidoEm;
+        if (pagamentos.length) _clientesFirestore[key].planoPagamentos = pagamentos;
         showToast('Plano removido.');
         renderPlanosClientes();
         try { renderDashboard(); } catch (e) {}
