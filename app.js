@@ -353,6 +353,10 @@ function mesDe(dataISO) {
 // timeout etc.), tratamos como limite ATINGIDO em vez de liberar sem checar — "fail closed",
 // não "fail open". O comportamento anterior devolvia null nesse caso, e null fazia o site
 // liberar o serviço de graça sem nenhuma verificação.
+//
+// A contagem segue a mesma regra do painel admin: conta qualquer atendimento não cancelado, dentro da
+// janela, de um serviço coberto pelo plano (inclusive atendimento avulso registrado pelo barbeiro),
+// exceto os que já foram gravados como cobrados por limite atingido.
 async function checarUsoPlano(data) {
   const u = currentUser;
   const lim = u && PLAN_LIMITS[u.plano];
@@ -363,8 +367,13 @@ async function checarUsoPlano(data) {
       .where('telefone', '==', phoneKey(u.telefone || ''))
       .where('status', 'in', ['agendado', 'confirmado', 'concluido'])
       .get());
+    const nomesCobertos = SERVICES
+      .filter(s => (PLAN_COVERAGE[u.plano] || []).includes(s.id))
+      .map(s => s.name);
     const usados = snap.docs.map(d => d.data())
-      .filter(a => a.data >= ini && a.data <= fim && Number(a.preco) === 0 && /^Plano /.test(a.obs || '')).length;
+      .filter(a => a.data >= ini && a.data <= fim
+        && nomesCobertos.includes(a.servico)
+        && !/^Limite do plano atingido/.test(a.obs || '')).length;
     return { atingido: usados >= lim.qtd, usados, qtd: lim.qtd, por: lim.por };
   } catch (e) {
     console.error('Uso do plano: erro ao consultar o Firestore. Bloqueando o benefício por segurança.', e);
