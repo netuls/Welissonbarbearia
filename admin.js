@@ -130,6 +130,7 @@ function initAdmin() {
   preencherOpcoesPlano();
   carregarPrecosServicos();
   carregarFormasPagamento();
+  carregarGaleria();
   verificarAniversariosGlobal();
   verificarPlanosGlobal();
   carregarClientesFirestore().then(() => { try { renderDashboard(); } catch (e) {} });
@@ -143,20 +144,11 @@ function initAdmin() {
 // Gravados em config/barbearia; site e painel leem esse documento por cima do config.js.
 let _logoPendente;      // undefined = sem mudança; '' = remover a logo; 'data:image...' = nova logo
 let _planosEdit = [];   // rascunho dos planos que está sendo editado na tela
+let GALERIA_FOTOS = [];  // fotos da galeria salvas (config/galeria)
+let _galeriaEdit = [];   // rascunho da galeria em edição na tela
+const GALERIA_MAX_CHARS = 500000; // limite por foto (~370KB de imagem já comprimida)
 let _servicosEdit = []; // rascunho dos serviços (com adições/remoções/ordem) que está sendo editado na tela
 const LOGO_MAX_CHARS = 600000;   // limite de tamanho da logo guardada (~450 KB de imagem)
-
-// ── Formas de pagamento (aba Ajustes) ─────────────
-// Gravadas em config/pagamento: { formas: [{id,nome,tipo,ativo,pixChave,pixNome,pixCidade,pixQr}], atualizadoEm }
-// tipo 'pix' libera os campos de chave e QR Code; qualquer outro tipo ('outro') é só um nome (Dinheiro, Cartão...).
-const FORMAS_PAGAMENTO_PADRAO = [
-  { id: 'dinheiro', nome: 'Dinheiro', tipo: 'outro', ativo: true },
-  { id: 'cartao',   nome: 'Cartão',   tipo: 'outro', ativo: true },
-  { id: 'pix',      nome: 'Pix',      tipo: 'pix',   ativo: true, pixChave: '', pixNome: '', pixCidade: '', pixQr: '' },
-];
-let FORMAS_PAGAMENTO = FORMAS_PAGAMENTO_PADRAO.map(f => ({ ...f }));
-let _pagamentoEdit = []; // rascunho em edição na tela
-const QR_MAX_CHARS = 600000;   // mesmo limite usado na logo
 
 function ajStatus(id, texto, cor) {
   const el = document.getElementById(id);
@@ -182,7 +174,6 @@ function renderAjustes(manterCores) {
   renderFontesAjuste();
   ajStatus('aj-fonte-status', '');
   renderCoresAjuste(manterCores);
-  renderSegurancaEmailUI();
 }
 
 // ── Logo ──
@@ -519,9 +510,107 @@ function preencherOpcoesPlano() {
     '<option value="' + escPlano(p.id) + '">' + escPlano(p.nome) + ' - ' + (p.vitalicio ? 'Vitalício' : 'R$' + p.preco) + '</option>').join('');
 }
 
+
+// ── Galeria de fotos (aba Ajustes, seção "Fotos do Site") ──────────────────
+// Guardada em config/galeria: { fotos: [dataURL, dataURL, ...] }. O site lê o mesmo
+// documento no carregamento (ver carregarGaleria em app.js) e monta o carrossel "Nosso Trabalho".
+async function carregarGaleria() {
+  try {
+    const doc = await db.collection('config').doc('galeria').get();
+    if (doc.exists) {
+      const dados = doc.data() || {};
+      if (Array.isArray(dados.fotos)) GALERIA_FOTOS = dados.fotos.filter(Boolean);
+    }
+  } catch (e) { console.warn('Não foi possível carregar a galeria de fotos', e); }
+  if (document.getElementById('tab-servicos') && document.getElementById('tab-servicos').classList.contains('active')) {
+    _galeriaEdit = JSON.parse(JSON.stringify(GALERIA_FOTOS));
+    renderGaleriaEditor();
+  }
+}
+
+function renderGaleriaEditor() {
+  const el = document.getElementById('aj-galeria-grid');
+  if (!el) return;
+  if (!_galeriaEdit.length) {
+    el.innerHTML = '<p style="color:#5E6E9E;font-size:13px;font-family:\'Roboto\',sans-serif;grid-column:1/-1;">Nenhuma foto enviada ainda.</p>';
+    ajStatus('aj-galeria-status', '');
+    return;
+  }
+  el.innerHTML = _galeriaEdit.map((src, i) =>
+    '<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #233F80;background:#070E24;">' +
+      '<img src="' + src + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">' +
+      '<button type="button" onclick="removerFotoGaleria(' + i + ')" title="Remover" ' +
+        'style="position:absolute;top:4px;right:4px;background:rgba(8,8,8,0.75);border:1px solid rgba(200,60,60,.5);color:#e05555;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;line-height:1;">✕</button>' +
+    '</div>').join('');
+  ajStatus('aj-galeria-status', '');
+}
+
+function removerFotoGaleria(i) {
+  _galeriaEdit.splice(i, 1);
+  renderGaleriaEditor();
+  ajStatus('aj-galeria-status', 'Foto removida. Clique em Salvar fotos para aplicar.');
+}
+
+function escolherFotosGaleria(input) {
+  const arquivos = input.files ? Array.from(input.files) : [];
+  input.value = '';
+  if (!arquivos.length) return;
+  let pendentes = arquivos.length;
+  const checar = () => { pendentes--; if (pendentes <= 0) { renderGaleriaEditor(); ajStatus('aj-galeria-status', 'Fotos escolhidas. Clique em Salvar fotos para aplicar.'); } };
+  arquivos.forEach(arquivo => {
+    if (!/^image\//.test(arquivo.type)) { checar(); return; }
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let url = '';
+        for (const max of [1400, 1000, 700]) {
+          const esc = Math.min(1, max / Math.max(img.width, img.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.max(1, Math.round(img.width * esc));
+          cv.height = Math.max(1, Math.round(img.height * esc));
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          url = cv.toDataURL('image/jpeg', 0.82);
+          if (url.length < GALERIA_MAX_CHARS) break;
+        }
+        if (url.length < GALERIA_MAX_CHARS) _galeriaEdit.push(url);
+        checar();
+      };
+      img.onerror = checar;
+      img.src = leitor.result;
+    };
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
+async function salvarGaleria() {
+  ajStatus('aj-galeria-status', 'Salvando...');
+  try {
+    await db.collection('config').doc('galeria').set({ fotos: _galeriaEdit, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+    GALERIA_FOTOS = _galeriaEdit.slice();
+    ajStatus('aj-galeria-status', 'Fotos salvas! O site já mostra a nova galeria.', '#4caf50');
+    showToast('Fotos da galeria atualizadas.');
+  } catch (e) {
+    console.warn(e);
+    ajStatus('aj-galeria-status', 'Erro ao salvar: ' + (e.message || e.code || e), '#e05555');
+  }
+}
+
 // ── Valores dos serviços ─────────────────────────
 // Guardados em config/servicos (o site lê o mesmo documento):
 //   precos: { corte: 30, barba: 20, ... }   duracoes: { corte: 30, ... } (minutos)   lista: [{ id, name, price, duracao }]
+// ── Formas de pagamento (aba Ajustes) ─────────────
+// Gravadas em config/pagamento: { formas: [{id,nome,tipo,ativo,pixChave,pixNome,pixCidade,pixQr}], atualizadoEm }
+// tipo 'pix' libera os campos de chave e QR Code; qualquer outro tipo ('outro') é só um nome (Dinheiro, Cartão...).
+const FORMAS_PAGAMENTO_PADRAO = [
+  { id: 'dinheiro', nome: 'Dinheiro', tipo: 'outro', ativo: true },
+  { id: 'cartao',   nome: 'Cartão',   tipo: 'outro', ativo: true },
+  { id: 'pix',      nome: 'Pix',      tipo: 'pix',   ativo: true, pixChave: '', pixNome: '', pixCidade: '', pixQr: '' },
+];
+let FORMAS_PAGAMENTO = FORMAS_PAGAMENTO_PADRAO.map(f => ({ ...f }));
+let _pagamentoEdit = []; // rascunho em edição na tela
+const QR_MAX_CHARS = 600000;   // mesmo limite usado na logo
+
 const PRECOS_PADRAO = {}, DURACOES_PADRAO = {};
 SERVICES.forEach(s => { PRECOS_PADRAO[s.id] = s.price; DURACOES_PADRAO[s.id] = s.duracao || 30; });
 
@@ -632,7 +721,7 @@ function iniciarArrastoServico(e, i) {
 
   const placeholder = document.createElement('div');
   placeholder.className = 'serv-placeholder';
-  placeholder.style.cssText = 'height:' + rect.height + 'px;border:2px dashed #2C4E9E;border-radius:6px;background:rgba(44,78,158,.12);box-sizing:border-box;margin:0;';
+  placeholder.style.cssText = 'height:' + rect.height + 'px;border:2px dashed #2C4E9E;border-radius:6px;background:rgba(44, 78, 158,.12);box-sizing:border-box;margin:0;';
   row.parentNode.insertBefore(placeholder, row);
 
   row.style.position = 'fixed';
@@ -803,6 +892,7 @@ async function carregarFormasPagamento() {
   if (document.getElementById('tab-servicos') && document.getElementById('tab-servicos').classList.contains('active')) {
     _pagamentoEdit = JSON.parse(JSON.stringify(FORMAS_PAGAMENTO));
     renderFormasPagamentoEditor();
+    try { atualizarAvisoSinal(); } catch (e) {}
   }
 }
 
@@ -934,217 +1024,6 @@ function adicionarFormaPagamento() {
   if (ultimoNome) { ultimoNome.focus(); ultimoNome.select(); }
 }
 
-// ── Segurança da chave Pix (código de confirmação por E-MAIL) ──
-// Guardada em config/barbearia.pixSeguranca: { email } — envio feito via EmailJS (serviço gratuito de terceiros, chamado direto do navegador, sem precisar de servidor).
-// Configure sua conta grátis em https://www.emailjs.com/ e preencha as 3 constantes abaixo (Public Key, Service ID, Template ID).
-const EMAILJS_PUBLIC_KEY  = 'COLE_AQUI_SUA_PUBLIC_KEY';
-const EMAILJS_SERVICE_ID  = 'COLE_AQUI_SEU_SERVICE_ID';
-const EMAILJS_TEMPLATE_ID = 'COLE_AQUI_SEU_TEMPLATE_ID';
-if (window.emailjs && EMAILJS_PUBLIC_KEY && !EMAILJS_PUBLIC_KEY.startsWith('COLE_AQUI')) {
-  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-}
-
-function seguranciaPixAtual() {
-  const s = BARBEARIA.pixSeguranca || {};
-  return { email: s.email || '' };
-}
-
-function mascararEmail(email) {
-  if (!email || email.indexOf('@') === -1) return '••••';
-  const [usuario, dominio] = email.split('@');
-  const usuarioMasc = usuario.length <= 2 ? usuario[0] + '•••' : usuario.slice(0, 2) + '•••';
-  const partesDominio = dominio.split('.');
-  const nomeDominio = partesDominio[0] || '';
-  const domMasc = nomeDominio.length <= 1 ? '•••' : nomeDominio[0] + '•••';
-  const resto = partesDominio.slice(1).join('.');
-  return usuarioMasc + '@' + domMasc + (resto ? '.' + resto : '');
-}
-
-let _segEmailNovo = null;
-let _segEmailVerifCodigo = null;
-let _segEmailVerifExpira = 0;
-
-// Mostra o e-mail cadastrado sempre mascarado (nunca em texto puro na tela), com botão pra iniciar a troca
-function renderSegurancaEmailUI() {
-  const seg = seguranciaPixAtual();
-  const atualEl = document.getElementById('aj-pix-seg-email-atual');
-  const input = document.getElementById('aj-pix-seg-email');
-  const btnTrocar = document.getElementById('aj-pix-seg-btn-trocar');
-  const btnSalvar = document.getElementById('aj-pix-seg-btn-salvar');
-  const btnCancelar = document.getElementById('aj-pix-seg-btn-cancelar');
-  input.style.display = 'none';
-  input.value = '';
-  btnSalvar.style.display = 'none';
-  btnCancelar.style.display = 'none';
-  document.getElementById('pix-seg-email-verif-box').style.display = 'none';
-  atualEl.style.display = 'block';
-  if (seg.email) {
-    atualEl.textContent = mascararEmail(seg.email);
-    btnTrocar.textContent = 'Trocar e-mail';
-  } else {
-    atualEl.textContent = 'Nenhum e-mail cadastrado ainda';
-    btnTrocar.textContent = 'Cadastrar e-mail';
-  }
-  btnTrocar.style.display = 'inline-block';
-  ajStatus('aj-pix-seg-status', '');
-}
-
-function iniciarTrocaEmailSeguranca() {
-  const seg = seguranciaPixAtual();
-  document.getElementById('aj-pix-seg-email-atual').style.display = 'none';
-  document.getElementById('aj-pix-seg-btn-trocar').style.display = 'none';
-  const input = document.getElementById('aj-pix-seg-email');
-  input.style.display = 'block';
-  input.value = '';
-  input.focus();
-  const btnSalvar = document.getElementById('aj-pix-seg-btn-salvar');
-  btnSalvar.style.display = 'inline-block';
-  btnSalvar.textContent = seg.email ? 'Continuar' : 'Salvar';
-  document.getElementById('aj-pix-seg-btn-cancelar').style.display = 'inline-block';
-}
-
-function cancelarEdicaoEmailSeguranca() {
-  _segEmailNovo = null; _segEmailVerifCodigo = null; _segEmailVerifExpira = 0;
-  renderSegurancaEmailUI();
-}
-
-// Se já existe um e-mail cadastrado, qualquer troca (inclusive apagar) exige o código mandado pro e-mail ATUAL,
-// assim quem não tem acesso a esse e-mail não consegue redirecionar os códigos de confirmação da chave Pix pra si mesmo.
-async function salvarSegurancaPix() {
-  const novoEmail = document.getElementById('aj-pix-seg-email').value.trim();
-  if (novoEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(novoEmail)) { ajStatus('aj-pix-seg-status', 'Digite um e-mail válido.', '#e05555'); return; }
-  const seg = seguranciaPixAtual();
-  if (seg.email) {
-    _segEmailNovo = novoEmail;
-    await dispararVerificacaoTrocaEmailSeguranca();
-    return;
-  }
-  await gravarSegurancaPixNoFirestore(novoEmail);
-}
-
-async function dispararVerificacaoTrocaEmailSeguranca() {
-  const box = document.getElementById('pix-seg-email-verif-box');
-  const st = document.getElementById('pix-seg-email-verif-status');
-  const seg = seguranciaPixAtual();
-  _segEmailVerifCodigo = gerarCodigo6();
-  _segEmailVerifExpira = Date.now() + 10 * 60 * 1000;
-  box.style.display = 'block';
-  document.getElementById('pix-seg-email-verif-codigo').value = '';
-  st.style.color = '#94A4CC'; st.textContent = 'Enviando código pro e-mail atualmente cadastrado...';
-  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  try {
-    await enviarCodigoEmail(seg.email, _segEmailVerifCodigo, 'Codigo para confirmar a troca do e-mail de seguranca do Pix: ' + _segEmailVerifCodigo + ' (vale por 10 minutos)');
-    st.style.color = '#4caf50'; st.textContent = 'Código enviado! Confira o e-mail que estava cadastrado até agora.';
-  } catch (e) {
-    console.warn(e);
-    st.style.color = '#e05555'; st.textContent = 'Não consegui enviar o código. ' + (e.message || '');
-  }
-}
-
-async function reenviarCodigoTrocaEmailSeguranca() {
-  if (_segEmailNovo === null) return;
-  await dispararVerificacaoTrocaEmailSeguranca();
-}
-
-async function confirmarTrocaEmailSeguranca() {
-  const st = document.getElementById('pix-seg-email-verif-status');
-  const digitado = document.getElementById('pix-seg-email-verif-codigo').value.trim();
-  if (_segEmailNovo === null || !_segEmailVerifCodigo) { st.style.color = '#e05555'; st.textContent = 'Nada pendente para confirmar.'; return; }
-  if (Date.now() > _segEmailVerifExpira) { st.style.color = '#e05555'; st.textContent = 'Código expirado. Clique em "Reenviar código".'; return; }
-  if (digitado !== _segEmailVerifCodigo) { st.style.color = '#e05555'; st.textContent = 'Código incorreto.'; return; }
-  const novoEmail = _segEmailNovo;
-  _segEmailNovo = null; _segEmailVerifCodigo = null; _segEmailVerifExpira = 0;
-  await gravarSegurancaPixNoFirestore(novoEmail);
-}
-
-async function gravarSegurancaPixNoFirestore(email) {
-  ajStatus('aj-pix-seg-status', 'Salvando...');
-  try {
-    await db.collection('config').doc('barbearia').set({
-      pixSeguranca: { email },
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-    await carregarAjustesRemotos();
-    ajStatus('aj-pix-seg-status', email ? 'Salvo! Agora toda troca de chave Pix pede código.' : 'Salvo. Sem e-mail cadastrado, a troca da chave Pix não pede código.', '#4caf50');
-    showToast('Segurança do Pix atualizada.');
-  } catch (e) {
-    console.warn(e);
-    ajStatus('aj-pix-seg-status', 'Erro ao salvar: ' + (e.message || e.code || e), '#e05555');
-  }
-}
-
-// Compara chave/nome/cidade de cada forma tipo Pix entre o que está salvo (FORMAS_PAGAMENTO) e o que vai ser salvo agora
-function pixDadosSensiveisMudaram(novasFormas) {
-  const chave = f => (f.tipo === 'pix') ? (f.pixChave || '') + '|' + (f.pixNome || '') + '|' + (f.pixCidade || '') : null;
-  const antigasPorId = {};
-  FORMAS_PAGAMENTO.forEach(f => { if (f.tipo === 'pix') antigasPorId[f.id] = chave(f); });
-  return novasFormas.some(f => f.tipo === 'pix' && chave(f) !== (antigasPorId[f.id] ?? null));
-}
-
-let _pixPendenteFormas = null;
-let _pixVerifCodigo = null;
-let _pixVerifExpira = 0;
-
-function gerarCodigo6() { return String(Math.floor(100000 + Math.random() * 900000)); }
-
-async function enviarCodigoEmail(destino, codigo, mensagem) {
-  if (!destino) throw new Error('E-mail de destino não configurado.');
-  if (!window.emailjs) throw new Error('Biblioteca do EmailJS não carregada.');
-  if (!EMAILJS_SERVICE_ID || EMAILJS_SERVICE_ID.startsWith('COLE_AQUI')) throw new Error('EmailJS ainda não configurado (veja EMAILJS_SERVICE_ID/TEMPLATE_ID/PUBLIC_KEY em admin.js).');
-  await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { to_email: destino, codigo, mensagem });
-}
-
-async function enviarCodigoViaEmail(codigo) {
-  const seg = seguranciaPixAtual();
-  await enviarCodigoEmail(seg.email, codigo, 'Codigo para confirmar a troca da chave Pix no painel: ' + codigo + ' (vale por 10 minutos)');
-}
-
-async function dispararVerificacaoPix() {
-  const box = document.getElementById('pix-verif-box');
-  const st = document.getElementById('pix-verif-status');
-  const stPag = document.getElementById('aj-pagamento-status');
-  _pixVerifCodigo = gerarCodigo6();
-  _pixVerifExpira = Date.now() + 10 * 60 * 1000;
-  box.style.display = 'block';
-  document.getElementById('pix-verif-codigo').value = '';
-  st.style.color = '#94A4CC'; st.textContent = 'Enviando código pro seu e-mail...';
-  stPag.style.color = '#94A4CC'; stPag.textContent = 'Aguardando confirmação da troca da chave Pix (veja abaixo).';
-  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  try {
-    await enviarCodigoViaEmail(_pixVerifCodigo);
-    st.style.color = '#4caf50'; st.textContent = 'Código enviado! Confira seu e-mail e digite abaixo.';
-  } catch (e) {
-    console.warn(e);
-    st.style.color = '#e05555'; st.textContent = 'Não consegui enviar o código (verifique a configuração do EmailJS). ' + (e.message || '');
-  }
-}
-
-async function reenviarCodigoPix() {
-  if (!_pixPendenteFormas) return;
-  await dispararVerificacaoPix();
-}
-
-function cancelarVerificacaoPix() {
-  _pixPendenteFormas = null;
-  _pixVerifCodigo = null;
-  _pixVerifExpira = 0;
-  document.getElementById('pix-verif-box').style.display = 'none';
-  const stPag = document.getElementById('aj-pagamento-status');
-  stPag.style.color = '#94A4CC'; stPag.textContent = 'Troca da chave Pix cancelada.';
-}
-
-async function confirmarCodigoPix() {
-  const st = document.getElementById('pix-verif-status');
-  const digitado = document.getElementById('pix-verif-codigo').value.trim();
-  if (!_pixPendenteFormas || !_pixVerifCodigo) { st.style.color = '#e05555'; st.textContent = 'Nada pendente para confirmar.'; return; }
-  if (Date.now() > _pixVerifExpira) { st.style.color = '#e05555'; st.textContent = 'Código expirado. Clique em "Reenviar código".'; return; }
-  if (digitado !== _pixVerifCodigo) { st.style.color = '#e05555'; st.textContent = 'Código incorreto.'; return; }
-  const formas = _pixPendenteFormas;
-  _pixPendenteFormas = null; _pixVerifCodigo = null; _pixVerifExpira = 0;
-  document.getElementById('pix-verif-box').style.display = 'none';
-  await gravarFormasPagamentoNoFirestore(formas);
-}
-
 async function salvarFormasPagamento() {
   const st = document.getElementById('aj-pagamento-status');
   if (!_pagamentoEdit.length) { st.style.color = '#e05555'; st.textContent = 'Adicione pelo menos uma forma de pagamento.'; return; }
@@ -1169,19 +1048,21 @@ async function salvarFormasPagamento() {
     }
     return out;
   });
+  // Compara com o que estava salvo antes: se a chave Pix (ou o QR Code) de alguma forma mudou,
+  // isso é sensível — é para onde o dinheiro do cliente vai — então avisamos o dono por WhatsApp.
+  const alteracoesPix = [];
+  formas.forEach(nova => {
+    if (nova.tipo !== 'pix') return;
+    const antiga = FORMAS_PAGAMENTO.find(f => f.id === nova.id);
+    const chaveAntiga = antiga ? (antiga.pixChave || '') : '';
+    const chaveNova = nova.pixChave || '';
+    const qrAntigo = antiga ? !!antiga.pixQr : false;
+    const qrNovo = !!nova.pixQr;
+    if (chaveAntiga !== chaveNova || qrAntigo !== qrNovo) {
+      alteracoesPix.push({ nome: nova.nome, chaveAntiga, chaveNova, qrMudou: qrAntigo !== qrNovo });
+    }
+  });
 
-  const seg = seguranciaPixAtual();
-  if (seg.email && pixDadosSensiveisMudaram(formas)) {
-    _pixPendenteFormas = formas;
-    await dispararVerificacaoPix();
-    return;
-  }
-  await gravarFormasPagamentoNoFirestore(formas);
-}
-
-// Grava de fato as formas de pagamento no Firestore (chamado direto, ou depois do código confirmado)
-async function gravarFormasPagamentoNoFirestore(formas) {
-  const st = document.getElementById('aj-pagamento-status');
   st.style.color = '#94A4CC'; st.textContent = 'Salvando...';
   try {
     await db.collection('config').doc('pagamento').set({
@@ -1193,10 +1074,35 @@ async function gravarFormasPagamentoNoFirestore(formas) {
     renderFormasPagamentoEditor();
     st.style.color = '#4caf50'; st.textContent = 'Formas de pagamento salvas! Já valem para novos agendamentos.';
     showToast('Formas de pagamento atualizadas.');
+    // Notificação de segurança por WhatsApp ao alterar a chave Pix: desativada a pedido.
+    // Para reativar, descomente a linha abaixo.
+    // if (alteracoesPix.length) avisarMudancaChavePix(alteracoesPix);
   } catch (e) {
     console.warn(e);
     st.style.color = '#e05555'; st.textContent = 'Erro ao salvar: ' + (e.message || e.code || e);
   }
+}
+
+// Alerta de segurança: sempre que a chave Pix (ou o QR Code enviado) de uma forma de pagamento
+// muda, abre o WhatsApp do dono já com uma mensagem de confirmação pronta para enviar — assim,
+// se o painel foi acessado por alguém sem autorização, o dono percebe na hora.
+function avisarMudancaChavePix(alteracoes) {
+  const numero = (BARBEARIA.whatsappAvisos || BARBEARIA.whatsapp || '').replace(/\D/g, '');
+  if (!numero) return;
+  const linhas = [
+    '⚠️ *Alerta de Segurança — Chave Pix Alterada*', '',
+    'A forma de pagamento Pix foi alterada agora no painel de ' + (BARBEARIA.nome || 'sua barbearia') + ':',
+    '',
+  ];
+  alteracoes.forEach(a => {
+    linhas.push('*Forma:* ' + a.nome);
+    linhas.push('*Chave antiga:* ' + (a.chaveAntiga || '(vazia)'));
+    linhas.push('*Chave nova:* ' + (a.chaveNova || '(vazia)'));
+    if (a.qrMudou) linhas.push('*QR Code enviado:* também foi alterado');
+    linhas.push('');
+  });
+  linhas.push('Se foi você mesmo, pode ignorar. Se não reconhece essa alteração, entre no painel agora e revise a senha de acesso.');
+  window.open('https://wa.me/' + numero + '?text=' + encodeURIComponent(linhas.join('\n')), '_blank');
 }
 
 // ── Tabs ─────────────────────────────────────────
@@ -1212,12 +1118,13 @@ function showTab(tab, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   if (el) el.classList.add('active');
-  const titles = { dashboard: 'Dashboard', agendamentos: 'Agendamentos', horarios: 'Horarios de Atendimento', servicos: 'Ajustes', datas: 'Datas Especiais', clientes: 'Clientes' };
+  const titles = { dashboard: 'Dashboard', agendamentos: 'Agendamentos', horarios: 'Horarios de Atendimento', servicos: 'Ajustes', datas: 'Datas Especiais', clientes: 'Clientes', relacionamento: 'Relacionamento' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   if (tab === 'horarios') carregarHorarios();
-  if (tab === 'servicos') { _servicosEdit = JSON.parse(JSON.stringify(SERVICES)); renderServicosEditor(); _pagamentoEdit = JSON.parse(JSON.stringify(FORMAS_PAGAMENTO)); renderFormasPagamentoEditor(); renderAjustes(); }
+  if (tab === 'servicos') { _servicosEdit = JSON.parse(JSON.stringify(SERVICES)); renderServicosEditor(); _pagamentoEdit = JSON.parse(JSON.stringify(FORMAS_PAGAMENTO)); renderFormasPagamentoEditor(); _galeriaEdit = JSON.parse(JSON.stringify(GALERIA_FOTOS)); renderGaleriaEditor(); renderAjustes(); renderPoliticasEditor(); carregarAntesDepoisAdmin(); }
   if (tab === 'datas') carregarDatasEspeciais();
   if (tab === 'clientes') renderClientes();
+  if (tab === 'relacionamento') renderRelacionamento();
   gerenciarFab(tab);
   // Scroll para o topo no mobile
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1583,13 +1490,14 @@ function renderAgendamentosTable(data) {
     <td data-label="Data">${a.data ? formatDate(a.data) : '--'}</td>
     <td data-label="Horário">${a.horario||'--'}</td>
     <td data-label="Pagamento">${a.formaPagamento||'--'}</td>
-    <td data-label="Valor" style="color:var(--gold);font-family:var(--font-display);font-size:18px;">${fmtValorAgd(a)}</td>
+    <td data-label="Valor" style="color:var(--gold);font-family:var(--font-display);font-size:18px;">${fmtValorAgd(a)}${extrasAgdHTML(a)}</td>
     <td data-label="Status">${badgeHTML(a.status)}</td>
     <td>
       <div class="action-btns">
         ${a.status==='agendado' ? `<button class="btn-action btn-confirmar" onclick="updateStatus('${a.id}','confirmado')">Confirmar</button>` : ''}
         ${a.status==='confirmado' ? `<button class="btn-action btn-concluir" onclick="updateStatus('${a.id}','concluido')">Concluir</button>` : ''}
         ${['agendado','confirmado'].includes(a.status) ? `<button class="btn-action btn-cancelar" onclick="updateStatus('${a.id}','cancelado')">Cancelar</button>` : ''}
+        ${a.status==='concluido' && (a.telefone||'').replace(/\D/g,'') ? `<button class="btn-action btn-whats" onclick="relPedirAvaliacao('${a.id}')">${a.avaliacaoPedida ? 'Avaliação enviada' : 'Pedir avaliação'}</button>` : ''}
         <a class="btn-action btn-whats" href="https://wa.me/55${(a.telefone||'').replace(/\D/g,'')}" target="_blank">WhatsApp</a>
         <button class="btn-action btn-excluir" onclick="deleteAgendamento('${a.id}')">Excluir</button>
       </div>
@@ -1637,6 +1545,7 @@ function mensagemStatusWpp(ag, status) {
       'Olá, *' + primeiroNome + '*!', '',
       'Muito obrigado por escolher a *' + BARBEARIA.nome + '*! Foi um prazer te atender.', '',
       'Esperamos te ver de novo em breve. Quando quiser agendar o próximo horário, é só chamar!',
+      ...(((BARBEARIA.politicas || {}).avalLink || '').trim() ? ['', 'Se puder, deixe sua avaliação. Ajuda muito: ' + BARBEARIA.politicas.avalLink.trim()] : []),
     ].join('\n');
   }
   return [
@@ -3777,7 +3686,7 @@ async function salvarAtendimentoAvulso() {
   try {
     const payload = {
       cliente:     nome,
-      telefone:    tel || '',
+      telefone:    (tel || '').replace(/\D/g, '').replace(/^55/, ''),
       servico:     svcName,
       preco:       preco,
       data:        data,
@@ -3846,3 +3755,255 @@ document.addEventListener('click', function unlockOnce() {
   document.removeEventListener('click', unlockOnce);
   iniciarPushNotifications();
 });
+
+
+// ══════════════════════════════════════════════════
+//  RELACIONAMENTO: aniversários, clientes que sumiram e pedido de avaliação
+// ══════════════════════════════════════════════════
+function relPol() { return BARBEARIA.politicas || {}; }
+function relPrimeiroNome(n) { return String(n || '').trim().split(/\s+/)[0] || ''; }
+function relEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function relMsg(modelo, c, extra) {
+  extra = extra || {};
+  return String(modelo || '').replace(/\{nome\}/g, relPrimeiroNome(c.nome)).replace(/\{barbearia\}/g, BARBEARIA.nome)
+    .replace(/\{desconto\}/g, extra.desconto || '').replace(/\{link\}/g, extra.link || '');
+}
+function relLinkWA(tel, msg) {
+  let d = String(tel || '').replace(/\D/g, '');
+  if (d.length <= 11) d = '55' + d;
+  return 'https://wa.me/' + d + '?text=' + encodeURIComponent(msg);
+}
+function relHoje() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function relDias(deISO, ateISO) { return Math.round((new Date(ateISO + 'T12:00:00') - new Date(deISO + 'T12:00:00')) / 86400000); }
+function relFmt(iso) { const [y, m, d] = String(iso).split('-'); return d + '/' + m + '/' + y; }
+
+// Marca quem já recebeu a mensagem (só neste aparelho)
+function relContatos() { try { return JSON.parse(localStorage.getItem('rel_contatos_v1') || '{}'); } catch (e) { return {}; } }
+function relMarcarContato(chave) {
+  const m = relContatos(); m[chave] = relHoje();
+  try { localStorage.setItem('rel_contatos_v1', JSON.stringify(m)); } catch (e) {}
+}
+function relBotaoWA(chave, tel, msg) {
+  const ja = relContatos()[chave];
+  return '<div class="rel-acoes">' + (ja ? '<span class="rel-enviado">Enviado em ' + relFmt(ja).slice(0, 5) + '</span>' : '') +
+    '<a class="rel-btn" target="_blank" rel="noopener" href="' + relEsc(relLinkWA(tel, msg)) + '" onclick="relMarcarContato(\'' + chave + '\'); setTimeout(renderRelacionamento, 400)">' + (ja ? 'Enviar de novo' : 'WhatsApp') + '</a></div>';
+}
+function relClientes() {
+  return Object.values(buildClientMap()).filter(c => String(c.telefone || '').replace(/\D/g, '').length >= 10);
+}
+
+function renderRelacionamento() { renderRelAniversarios(); renderRelAusentes(); renderRelAvaliacoes(); }
+
+function renderRelAniversarios() {
+  const el = document.getElementById('rel-aniv-lista'); if (!el) return;
+  const janela = parseInt((document.getElementById('rel-aniv-janela') || {}).value, 10) || 7;
+  const hoje = new Date(); hoje.setHours(12, 0, 0, 0);
+  const lista = relClientes().map(c => {
+    if (!c.nascimento) return null;
+    const [y, m, d] = c.nascimento.split('-').map(Number);
+    if (!m || !d) return null;
+    let prox = new Date(hoje.getFullYear(), m - 1, d, 12);
+    if (prox < hoje) prox = new Date(hoje.getFullYear() + 1, m - 1, d, 12);
+    const dias = Math.round((prox - hoje) / 86400000);
+    return dias <= janela ? { c, dias, dia: String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0'), idade: y > 1900 ? prox.getFullYear() - y : 0 } : null;
+  }).filter(Boolean).sort((a, b) => a.dias - b.dias);
+  if (!lista.length) { el.innerHTML = '<p class="rel-vazio">Nenhum aniversariante nesse período.</p>'; return; }
+  const pct = Number(relPol().aniversarioDescPct) || 0;
+  el.innerHTML = lista.map(x => {
+    const quando = x.dias === 0 ? '<b>Hoje</b>' : x.dias === 1 ? '<b>Amanhã</b>' : 'Em ' + x.dias + ' dias';
+    const msg = relMsg(relPol().msgAniversario, x.c, { desconto: pct + '%' });
+    return '<div class="rel-item"><div class="rel-quem"><span class="rel-nome">' + relEsc(x.c.nome) + '</span><span class="rel-info">' + quando + ' · ' + x.dia + (x.idade ? ' · ' + x.idade + ' anos' : '') + '</span></div>' +
+      relBotaoWA('aniv:' + x.c.key + ':' + new Date().getFullYear(), x.c.telefone, msg) + '</div>';
+  }).join('');
+}
+
+function renderRelAusentes() {
+  const el = document.getElementById('rel-aus-lista'); if (!el) return;
+  const minimo = parseInt((document.getElementById('rel-aus-dias') || {}).value, 10) || 45;
+  const hoje = relHoje();
+  const lista = relClientes().map(c => {
+    const ags = (c.agendamentos || []).filter(a => a.data && a.status !== 'cancelado');
+    if (ags.some(a => a.data >= hoje && ['agendado', 'confirmado'].includes(a.status))) return null;   // já tem horário marcado
+    const passados = ags.filter(a => a.data <= hoje).map(a => a.data).sort();
+    if (!passados.length) return null;
+    const ultimo = passados[passados.length - 1], dias = relDias(ultimo, hoje);
+    return dias >= minimo ? { c, ultimo, dias, total: passados.length } : null;
+  }).filter(Boolean).sort((a, b) => b.dias - a.dias);
+  if (!lista.length) { el.innerHTML = '<p class="rel-vazio">Nenhum cliente sumido nesse período.</p>'; return; }
+  const LIM = 60;
+  el.innerHTML = lista.slice(0, LIM).map(x =>
+    '<div class="rel-item"><div class="rel-quem"><span class="rel-nome">' + relEsc(x.c.nome) + '</span><span class="rel-info">Último atendimento: ' + relFmt(x.ultimo) + ' · <b>' + x.dias + ' dias</b> · ' + x.total + (x.total === 1 ? ' visita' : ' visitas') + '</span></div>' +
+    relBotaoWA('ret:' + x.c.key, x.c.telefone, relMsg(relPol().msgRetorno, x.c)) + '</div>'
+  ).join('') + (lista.length > LIM ? '<p class="rel-vazio">Mostrando os ' + LIM + ' mais antigos de ' + lista.length + '.</p>' : '');
+}
+
+function renderRelAvaliacoes() {
+  const el = document.getElementById('rel-aval-lista'); if (!el) return;
+  if (!String(relPol().avalLink || '').trim()) { el.innerHTML = '<p class="rel-vazio">Cadastre o link de avaliação em Ajustes para usar o pedido de avaliação.</p>'; return; }
+  const hoje = relHoje();
+  const lista = allAgendamentos.filter(a => a.status === 'concluido' && !a.avaliacaoPedida && (a.telefone || '').replace(/\D/g, '') && a.data && relDias(a.data, hoje) >= 0 && relDias(a.data, hoje) <= 14)
+    .sort((x, y) => y.data.localeCompare(x.data));
+  if (!lista.length) { el.innerHTML = '<p class="rel-vazio">Nenhum pedido pendente.</p>'; return; }
+  el.innerHTML = lista.map(a =>
+    '<div class="rel-item"><div class="rel-quem"><span class="rel-nome">' + relEsc(a.cliente) + '</span><span class="rel-info">' + relEsc(a.servico || '') + ' · ' + relFmt(a.data) + '</span></div>' +
+    '<div class="rel-acoes"><button type="button" class="rel-btn" onclick="relPedirAvaliacao(\'' + a.id + '\')">Pedir avaliação</button></div></div>'
+  ).join('');
+}
+
+async function relPedirAvaliacao(id) {
+  const a = allAgendamentos.find(x => x.id === id); if (!a) return;
+  const link = String(relPol().avalLink || '').trim();
+  if (!link) { showToast('Cadastre o link de avaliação em Ajustes.'); return; }
+  window.open(relLinkWA(a.telefone, relMsg(relPol().msgAvaliacao, { nome: a.cliente }, { link })), '_blank');
+  try { await db.collection('agendamentos').doc(id).update({ avaliacaoPedida: true }); a.avaliacaoPedida = true; }
+  catch (e) { console.warn('Não consegui marcar o pedido de avaliação', e); }
+  renderRelAvaliacoes();
+  try { applyFilters(); } catch (e) {}
+}
+
+// ── Sinal recebido e selos na tabela de agendamentos ──
+function extrasAgdHTML(a) {
+  let h = '';
+  const s = Number(a.sinal) || 0;
+  if (s > 0) {
+    const ok = a.sinalPago === true;
+    h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:' + (ok ? '#4cd984' : '#e0a030') + ';">Sinal R$' + s.toFixed(2).replace('.', ',') + ': ' + (ok ? 'recebido' : 'aguardando') + '</div>';
+    if (!ok && a.status !== 'cancelado') h += '<button type="button" class="btn-action btn-confirmar" style="margin-top:4px;" onclick="marcarSinalPago(\'' + a.id + '\')">Sinal recebido</button>';
+  }
+  if (a.aniversario) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de aniversário</div>';
+  if (a.fidelidade) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de fidelidade</div>';
+  if (a.remarcadoEm) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Remarcado pelo cliente</div>';
+  return h;
+}
+async function marcarSinalPago(id) {
+  try {
+    await db.collection('agendamentos').doc(id).update({ sinalPago: true });
+    const a = allAgendamentos.find(x => x.id === id); if (a) a.sinalPago = true;
+    applyFilters();
+    showToast('Sinal marcado como recebido.');
+  } catch (e) { console.warn(e); alert('Não consegui salvar. Tente de novo.'); }
+}
+
+// ── Ajustes: sinal, cancelamento, fidelidade e mensagens ──
+// Avisa quando o sinal está ligado mas não vai aparecer para o cliente (falta a chave Pix)
+function atualizarAvisoSinal() {
+  let el = document.getElementById('aj-sinal-aviso');
+  if (!el) {   // admin.html de versão anterior: cria o aviso no lugar certo
+    const cb0 = document.getElementById('aj-sinal-ativo'); if (!cb0) return;
+    el = document.createElement('div'); el.id = 'aj-sinal-aviso';
+    el.style.cssText = "display:none;background:rgba(224,160,48,0.1);border:1px solid #e0a030;color:#F1EAD6;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-family:'Roboto',sans-serif;font-size:13px;line-height:1.5;";
+    cb0.closest('label').parentNode.insertBefore(el, cb0.closest('label'));
+  }
+  const forms = (typeof _pagamentoEdit !== 'undefined' && _pagamentoEdit && _pagamentoEdit.length) ? _pagamentoEdit : FORMAS_PAGAMENTO;
+  const pix = forms.find(f => f && f.tipo === 'pix' && f.ativo !== false && (f.pixChave || f.pixQr));
+  const ligado = document.getElementById('aj-sinal-ativo').checked;
+  if (ligado && !pix) {
+    el.innerHTML = '<b>O sinal ainda não aparece no site.</b> Falta uma forma de pagamento Pix ativa com a chave preenchida (ou QR Code). Cadastre em Formas de pagamento, mais abaixo, e clique em salvar lá.';
+    el.style.display = '';
+  } else { el.style.display = 'none'; }
+}
+function renderPoliticasEditor() {
+  document.querySelectorAll('.aj-desc').forEach(d => { d.textContent = d.textContent.replace('O desconto de aniversário é aplicado por você na hora do atendimento.', 'O desconto de aniversário é automático: vale no mês do aniversário do cliente, uma vez por ano, e não soma com a fidelidade (vale o maior).'); });
+  const p = relPol();
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v == null ? '' : v; };
+  const chk = (id, v) => { const e = document.getElementById(id); if (e) e.checked = !!v; };
+  chk('aj-sinal-ativo', p.sinalAtivo); set('aj-sinal-pct', p.sinalPct); set('aj-sinal-min', p.sinalMinPreco || ''); set('aj-sinal-total', p.sinalTotalAcima || '');
+  set('aj-cancel-horas', p.cancelHoras);
+  chk('aj-fid-ativo', p.fidelAtivo); set('aj-fid-cada', p.fidelCada); set('aj-fid-desc', p.fidelDescPct); set('aj-aniv-desc', p.aniversarioDescPct);
+  set('aj-aval-link', p.avalLink); set('aj-msg-aniv', p.msgAniversario); set('aj-msg-ret', p.msgRetorno); set('aj-msg-aval', p.msgAvaliacao);
+  ajStatus('aj-pol-status', ''); ajStatus('aj-pol2-status', '');
+  atualizarAvisoSinal();
+  const cb = document.getElementById('aj-sinal-ativo'); if (cb && !cb._av) { cb._av = true; cb.addEventListener('change', atualizarAvisoSinal); }
+}
+async function salvarPoliticas() {
+  const num = (id, min, max, padrao) => { const v = parseFloat(String(document.getElementById(id).value).replace(',', '.')); return isFinite(v) ? Math.min(max, Math.max(min, v)) : padrao; };
+  const txt = id => (document.getElementById(id).value || '').trim();
+  const link = txt('aj-aval-link');
+  if (link && !/^https?:\/\//i.test(link)) { ajStatus('aj-pol2-status', 'O link de avaliação precisa começar com https://', '#e05555'); return; }
+  const politicas = {
+    sinalAtivo: document.getElementById('aj-sinal-ativo').checked,
+    sinalPct: num('aj-sinal-pct', 1, 100, 30), sinalMinPreco: num('aj-sinal-min', 0, 100000, 0), sinalTotalAcima: num('aj-sinal-total', 0, 100000, 0),
+    cancelHoras: num('aj-cancel-horas', 0, 168, 2),
+    fidelAtivo: document.getElementById('aj-fid-ativo').checked,
+    fidelCada: Math.round(num('aj-fid-cada', 2, 50, 5)), fidelDescPct: num('aj-fid-desc', 1, 100, 20), aniversarioDescPct: num('aj-aniv-desc', 0, 100, 10),
+    avalLink: link, msgAniversario: txt('aj-msg-aniv'), msgRetorno: txt('aj-msg-ret'), msgAvaliacao: txt('aj-msg-aval'),
+  };
+  ['aj-pol-status', 'aj-pol2-status'].forEach(id => ajStatus(id, 'Salvando...'));
+  try {
+    await db.collection('config').doc('barbearia').set({ politicas, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    await carregarAjustesRemotos();
+    renderPoliticasEditor();
+    ['aj-pol-status', 'aj-pol2-status'].forEach(id => ajStatus(id, 'Salvo! O site já usa as novas regras.', '#4caf50'));
+    showToast('Regras salvas.');
+  } catch (e) {
+    console.warn(e);
+    ['aj-pol-status', 'aj-pol2-status'].forEach(id => ajStatus(id, 'Erro ao salvar: ' + (e.message || e.code || e), '#e05555'));
+  }
+}
+
+// ── Ajustes: antes e depois (uma coleção, um documento por par, para não estourar o limite de 1 MB) ──
+let _adLista = [];
+const AD_MAX_CHARS = 300000;
+function adComprimir(arquivo) {
+  return new Promise((ok, erro) => {
+    if (!arquivo || !/^image\//.test(arquivo.type)) { erro(new Error('Escolha uma imagem.')); return; }
+    const r = new FileReader();
+    r.onerror = () => erro(new Error('Não consegui ler a imagem.'));
+    r.onload = () => {
+      const img = new Image();
+      img.onerror = () => erro(new Error('Imagem inválida.'));
+      img.onload = () => {
+        for (const max of [900, 720, 560, 420]) {
+          const esc = Math.min(1, max / Math.max(img.width, img.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.max(1, Math.round(img.width * esc)); cv.height = Math.max(1, Math.round(img.height * esc));
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          const url = cv.toDataURL('image/jpeg', 0.8);
+          if (url.length < AD_MAX_CHARS) { ok(url); return; }
+        }
+        erro(new Error('A imagem ficou pesada demais.'));
+      };
+      img.src = r.result;
+    };
+    r.readAsDataURL(arquivo);
+  });
+}
+async function carregarAntesDepoisAdmin() {
+  try {
+    const snap = await db.collection('antesdepois').get();
+    _adLista = snap.docs.map(d => Object.assign({ id: d.id }, d.data()))
+      .sort((x, y) => ((y.criadoEm && y.criadoEm.seconds) || 0) - ((x.criadoEm && x.criadoEm.seconds) || 0));
+  } catch (e) { console.warn('Antes e depois:', e); _adLista = []; }
+  renderAntesDepoisAdmin();
+}
+function renderAntesDepoisAdmin() {
+  const el = document.getElementById('aj-ad-lista'); if (!el) return;
+  if (!_adLista.length) { el.innerHTML = '<p class="rel-vazio" style="grid-column:1/-1;">Nenhum par cadastrado ainda.</p>'; return; }
+  el.innerHTML = _adLista.map(it =>
+    '<div class="ad-item"><div class="ad-par"><img src="' + it.antes + '" alt="Antes"><img src="' + it.depois + '" alt="Depois"></div>' +
+    (it.legenda ? '<div class="ad-leg">' + relEsc(it.legenda) + '</div>' : '') +
+    '<button type="button" title="Remover" onclick="removerAntesDepois(\'' + it.id + '\')">✕</button></div>').join('');
+}
+async function adicionarAntesDepois() {
+  const fa = document.getElementById('aj-ad-antes').files[0], fd = document.getElementById('aj-ad-depois').files[0];
+  if (!fa || !fd) { ajStatus('aj-ad-status', 'Escolha as duas fotos: antes e depois.', '#e05555'); return; }
+  if (_adLista.length >= 8) { ajStatus('aj-ad-status', 'Limite de 8 pares. Remova um para adicionar outro.', '#e05555'); return; }
+  const btn = document.getElementById('aj-ad-btn'); btn.disabled = true;
+  ajStatus('aj-ad-status', 'Enviando...');
+  try {
+    const [antes, depois] = await Promise.all([adComprimir(fa), adComprimir(fd)]);
+    await db.collection('antesdepois').add({ antes, depois, legenda: (document.getElementById('aj-ad-legenda').value || '').trim(), criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+    ['aj-ad-antes', 'aj-ad-depois', 'aj-ad-legenda'].forEach(id => { document.getElementById(id).value = ''; });
+    await carregarAntesDepoisAdmin();
+    ajStatus('aj-ad-status', 'Par adicionado! Já aparece no site.', '#4caf50');
+  } catch (e) {
+    console.warn(e);
+    ajStatus('aj-ad-status', 'Erro: ' + (e.message || e.code || e), '#e05555');
+  }
+  btn.disabled = false;
+}
+async function removerAntesDepois(id) {
+  if (!confirm('Remover este par de fotos do site?')) return;
+  try { await db.collection('antesdepois').doc(id).delete(); await carregarAntesDepoisAdmin(); showToast('Par removido.'); }
+  catch (e) { console.warn(e); alert('Não consegui remover. Tente de novo.'); }
+}
