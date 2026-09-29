@@ -1220,6 +1220,22 @@ body.admin-body {
 }
 
 
+/* ── Ajustes: o reset "* { padding:0 !important }" do começo deste arquivo zerava o espaçamento destes elementos ── */
+.aj-card { padding:22px 20px !important; margin-bottom:28px !important; }
+.aj-titulo { margin-bottom:6px !important; }
+.aj-desc { margin-bottom:18px !important; }
+.aj-linha { gap:12px !important; }
+.aj-campo { margin-bottom:12px !important; gap:4px !important; }
+.aj-in { padding:10px 12px !important; }
+.aj-btn { padding:12px 28px !important; }
+.aj-btn2 { padding:10px 18px !important; }
+.aj-plano { padding:16px !important; margin-bottom:12px !important; }
+.aj-acoes { margin-top:8px !important; }
+.aj-check { gap:6px !important; }
+.aj-chk { margin-bottom:14px !important; }
+.aj-fonte { padding:14px 12px 10px !important; }
+.aj-fonte-nome { margin-top:10px !important; }
+
 /* ── Relacionamento, sinal e antes/depois ── */
 .aj-chk { display:flex; align-items:center; gap:8px; color:#F1EAD6; font-family:'Roboto',sans-serif; font-size:14px; margin-bottom:14px; cursor:pointer; }
 .aj-chk input { accent-color:#EBC531; }
