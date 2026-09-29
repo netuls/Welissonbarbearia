@@ -11,10 +11,8 @@ let WHATSAPP_NOTIFY = BARBEARIA.whatsappAvisos || BARBEARIA.whatsapp;
 // false = comportamento normal (agenda de verdade).
 const DEMO_MODE = BARBEARIA.modoDemonstracao === true;   // configurado no config.js
 
-// ─── Slides do Slideshow (adicione URLs de imagens aqui) ───
-const HERO_SLIDES = [
-  // ex: 'fotos/corte1.jpg', 'fotos/corte2.jpg'
-];
+// ─── Slides do Slideshow (fotos enviadas no painel admin, aba Ajustes) ───
+let HERO_SLIDES = [];
 
 // ─── Serviços ─────────────────────────────────────
 // "let" porque o painel pode substituir a lista inteira (adicionar, remover ou reordenar serviços).
@@ -226,14 +224,29 @@ function limparTextoPix(s, max) {
     .replace(/[^a-zA-Z0-9 ]/g, '').trim().toUpperCase().slice(0, max);
   return limpo || 'NA';
 }
-// Limpa a chave Pix de máscara/formatação (ex.: "(85) 99999-9999" -> "85999999999").
-// Preserva "+", "@", "." e "-" no miolo, já que chave aleatória (UUID) e e-mail usam esses caracteres.
+// Limpa a chave Pix de máscara/formatação (ex.: "(85) 99999-9999" -> "+5585999999999").
+// Preserva "@" e "." no miolo (e-mail) e o formato de chave aleatória (UUID com hífen),
+// mas remove parênteses/espaço/hífen quando a chave é telefone ou CPF/CNPJ (só dígitos).
 function limparChavePix(chave) {
-  let c = String(chave || '').trim().replace(/[()\s]/g, '');
-  // Telefone: só dígitos (e talvez '+' na frente) e faltando o "+55" -> completa, é o formato exigido pelo Pix
-  if (/^\d{10,11}$/.test(c)) c = '+55' + c;
-  else if (/^55\d{10,11}$/.test(c)) c = '+' + c;
-  return c;
+  const c = String(chave || '').trim();
+  if (!c) return c;
+  if (c.includes('@')) return c;                                    // e-mail: mantém como está
+  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(c)) return c; // chave aleatória (UUID)
+  const soDigitos = c.replace(/\D/g, '');                            // remove (), espaço, hífen, ".", "/", "+"
+  // Se, tirando os dígitos, só sobrou pontuação de formatação (nada de letra), é telefone/CPF/CNPJ:
+  // nesse caso a chave "de verdade" é só a sequência de números.
+  if (soDigitos && /^[\d()\s+.\-/]*$/.test(c)) {
+    // Celular: DDD (2) + 9 + 8 dígitos = 11 dígitos começando com 9 na 3ª posição
+    if (soDigitos.length === 11 && soDigitos[2] === '9') return '+55' + soDigitos;
+    // Já veio com 55 + celular (13 dígitos)
+    if (soDigitos.length === 13 && soDigitos.slice(0, 2) === '55' && soDigitos[4] === '9') return '+' + soDigitos;
+    // Fixo (DDD + 8 dígitos = 10) também é aceito como telefone pelo Pix
+    if (soDigitos.length === 10) return '+55' + soDigitos;
+    if (soDigitos.length === 12 && soDigitos.slice(0, 2) === '55') return '+' + soDigitos;
+    // Sobrou só dígitos e não bateu com telefone: é CPF (11) ou CNPJ (14) — não prefixa "+55"
+    return soDigitos;
+  }
+  return c.replace(/[()\s]/g, ''); // fallback: comportamento antigo para formatos não previstos
 }
 
 function gerarPayloadPix({ chave, nome, cidade, valor, txid }) {
@@ -278,30 +291,31 @@ function exibirBoxPix(container, forma, valor, sufixoId) {
   const qrId = 'pix-qr-' + sufixoId;
   const payload = dinamico ? gerarPayloadPix({ chave: forma.pixChave, nome: forma.pixNome, cidade: forma.pixCidade, valor, txid: 'AG' + Date.now().toString(36).toUpperCase() }) : '';
   container.innerHTML = `
-    <div style="margin-top:16px;padding:18px;background:#0C1838;border:1px solid #16295C;border-radius:8px;text-align:center;">
-      <p style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#EBC531;text-transform:uppercase;margin:0 0 4px;">Pague com Pix</p>
-      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;margin:0 0 12px;">Valor: R$${Number(valor).toFixed(2).replace('.', ',')}</p>
+    <div style="margin-top:16px;padding:18px;background:#181818;border:1px solid #303030;border-radius:8px;text-align:center;">
+      <p style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#D9D9D9;text-transform:uppercase;margin:0 0 4px;">Pague com Pix</p>
+      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#ACACAC;margin:0 0 12px;">Valor: R$${Number(valor).toFixed(2).replace('.', ',')}</p>
       ${dinamico
         ? `<div id="${qrId}" style="width:332px;max-width:100%;aspect-ratio:1;background:#fff;border-radius:8px;padding:16px;margin:0 auto 12px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;"></div>
-           <div style="font-family:'Roboto',sans-serif;font-size:10px;color:#5E6E9E;margin:-8px 0 12px;">Se a câmera não ler, use o botão abaixo (cola direto no app do banco).</div>
+           <div style="font-family:'Roboto',sans-serif;font-size:10px;color:#787878;margin:-8px 0 12px;">Se a câmera não ler, use o botão abaixo (cola direto no app do banco).</div>
            <div style="display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;">
              <button type="button" onclick="copiarChavePix('${payload}')"
-               style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:4px;">Copiar Pix Copia e Cola</button>
+               style="background:#393939;border:1px solid #5E5E5E;color:#F1EAD6;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:4px;">Copiar Pix Copia e Cola</button>
            </div>
-           <p style="font-family:'Roboto',sans-serif;font-size:11px;color:#5E6E9E;margin:10px 0 0;">Escaneie ou copie o código — o valor já vem preenchido.</p>`
+           <p style="font-family:'Roboto',sans-serif;font-size:11px;color:#787878;margin:10px 0 0;">Escaneie ou copie o código — o valor já vem preenchido.</p>`
         : `${forma.pixQr ? `<img src="${forma.pixQr}" alt="QR Code Pix" style="width:180px;height:180px;object-fit:contain;background:#fff;border-radius:8px;padding:6px;margin-bottom:12px;">` : ''}
            ${forma.pixChave ? `
            <div style="display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;">
-             <code style="background:#0F1F45;padding:8px 12px;border-radius:6px;color:#F1EAD6;font-size:13px;word-break:break-all;">${forma.pixChave}</code>
+             <code style="background:#202020;padding:8px 12px;border-radius:6px;color:#F1EAD6;font-size:13px;word-break:break-all;">${forma.pixChave}</code>
              <button type="button" onclick="copiarChavePix('${forma.pixChave.replace(/'/g, "\\'")}')"
-               style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:4px;">Copiar chave</button>
+               style="background:#393939;border:1px solid #5E5E5E;color:#F1EAD6;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:4px;">Copiar chave</button>
            </div>
-           <p style="font-family:'Roboto',sans-serif;font-size:11px;color:#5E6E9E;margin:10px 0 0;">Confira o valor certinho antes de pagar.</p>` : ''}`
+           <p style="font-family:'Roboto',sans-serif;font-size:11px;color:#787878;margin:10px 0 0;">Confira o valor certinho antes de pagar.</p>` : ''}`
       }
     </div>`;
   container.style.display = 'block';
   if (dinamico) renderizarQRPix(qrId, payload);
 }
+
 let currentUser = null; // { nome, telefone } — preenchido após login
 
 // ══════════════════════════════════════════════════
@@ -353,25 +367,21 @@ function mesDe(dataISO) {
 // timeout etc.), tratamos como limite ATINGIDO em vez de liberar sem checar — "fail closed",
 // não "fail open". O comportamento anterior devolvia null nesse caso, e null fazia o site
 // liberar o serviço de graça sem nenhuma verificação.
-//
-// A contagem segue a mesma regra do painel admin: conta qualquer atendimento não cancelado, dentro da
-// janela, de um serviço coberto pelo plano (inclusive atendimento avulso registrado pelo barbeiro),
-// exceto os que já foram gravados como cobrados por limite atingido.
 async function checarUsoPlano(data) {
   const u = currentUser;
   const lim = u && PLAN_LIMITS[u.plano];
   if (!lim || DEMO_MODE || !planoAtivo(u, data)) return null;
   const [ini, fim] = lim.por === 'semana' ? semanaDe(data) : lim.por === 'mes' ? mesDe(data) : [u.planoPagoEm || '0000-00-00', u.planoVenceEm];
+  // Mesma regra do painel: conta qualquer atendimento NÃO cancelado, dentro da janela, de um serviço
+  // coberto pelo plano, exceto os já gravados como "Limite do plano atingido" (esses foram cobrados).
+  const nomesCobertos = SERVICES.filter(sv => (PLAN_COVERAGE[u.plano] || []).includes(sv.id)).map(sv => sv.name);
   try {
     const snap = await comTimeout(firebase.firestore().collection('agendamentos')
       .where('telefone', '==', phoneKey(u.telefone || ''))
-      .where('status', 'in', ['agendado', 'confirmado', 'concluido'])
       .get());
-    const nomesCobertos = SERVICES
-      .filter(s => (PLAN_COVERAGE[u.plano] || []).includes(s.id))
-      .map(s => s.name);
     const usados = snap.docs.map(d => d.data())
-      .filter(a => a.data >= ini && a.data <= fim
+      .filter(a => a.status !== 'cancelado'
+        && a.data >= ini && a.data <= fim
         && nomesCobertos.includes(a.servico)
         && !/^Limite do plano atingido/.test(a.obs || '')).length;
     return { atingido: usados >= lim.qtd, usados, qtd: lim.qtd, por: lim.por };
@@ -386,8 +396,128 @@ function limitePlanoAtingido() {
 function servicoCoberto(service) {
   return !!service && planoAtivo(currentUser) && PLAN_COVERAGE[currentUser.plano].includes(service.id) && !limitePlanoAtingido();
 }
+// ── Fidelidade: a cada N atendimentos pagos, o próximo tem desconto ──
+function fidelDisponivel() {
+  const p = BARBEARIA.politicas || {};
+  return !!(p.fidelAtivo && currentUser && currentUser.fid && currentUser.fid.disponiveis > 0);
+}
+// Aniversário: desconto automático no mês do aniversário, uma vez por ano
+function aniversarioDisponivel() {
+  const p = BARBEARIA.politicas || {};
+  const pct = Number(p.aniversarioDescPct) || 0;
+  if (!currentUser || pct <= 0 || !currentUser.nascimento) return false;
+  const mes = parseInt(String(currentUser.nascimento).split('-')[1], 10);
+  if (!mes || mes !== new Date().getMonth() + 1) return false;
+  return currentUser.anivUsadoAno !== new Date().getFullYear();
+}
+// Devolve o melhor desconto que vale agora (não soma fidelidade com aniversário)
+function descontoAtual() {
+  const p = BARBEARIA.politicas || {};
+  const f = fidelDisponivel() ? Math.min(100, Math.max(0, Number(p.fidelDescPct) || 0)) : 0;
+  const n = aniversarioDisponivel() ? Math.min(100, Math.max(0, Number(p.aniversarioDescPct) || 0)) : 0;
+  if (f <= 0 && n <= 0) return null;
+  return n > f ? { pct: n, tipo: 'aniversario' } : { pct: f, tipo: 'fidelidade' };
+}
 function precoCobrado(service) {
-  return servicoCoberto(service) ? 0 : Number(service.price);
+  if (servicoCoberto(service)) return 0;
+  const base = Number(service.price);
+  const d = descontoAtual();
+  if (!d) return base;
+  return Math.round(base * (100 - d.pct)) / 100;
+}
+function descontoFidelidade(service) {
+  return servicoCoberto(service) ? 0 : Math.max(0, Math.round((Number(service.price) - precoCobrado(service)) * 100) / 100);
+}
+// Conta os atendimentos pagos e concluídos do cliente e quantos descontos ele já ganhou/usou
+async function refreshFidelidade() {
+  const p = BARBEARIA.politicas || {};
+  if (!currentUser || DEMO_MODE) return;
+  if (!p.fidelAtivo && !(Number(p.aniversarioDescPct) > 0)) { currentUser.fid = null; return; }
+  try {
+    const snap = await comTimeout(firebase.firestore().collection('agendamentos')
+      .where('telefone', '==', phoneKey(currentUser.telefone || ''))
+      .where('status', 'in', ['agendado', 'confirmado', 'concluido'])
+      .get());
+    let contados = 0, usados = 0, anivAno = null;
+    snap.docs.forEach(d => {
+      const ag = d.data();
+      if (ag.aniversario) anivAno = Math.max(anivAno || 0, Number(ag.aniversario) || 0);
+      if (ag.fidelidade) { usados++; return; }
+      if (ag.status === 'concluido' && Number(ag.preco) > 0) contados++;
+    });
+    const cada = Math.max(2, parseInt(p.fidelCada, 10) || 5);
+    const ganhos = Math.floor(contados / cada);
+    currentUser.fid = p.fidelAtivo ? { contados, cada, usados, disponiveis: Math.max(0, ganhos - usados), noCiclo: contados % cada } : null;
+    currentUser.anivUsadoAno = anivAno;
+    saveSession(currentUser);
+  } catch (e) { console.warn('Fidelidade:', e); currentUser.fid = null; }
+}
+function htmlFidelidade() {
+  const p = BARBEARIA.politicas || {};
+  const f = currentUser && currentUser.fid;
+  if (aniversarioDisponivel()) {
+    return `<div class="fid-box fid-ganhou"><strong>Feliz aniversário! ${p.aniversarioDescPct}% de desconto</strong><span>Vale no seu próximo atendimento pago este mês, aplicado na hora de agendar.</span></div>` + ((p.fidelAtivo && f) ? '' : '');
+  }
+  if (!p.fidelAtivo || !f) return '';
+  if (f.disponiveis > 0) {
+    return `<div class="fid-box fid-ganhou"><strong>Você tem ${p.fidelDescPct}% de desconto!</strong><span>Vale no seu próximo atendimento pago, aplicado na hora de agendar.</span></div>`;
+  }
+  const pontos = Array.from({ length: f.cada }, (_, i) => `<i class="${i < f.noCiclo ? 'on' : ''}"></i>`).join('');
+  return `<div class="fid-box"><strong>Programa de fidelidade</strong><div class="fid-pontos">${pontos}</div><span>${f.noCiclo} de ${f.cada} atendimentos. Faltam ${f.cada - f.noCiclo} para ganhar ${p.fidelDescPct}% de desconto.</span></div>`;
+}
+
+// ── Sinal via Pix ──
+function pixDoSinal() {
+  return FORMAS_PAGAMENTO.find(f => f && f.tipo === 'pix' && f.ativo !== false && (f.pixQr || f.pixChave)) || null;
+}
+function sinalDoServico(service) {
+  const p = BARBEARIA.politicas || {};
+  const preco = precoCobrado(service);
+  if (!p.sinalAtivo || preco <= 0 || !pixDoSinal()) return 0;
+  if (preco < (Number(p.sinalMinPreco) || 0)) return 0;
+  const total = Number(p.sinalTotalAcima) || 0;
+  if (total > 0 && preco >= total) return preco;                       // serviço caro: pagamento total antecipado
+  const pct = Math.min(100, Math.max(1, Number(p.sinalPct) || 30));
+  return Math.round(preco * pct) / 100;
+}
+
+// ── Prazo para cancelar e remarcar ──
+function prazoEmHoras() { return Number((BARBEARIA.politicas || {}).cancelHoras) || 0; }
+function horasAteAgendamento(data, horario) {
+  const [y, m, d] = String(data).split('-').map(Number);
+  const [hh, mm] = String(horario || '00:00').split(':').map(Number);
+  return (new Date(y, m - 1, d, hh || 0, mm || 0) - new Date()) / 3600000;
+}
+function foraDoPrazo(data, horario) {
+  const h = prazoEmHoras();
+  return h > 0 && horasAteAgendamento(data, horario) < h;
+}
+function avisarForaDoPrazo(acao, servico, data, horario) {
+  const h = prazoEmHoras();
+  if (confirm(`Não dá para ${acao} pelo site: o prazo é de ${h}h de antecedência e falta menos que isso.\n\nQuer falar com a barbearia pelo WhatsApp?`)) {
+    const msg = encodeURIComponent(`Olá! Preciso ${acao} meu agendamento (${servico}, ${formatDate(data)} às ${horario}), mas estou fora do prazo. Podem me ajudar?`);
+    window.open(`https://wa.me/${WHATSAPP_NOTIFY}?text=${msg}`, '_blank');
+  }
+}
+function notaPrazo() {
+  const h = prazoEmHoras();
+  if (h <= 0) return '';
+  const sinal = (BARBEARIA.politicas || {}).sinalAtivo && pixDoSinal();
+  return `<p class="nota-prazo">Cancelar ou remarcar pelo site: até ${h}h antes do horário${sinal ? '. Fora desse prazo, o sinal não é devolvido' : ''}.</p>`;
+}
+function extraConfirmHTML(sel) {
+  const R = v => 'R$' + Number(v).toFixed(2).replace('.', ',');
+  const p = BARBEARIA.politicas || {};
+  let h = '';
+  const dsc = descontoAtual();
+  if (dsc && descontoFidelidade(sel) > 0) h += `<div class="confirm-row"><label>${dsc.tipo === 'aniversario' ? 'Aniversário' : 'Fidelidade'}</label><span style="font-size:13px;">${dsc.pct}% de desconto: -${R(descontoFidelidade(sel))}</span></div>`;
+  const sinal = sinalDoServico(sel);
+  if (sinal > 0) {
+    const resto = Math.round((precoCobrado(sel) - sinal) * 100) / 100;
+    h += `<div class="confirm-row"><label>Sinal agora (Pix)</label><span>${R(sinal)}</span></div>`;
+    if (resto > 0) h += `<div class="confirm-row"><label>Restante no atendimento</label><span>${R(resto)}</span></div>`;
+  }
+  return h + notaPrazo();
 }
 // Relê o plano do cliente no Firestore (o dono pode ter alterado depois do login)
 async function refreshPlano() {
@@ -402,6 +532,7 @@ async function refreshPlano() {
       saveSession(currentUser);
     }
   } catch (e) { console.warn('Plano:', e); }
+  await refreshFidelidade();
   renderServiceOptions();
 }
 
@@ -620,6 +751,10 @@ window.openMyBookings = async function() {
   const list  = document.getElementById('mybookings-list');
   modal.classList.add('open');
   list.innerHTML = '<p class="mybookings-loading">Carregando...</p>';
+  let fidEl = document.getElementById('mybookings-fid');
+  if (!fidEl) { fidEl = document.createElement('div'); fidEl.id = 'mybookings-fid'; list.parentNode.insertBefore(fidEl, list); }
+  fidEl.innerHTML = htmlFidelidade();
+  refreshFidelidade().then(() => { fidEl.innerHTML = htmlFidelidade(); });
 
   try {
     const key = currentUser.telefone;
@@ -649,6 +784,7 @@ window.openMyBookings = async function() {
 
     list.innerHTML = docs.map(d => {
       const a = d.data();
+      _meusAgd[d.id] = a;
       const statusLabel = a.status === 'confirmado'
         ? '<span class="agd-status confirmado">Confirmado</span>'
         : '<span class="agd-status agendado">Agendado</span>';
@@ -659,12 +795,16 @@ window.openMyBookings = async function() {
             <div class="agd-detalhe">${formatDate(a.data)} · ${a.horario}</div>
             <div class="agd-preco"${Number(a.preco) === 0 ? ' style="font-size:14px;"' : ''}>${Number(a.preco) === 0 ? 'Incluso no plano' : 'R$' + Number(a.preco).toFixed(2).replace('.',',')}</div>
             ${statusLabel}
+            ${Number(a.sinal) > 0 ? `<div class="agd-sinal">Sinal R$${Number(a.sinal).toFixed(2).replace('.', ',')}: ${a.sinalPago ? 'recebido' : 'aguardando confirmação'}</div>` : ''}
           </div>
-          <button class="btn-cancelar" onclick="cancelarAgendamento('${d.id}', '${a.servico}', '${a.data}', '${a.horario}')">
-            Cancelar
-          </button>
+          <div class="agd-acoes">
+            <button class="btn-remarcar" onclick="remarcarAgendamento('${d.id}')">Remarcar</button>
+            <button class="btn-cancelar" onclick="cancelarAgendamento('${d.id}', '${a.servico}', '${a.data}', '${a.horario}')">
+              Cancelar
+            </button>
+          </div>
         </div>`;
-    }).join('');
+    }).join('') + notaPrazo();
   } catch (e) {
     list.innerHTML = '<p class="mybookings-empty">Erro ao carregar. Tente novamente.</p>';
   }
@@ -675,6 +815,7 @@ window.closeMyBookings = function() {
 };
 
 window.cancelarAgendamento = async function(id, servico, data, horario) {
+  if (foraDoPrazo(data, horario)) { avisarForaDoPrazo('cancelar', servico, data, horario); return; }
   const confirma = confirm(`Cancelar ${servico} em ${formatDate(data)} às ${horario}?`);
   if (!confirma) return;
 
@@ -794,7 +935,7 @@ function renderServiceOptions() {
   if (!info) {
     info = document.createElement('p');
     info.id = 'plano-info';
-    info.style.cssText = 'display:none;margin:0 0 16px;padding:12px 16px;border:1px solid rgba(235, 197, 49,0.35);background:rgba(235, 197, 49,0.08);border-radius:6px;color:#F1EAD6;font-family:Roboto,sans-serif;font-size:13px;line-height:1.5;';
+    info.style.cssText = 'display:none;margin:0 0 16px;padding:12px 16px;border:1px solid rgba(217, 217, 217,0.35);background:rgba(217, 217, 217,0.08);border-radius:6px;color:#F1EAD6;font-family:Roboto,sans-serif;font-size:13px;line-height:1.5;';
     list.parentNode.insertBefore(info, list);
   }
   if (planoAtivo(currentUser)) {
@@ -812,7 +953,9 @@ function renderServiceOptions() {
     const coberto = servicoCoberto(s);
     const preco = coberto
       ? '<span class="option-price" style="font-family:Oswald,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Incluso no plano</span>'
-      : `<span class="option-price">R$${s.price.toFixed(2).replace('.', ',')}</span>`;
+      : (descontoAtual()
+          ? `<span class="option-price"><s class="preco-antigo">R$${s.price.toFixed(2).replace('.', ',')}</s> R$${precoCobrado(s).toFixed(2).replace('.', ',')}</span>`
+          : `<span class="option-price">R$${s.price.toFixed(2).replace('.', ',')}</span>`);
     return `
     <div class="option-item" id="opt-${s.id}" onclick="selectService('${s.id}')">
       <span>${s.name}</span>
@@ -821,61 +964,63 @@ function renderServiceOptions() {
   }).join('');
 }
 
-// ─── Slideshow Seção Cortes ────────────────────────
-function initSlideshow() {
-  const slider   = document.getElementById('cortes-slider');
-  const dotsWrap = document.getElementById('cortes-dots');
-  // Se não houver elemento de slider ou slides cadastrados, sai silenciosamente
-  if (!slider || !HERO_SLIDES.length) return;
-  const total = HERO_SLIDES.length;
-  let current = 0, autoTimer;
+// ─── Carrossel Seção "Nosso Trabalho" ──────────────
+// Busca as fotos da galeria salvas no painel admin (config/galeria) e monta o carrossel contínuo.
+async function carregarGaleria() {
+  try {
+    const doc = await firebase.firestore().collection('config').doc('galeria').get();
+    const dados = doc.exists ? (doc.data() || {}) : {};
+    HERO_SLIDES = Array.isArray(dados.fotos) ? dados.fotos.filter(Boolean) : [];
+  } catch (e) {
+    console.warn('Galeria de fotos:', e);
+  }
+  initSlideshow();
+}
 
-  HERO_SLIDES.forEach(src => {
+// Carrossel "esteira": as fotos deslizam sem parar, num loop contínuo e suave (sem trocas bruscas).
+// Feito só com CSS (@keyframes), então roda liso mesmo em celulares mais fracos.
+function initSlideshow() {
+  const slider = document.getElementById('cortes-slider');
+  const secao  = document.getElementById('cortes-section');
+  // Se não houver elemento de carrossel ou fotos cadastradas no painel, esconde a seção
+  if (!slider || !HERO_SLIDES.length) {
+    if (secao) secao.style.display = 'none';
+    return;
+  }
+  if (secao) secao.style.display = '';
+
+  // Limpa o que já existia (caso a galeria seja recarregada) antes de montar de novo
+  slider.innerHTML = '';
+  slider.classList.add('cortes-marquee');
+  slider.style.animation = 'none'; // reseta pra não "pular" ao recarregar
+
+  // Com só 1 foto não dá pra rolar de forma contínua sem repetir logo em seguida — mostra parada.
+  if (HERO_SLIDES.length === 1) {
+    slider.classList.remove('cortes-marquee');
+    const div = document.createElement('div');
+    div.className = 'cortes-slide';
+    div.style.backgroundImage = 'url(' + HERO_SLIDES[0] + ')';
+    slider.appendChild(div);
+    return;
+  }
+
+  // Duplica a lista de fotos: quando a "primeira volta" termina, a segunda cópia
+  // já está exatamente no mesmo lugar visualmente, e o loop reinicia sem soluço.
+  const fotos = HERO_SLIDES.concat(HERO_SLIDES);
+  fotos.forEach(src => {
     const div = document.createElement('div');
     div.className = 'cortes-slide';
     div.style.backgroundImage = 'url(' + src + ')';
     slider.appendChild(div);
   });
 
-  const wrap = slider.parentElement;
-  const counter = document.createElement('div');
-  counter.className = 'cortes-counter';
-  counter.textContent = '1 / ' + total;
-  wrap.appendChild(counter);
-
-  if (dotsWrap) {
-    HERO_SLIDES.forEach((_, i) => {
-      const dot = document.createElement('div');
-      dot.className = 'cortes-dot' + (i === 0 ? ' active' : '');
-      dot.onclick = function() { goTo(i); };
-      dotsWrap.appendChild(dot);
-    });
-  }
-
-  function goTo(idx) {
-    current = (idx + total) % total;
-    slider.style.transform = 'translateX(-' + (current * 100) + '%)';
-    document.querySelectorAll('.cortes-dot').forEach(function(d, i) { d.classList.toggle('active', i === current); });
-    counter.textContent = (current + 1) + ' / ' + total;
-    resetAuto();
-  }
-  function resetAuto() {
-    clearInterval(autoTimer);
-    autoTimer = setInterval(function() { goTo(current + 1); }, 4500);
-  }
-
-  const prevBtn = document.getElementById('cortes-prev');
-  const nextBtn = document.getElementById('cortes-next');
-  if (prevBtn) prevBtn.onclick = function() { goTo(current - 1); };
-  if (nextBtn) nextBtn.onclick = function() { goTo(current + 1); };
-
-  let startX = 0;
-  slider.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; }, { passive: true });
-  slider.addEventListener('touchend', function(e) {
-    const diff = startX - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 40) goTo(diff > 0 ? current + 1 : current - 1);
-  });
-  resetAuto();
+  // Velocidade proporcional à quantidade de fotos, pra manter o mesmo ritmo visual
+  // sempre (mais fotos = mais tempo pra completar uma volta inteira).
+  const duracao = Math.max(HERO_SLIDES.length * 4.5, 14);
+  // Força reflow antes de reativar a animação (garante que o "animation: none" acima tenha efeito)
+  void slider.offsetWidth;
+  slider.style.animation = '';
+  slider.style.animationDuration = duracao + 's';
 }
 
 // ─── Gera slots de horário ─────────────────────────
@@ -919,6 +1064,7 @@ async function carregarSlotsParaData(dataSelecionada) {
     agendSnap.docs.forEach(d => {
       const ag = d.data();
       if (!ag.horario) return;
+      if (state && state.remarcando && d.id === state.remarcando.id) return;   // remarcando: o horário antigo fica livre
       const ini = horaParaMin(ag.horario);
       ocupados.push([ini, ini + duracaoServico(ag.servicoId || ag.servico)]);
     });
@@ -942,13 +1088,13 @@ async function carregarSlotsParaData(dataSelecionada) {
       }
     }
     const slots = gerarSlots(cfg.inicio, cfg.fim, cfg.almoco, cfg.almoco_inicio, cfg.almoco_fim);
+    const agora = new Date();
+    const hoje  = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
+    const agoraMin = agora.getHours() * 60 + agora.getMinutes();
     // Duração do serviço escolhido
     const servicoAtual = state && state.selected ? state.selected : null;
     const duracao = servicoAtual ? duracaoServico(servicoAtual.id) : DURACAO_PADRAO;
     const fimExpediente = horaParaMin(cfg.fim);
-    const agora = new Date();
-    const hoje  = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
-    const agoraMin = agora.getHours() * 60 + agora.getMinutes();
     const pausaAtiva = cfg.almoco === true
       && typeof cfg.almoco_inicio === 'string' && cfg.almoco_inicio.includes(':')
       && typeof cfg.almoco_fim    === 'string' && cfg.almoco_fim.includes(':');
@@ -961,7 +1107,7 @@ async function carregarSlotsParaData(dataSelecionada) {
       if (fim > fimExpediente) return false;                              // passa do fim do expediente
       if (pausaAtiva && ini < pausaFim && fim > pausaIni) return false;   // invade o almoço
       if (ocupados.some(([oi, oe]) => ini < oe && fim > oi)) return false; // choca com outro agendamento
-      if (dataSelecionada === hoje && ini <= agoraMin) return false;      // horário que já passou (sem antecedência mínima)
+      if (dataSelecionada === hoje && ini <= agoraMin + 30) return false; // horário que já passou
       return true;
     });
     if (!livres.length) {
@@ -1016,7 +1162,7 @@ function renderCalendario() {
   const daysInMonth = new Date(calAno, calMes + 1, 0).getDate();
   let cells = '';
   ['D','S','T','Q','Q','S','S'].forEach(d => {
-    cells += `<div style="text-align:center;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#5E6E9E;padding:4px 0;">${d}</div>`;
+    cells += `<div style="text-align:center;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#787878;padding:4px 0;">${d}</div>`;
   });
   for (let i = 0; i < firstDay; i++) cells += '<div></div>';
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1026,22 +1172,22 @@ function renderCalendario() {
     const isSel   = dateStr === state.date;
     const isFechado = !isPast && !isDiaDisponivel(dateStr);
     if (isPast || isFechado) {
-      cells += `<div style="text-align:center;padding:8px 4px;font-family:'Roboto',sans-serif;font-size:13px;color:#1B3168;border:1px solid #0F1F45;border-radius:4px;${isFechado && !isPast ? 'text-decoration:line-through;' : ''}">${d}</div>`;
+      cells += `<div style="text-align:center;padding:8px 4px;font-family:'Roboto',sans-serif;font-size:13px;color:#393939;border:1px solid #202020;border-radius:4px;${isFechado && !isPast ? 'text-decoration:line-through;' : ''}">${d}</div>`;
     } else {
-      cells += `<div class="cal-dia" onclick="selecionarData('${dateStr}')" style="text-align:center;padding:8px 4px;font-family:'Roboto',sans-serif;font-size:13px;color:${isSel?'#070E24':'#F1EAD6'};background:${isSel?'#EBC531':'transparent'};border:1px solid ${isSel?'#EBC531':'#1B3168'};border-radius:4px;cursor:pointer;transition:all 0.2s;">${d}</div>`;
+      cells += `<div class="cal-dia" onclick="selecionarData('${dateStr}')" style="text-align:center;padding:8px 4px;font-family:'Roboto',sans-serif;font-size:13px;color:${isSel?'#0B0B0B':'#F1EAD6'};background:${isSel?'#D9D9D9':'transparent'};border:1px solid ${isSel?'#D9D9D9':'#393939'};border-radius:4px;cursor:pointer;transition:all 0.2s;">${d}</div>`;
     }
   }
   wrap.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <button onclick="mudarMes(-1)" style="background:none;border:1px solid #233F80;color:#F1EAD6;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:16px;">‹</button>
+      <button onclick="mudarMes(-1)" style="background:none;border:1px solid #4A4A4A;color:#F1EAD6;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:16px;">‹</button>
       <span style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:2px;color:#F1EAD6;text-transform:uppercase;">${mesNomes[calMes]} ${calAno}</span>
-      <button onclick="mudarMes(1)" style="background:none;border:1px solid #233F80;color:#F1EAD6;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:16px;">›</button>
+      <button onclick="mudarMes(1)" style="background:none;border:1px solid #4A4A4A;color:#F1EAD6;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:16px;">›</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">${cells}</div>
     <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
-      <span style="font-size:11px;color:#5E6E9E;font-family:'Roboto',sans-serif;">■ <span style="color:#F1EAD6;">Disponível</span></span>
-      <span style="font-size:11px;color:#5E6E9E;font-family:'Roboto',sans-serif;">■ <span style="color:#233F80;">Indisponível</span></span>
-      <span style="font-size:11px;color:#EBC531;font-family:'Roboto',sans-serif;">■ <span style="color:#EBC531;">Selecionado</span></span>
+      <span style="font-size:11px;color:#787878;font-family:'Roboto',sans-serif;">■ <span style="color:#F1EAD6;">Disponível</span></span>
+      <span style="font-size:11px;color:#787878;font-family:'Roboto',sans-serif;">■ <span style="color:#4A4A4A;">Indisponível</span></span>
+      <span style="font-size:11px;color:#D9D9D9;font-family:'Roboto',sans-serif;">■ <span style="color:#D9D9D9;">Selecionado</span></span>
     </div>`;
 }
 
@@ -1060,9 +1206,9 @@ window.selecionarData = function(dateStr) {
   document.querySelectorAll('.cal-dia').forEach(el => {
     const onclick = el.getAttribute('onclick') || '';
     const isSelected = onclick.includes(dateStr);
-    el.style.background = isSelected ? '#EBC531' : 'transparent';
-    el.style.color       = isSelected ? '#070E24' : '#F1EAD6';
-    el.style.border      = isSelected ? '1px solid #EBC531' : '1px solid #1B3168';
+    el.style.background = isSelected ? '#D9D9D9' : 'transparent';
+    el.style.color       = isSelected ? '#0B0B0B' : '#F1EAD6';
+    el.style.border      = isSelected ? '1px solid #D9D9D9' : '1px solid #393939';
   });
   const inp = document.getElementById('pref-date');
   if (inp) inp.value = dateStr;
@@ -1101,16 +1247,17 @@ window.selectService = function(id) {
   setTimeout(() => {
     showStep(2);
     preencherDadosAgendamento();
-    atualizarVisibilidadePagamento(); // esconde a forma de pagamento se o serviço já está incluso no plano
     const now = new Date();
     if (!calAno) { calAno = now.getFullYear(); calMes = now.getMonth(); }
     carregarConfigCalendario().then(() => renderCalendario());
+    atualizarVisibilidadePagamento(); // esconde a forma de pagamento se o serviço já está incluso no plano
   }, 180);
 };
 
 // Esconde a forma de pagamento quando o serviço é (ou parece ser, antes de saber a data) coberto pelo plano do cliente
 function atualizarVisibilidadePagamento() {
   const grupo = document.getElementById('pagamento-form-group');
+  if (grupo && state.remarcando) { grupo.style.display = 'none'; return; }
   if (!grupo || !state.selected) return;
   const coberto = servicoCoberto(state.selected);
   grupo.style.display = coberto ? 'none' : '';
@@ -1136,6 +1283,7 @@ window.goToConfirm = async function() {
   }
   state.name = name; state.phone = phone; state.date = date; state.time = time;
   state.obs = document.getElementById('obs').value.trim();
+  if (state.remarcando) { renderConfirmRemarcacao(); showStep(3); return; }
   state.planoUso = await checarUsoPlano(date); // limite de uso do plano (ex.: Simples = 2x no mês)
   atualizarVisibilidadePagamento(); // agora já dá pra saber com certeza se o serviço será cobrado ou não
   if (!servicoCoberto(state.selected) && !state.formaPagamento) {
@@ -1153,35 +1301,38 @@ function formatDate(d) {
 
 function renderConfirm() {
   const sel = state.selected;
-  const planoRestrito = limitePlanoAtingido() && PLAN_COVERAGE[currentUser.plano].includes(sel.id);
-  const msgPlanoRestrito = planoRestrito
-    ? (state.planoUso.erro
-        ? 'Não foi possível confirmar agora o uso do seu plano. Por segurança, este atendimento será cobrado normalmente. Se achar que isso é um engano, fale com a gente.'
-        : `Você já usou ${state.planoUso.usados} de ${state.planoUso.qtd} atendimentos do plano ${state.planoUso.por === 'semana' ? 'nesta semana' : 'neste mês'}. Este atendimento será cobrado.`)
-    : '';
-  const forma = formaPagamentoPorId(state.formaPagamento);
+  const btnOk = document.querySelector('.btn-confirm'); if (btnOk) btnOk.textContent = '✓ Confirmar';
   document.getElementById('confirm-summary').innerHTML = `
     <div class="confirm-row"><label>Serviço</label><span>${sel.name}</span></div>
     <div class="confirm-row"><label>Cliente</label><span>${state.name}</span></div>
     <div class="confirm-row"><label>WhatsApp</label><span>${state.phone}</span></div>
     <div class="confirm-row"><label>Data</label><span>${formatDate(state.date)}</span></div>
     <div class="confirm-row"><label>Horário</label><span>${state.time}</span></div>
-    ${forma ? `<div class="confirm-row"><label>Pagamento</label><span>${forma.nome}</span></div>` : ''}
     ${state.obs ? `<div class="confirm-row"><label>Obs.</label><span>${state.obs}</span></div>` : ''}
-    ${planoRestrito ? `<div class="confirm-row"><label>Plano</label><span style="font-size:13px;">${msgPlanoRestrito}</span></div>` : ''}
+    ${(limitePlanoAtingido() && PLAN_COVERAGE[currentUser.plano].includes(sel.id)) ? `<div class="confirm-row"><label>Plano</label><span style="font-size:13px;">Você já usou ${state.planoUso.usados} de ${state.planoUso.qtd} atendimentos do plano ${state.planoUso.por === 'semana' ? 'nesta semana' : 'neste mês'}. Este atendimento será cobrado.</span></div>` : ''}
     ${planoVenceAntesDaData(currentUser) ? `<div class="confirm-row"><label>Plano</label><span style="font-size:13px;">Seu plano vence em ${formatDate(currentUser.planoVenceEm)}, antes desta data. O serviço será cobrado.</span></div>` : ''}
+    ${(!servicoCoberto(sel) && state.formaPagamento) ? `<div class="confirm-row"><label>Pagamento</label><span>${formaPagamentoPorId(state.formaPagamento) ? formaPagamentoPorId(state.formaPagamento).nome : ''}</span></div>` : ''}
     <div class="confirm-row confirm-total"><label>Valor</label>
       ${servicoCoberto(sel)
         ? `<span style="font-size:16px;">Incluso no plano ${nomeDoPlano(currentUser.plano)}</span>`
-        : `<span>R$${Number(sel.price).toFixed(2).replace('.', ',')}</span>`}
-    </div>`;
-  const pixBox = document.getElementById('confirm-pix-box');
-  exibirBoxPix(pixBox, forma, precoCobrado(sel), 'confirm');
+        : `<span>${descontoFidelidade(sel) > 0 ? '<s class="preco-antigo">R$' + Number(sel.price).toFixed(2).replace('.', ',') + '</s> ' : ''}R$${precoCobrado(sel).toFixed(2).replace('.', ',')}</span>`}
+    </div>
+    ${extraConfirmHTML(sel)}`;
+  const pixConfirm = document.getElementById('confirm-pix-box');
+  state.sinal = sinalDoServico(sel);
+  if (state.sinal > 0) {
+    exibirBoxPix(pixConfirm, pixDoSinal(), state.sinal, 'confirm');
+    pixConfirm.insertAdjacentHTML('beforeend', '<label class="sinal-ok"><input type="checkbox" id="sinal-ok"> Já fiz o Pix do sinal e vou enviar o comprovante pelo WhatsApp</label>');
+  } else if (!servicoCoberto(sel) && state.formaPagamento) {
+    exibirBoxPix(pixConfirm, formaPagamentoPorId(state.formaPagamento), precoCobrado(sel), 'confirm');
+  } else if (pixConfirm) {
+    pixConfirm.style.display = 'none';
+    pixConfirm.innerHTML = '';
+  }
 }
 
 function sendWhatsAppNotification() {
   const sel = state.selected;
-  const forma = formaPagamentoPorId(state.formaPagamento);
   const lines = [
     '*Novo Agendamento!*', '',
     '*Cliente:* ' + state.name,
@@ -1189,11 +1340,16 @@ function sendWhatsAppNotification() {
     '*Servico:* ' + sel.name,
     '*Data:* ' + formatDate(state.date),
     '*Horario:* ' + state.time,
-    '*Pagamento:* ' + (forma ? forma.nome : 'Incluso no plano'),
     servicoCoberto(sel)
       ? '*Valor:* Incluso no plano ' + nomeDoPlano(currentUser.plano) + ' (sem cobrança)'
-      : '*Valor:* R$' + Number(sel.price).toFixed(2).replace('.', ','),
+      : '*Valor:* R$' + precoCobrado(sel).toFixed(2).replace('.', ','),
   ];
+  if (descontoFidelidade(sel) > 0 && descontoAtual()) lines.push('*' + (descontoAtual().tipo === 'aniversario' ? 'Aniversário' : 'Fidelidade') + ':* desconto de ' + descontoAtual().pct + '% aplicado');
+  if (Number(state.sinal) > 0) lines.push('*Sinal (Pix):* R$' + Number(state.sinal).toFixed(2).replace('.', ',') + ' - o cliente vai enviar o comprovante');
+  if (!servicoCoberto(sel) && state.formaPagamento) {
+    const forma = formaPagamentoPorId(state.formaPagamento);
+    if (forma) lines.push('*Pagamento:* ' + forma.nome);
+  }
   if (state.obs) lines.push('*Obs:* ' + state.obs);
   window.open(`https://wa.me/${WHATSAPP_NOTIFY}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
 }
@@ -1216,7 +1372,12 @@ function sendClientConfirmation() {
 }
 
 window.submitBooking = async function() {
+  if (state.remarcando) return efetivarRemarcacao();
   if (window._submitting) return;
+  if (!DEMO_MODE && Number(state.sinal) > 0) {
+    const ok = document.getElementById('sinal-ok');
+    if (!ok || !ok.checked) { alert('Faça o Pix do sinal e marque a confirmação para concluir o agendamento.'); return; }
+  }
   window._submitting = true;
   const btn = document.querySelector('.btn-confirm');
   btn.textContent = 'Enviando...'; btn.disabled = true;
@@ -1234,20 +1395,35 @@ window.submitBooking = async function() {
         : (limitePlanoAtingido() && PLAN_COVERAGE[currentUser.plano].includes(state.selected.id)
             ? 'Limite do plano atingido - cobrar' + (state.obs ? ' | ' + state.obs : '')
             : state.obs);
-      const formaSelecionada = formaPagamentoPorId(state.formaPagamento);
-      await firebase.firestore().collection('agendamentos').add({
+      const formaSelecionada = !coberto ? formaPagamentoPorId(state.formaPagamento) : null;
+      state.sinal = sinalDoServico(state.selected);
+      const novo = {
         tipo: 'servico', servico: state.selected.name, preco: precoCobrado(state.selected),
         cliente: state.name, telefone: key,
         data: state.date, horario: state.time, obs: obsFinal,
         formaPagamento: formaSelecionada ? formaSelecionada.nome : 'Incluso no plano',
         status: 'agendado',
-          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-      });
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (state.sinal > 0) { novo.sinal = state.sinal; novo.sinalPago = false; }
+      const dscAtual = descontoAtual();
+      if (dscAtual && descontoFidelidade(state.selected) > 0) {
+        if (dscAtual.tipo === 'aniversario') novo.aniversario = new Date().getFullYear(); else novo.fidelidade = true;
+        novo.precoOriginal = Number(state.selected.price);
+      }
+      await firebase.firestore().collection('agendamentos').add(novo);
+      if (novo.aniversario && currentUser) { currentUser.anivUsadoAno = novo.aniversario; saveSession(currentUser); }
       sendWhatsAppNotification();
       // (confirmação para o cliente desativada: o agendamento vai só para o WhatsApp da barbearia)
     }
     const pixSucesso = document.getElementById('success-pix-box');
-    exibirBoxPix(pixSucesso, formaPagamentoPorId(state.formaPagamento), precoCobrado(state.selected), 'sucesso');
+    const temSinal = Number(state.sinal) > 0;
+    exibirBoxPix(pixSucesso, temSinal ? pixDoSinal() : formaPagamentoPorId(state.formaPagamento), temSinal ? state.sinal : precoCobrado(state.selected), 'sucesso');
+    const msgSinal = document.getElementById('success-sinal');
+    if (msgSinal) {
+      msgSinal.style.display = temSinal ? '' : 'none';
+      msgSinal.textContent = temSinal ? 'Para garantir o horário, envie o comprovante do sinal (R$' + Number(state.sinal).toFixed(2).replace('.', ',') + ') pelo WhatsApp.' : '';
+    }
     document.getElementById('success-modal').classList.add('open');
     state = { selected: null, name: '', phone: '', date: '', time: '', obs: '', formaPagamento: null };
     window.state = state;
@@ -1259,10 +1435,10 @@ window.submitBooking = async function() {
     document.getElementById('pref-time').disabled = true;
     const calWrap = document.getElementById('cal-wrap');
     if (calWrap) calWrap.innerHTML = '';
-    document.querySelectorAll('#pagamento-options-list .option-item').forEach(el => el.classList.remove('selected'));
     renderServiceOptions();
     showStep(1);
     preencherDadosAgendamento();
+    refreshPlano();   // atualiza o programa de fidelidade com o agendamento que acabou de ser feito
   } catch (err) {
     console.error(err);
     alert('Erro ao enviar. Verifique a conexão e tente novamente.');
@@ -1292,6 +1468,7 @@ function aplicarAjustesNoSite() {
   renderPlans();
   aplicarVisibilidadePlanos();
   aplicarMarca();
+  aplicarAvaliacaoCTA();
   try { if (currentUser) refreshPlano(); } catch (e) {}
 }
 
@@ -1300,11 +1477,13 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPlans();
   aplicarVisibilidadePlanos();
   renderServiceOptions();
-  renderFormasPagamentoOpcoes();
-  carregarFormasPagamento(); // busca as formas de pagamento salvas no painel admin (com QR Code do Pix)
   carregarPrecosServicos(); // atualiza os preços com o que foi salvo no painel admin
+  carregarFormasPagamento(); // formas de pagamento (Pix, dinheiro, cartão...) salvas no painel admin
   carregarAjustesRemotos().then(mudou => { if (mudou) aplicarAjustesNoSite(); }); // nome, logo, WhatsApp e planos do painel
-  initSlideshow(); // seguro: retorna cedo se não houver slider no HTML
+  carregarGaleria(); // carrega as fotos do painel admin e monta o slideshow (esconde a seção se não houver fotos)
+
+  carregarAntesDepois();   // seção "Antes e depois" (some se o dono não cadastrou fotos)
+  aplicarAvaliacaoCTA();   // botão de avaliação (só aparece se o dono cadastrou o link)
 
   // Sessão
   currentUser = loadSession();
@@ -1336,3 +1515,136 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+
+// ══════════════════════════════════════════════════
+//  REMARCAR AGENDAMENTO
+//  O cliente escolhe outro dia e horário; o mesmo agendamento é atualizado (não vira um novo).
+//  Volta para "agendado" para o dono confirmar de novo.
+// ══════════════════════════════════════════════════
+const _meusAgd = {};
+
+window.remarcarAgendamento = function(id) {
+  const ag = _meusAgd[id];
+  if (!ag) return;
+  if (foraDoPrazo(ag.data, ag.horario)) { avisarForaDoPrazo('remarcar', ag.servico, ag.data, ag.horario); return; }
+  const s = SERVICES.find(x => x.name === ag.servico);
+  if (!s) { alert('Não achei esse serviço na lista atual. Fale com a barbearia pelo WhatsApp para remarcar.'); return; }
+  state.remarcando = { id, servico: ag.servico, data: ag.data, horario: ag.horario };
+  state.selected = s; state.date = ''; state.time = ''; state.formaPagamento = null;
+  closeMyBookings();
+  showStep(2);
+  preencherDadosAgendamento();
+  const prefDate = document.getElementById('pref-date'); if (prefDate) prefDate.value = '';
+  const prefTime = document.getElementById('pref-time');
+  if (prefTime) { prefTime.innerHTML = '<option value="">Selecione uma data primeiro</option>'; prefTime.disabled = true; }
+  mostrarBannerRemarcacao();
+  atualizarVisibilidadePagamento();
+  const now = new Date();
+  if (!calAno) { calAno = now.getFullYear(); calMes = now.getMonth(); }
+  carregarConfigCalendario().then(() => renderCalendario());
+  const sec = document.getElementById('agendar'); if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+};
+
+function mostrarBannerRemarcacao() {
+  const r = state.remarcando; if (!r) return;
+  let b = document.getElementById('remarcar-banner');
+  if (!b) {
+    b = document.createElement('div'); b.id = 'remarcar-banner'; b.className = 'remarcar-banner';
+    const s2 = document.getElementById('step-2'); s2.insertBefore(b, s2.firstChild);
+  }
+  b.innerHTML = `<div><strong>Remarcando: ${r.servico}</strong><span>Horário atual: ${formatDate(r.data)} às ${r.horario}. Escolha o novo dia e horário.</span></div><button type="button" onclick="cancelarRemarcacao()">Desistir</button>`;
+  b.style.display = '';
+}
+
+window.cancelarRemarcacao = function() {
+  state.remarcando = null; state.selected = null; state.date = ''; state.time = '';
+  const b = document.getElementById('remarcar-banner'); if (b) b.style.display = 'none';
+  const g = document.getElementById('pagamento-form-group'); if (g) g.style.display = '';
+  const bc = document.querySelector('.btn-confirm'); if (bc) bc.textContent = '✓ Confirmar';
+  showStep(1);
+};
+
+function renderConfirmRemarcacao() {
+  const r = state.remarcando;
+  document.getElementById('confirm-summary').innerHTML = `
+    <div class="confirm-row"><label>Serviço</label><span>${r.servico}</span></div>
+    <div class="confirm-row"><label>Horário atual</label><span>${formatDate(r.data)} às ${r.horario}</span></div>
+    <div class="confirm-row confirm-total"><label>Novo horário</label><span>${formatDate(state.date)} às ${state.time}</span></div>
+    <p class="nota-prazo">Depois de remarcar, a barbearia confirma o novo horário com você.</p>`;
+  const px = document.getElementById('confirm-pix-box'); if (px) { px.style.display = 'none'; px.innerHTML = ''; }
+  const bc = document.querySelector('.btn-confirm'); if (bc) bc.textContent = '✓ Confirmar remarcação';
+}
+
+async function efetivarRemarcacao() {
+  if (window._submitting) return;
+  window._submitting = true;
+  const btn = document.querySelector('.btn-confirm');
+  btn.textContent = 'Remarcando...'; btn.disabled = true;
+  const r = state.remarcando;
+  try {
+    if (!DEMO_MODE) {
+      await firebase.firestore().collection('agendamentos').doc(r.id).update({
+        data: state.date, horario: state.time, status: 'agendado',
+        remarcadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      const msg = encodeURIComponent(
+        `*Remarcação*\n\n*Cliente:* ${currentUser ? currentUser.nome : state.name}\n*Serviço:* ${r.servico}\n*De:* ${formatDate(r.data)} às ${r.horario}\n*Para:* ${formatDate(state.date)} às ${state.time}`
+      );
+      window.open(`https://wa.me/${WHATSAPP_NOTIFY}?text=${msg}`, '_blank');
+    }
+    showToast('Agendamento remarcado.');
+    state = { selected: null, name: '', phone: '', date: '', time: '', obs: '', formaPagamento: null };
+    window.state = state;
+    const b = document.getElementById('remarcar-banner'); if (b) b.style.display = 'none';
+    const g = document.getElementById('pagamento-form-group'); if (g) g.style.display = '';
+    const _now = new Date(); calAno = _now.getFullYear(); calMes = _now.getMonth();
+    ['pref-date', 'obs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const calWrap = document.getElementById('cal-wrap'); if (calWrap) calWrap.innerHTML = '';
+    showStep(1);
+    preencherDadosAgendamento();
+    openMyBookings();
+  } catch (e) {
+    console.error(e);
+    alert('Não consegui remarcar. Confira o horário e tente de novo.');
+  } finally {
+    btn.textContent = '✓ Confirmar'; btn.disabled = false;
+    window._submitting = false;
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  ANTES E DEPOIS + AVALIAÇÃO
+// ══════════════════════════════════════════════════
+function adEsc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+async function carregarAntesDepois() {
+  const sec = document.getElementById('antes-depois'), grid = document.getElementById('ad-grid');
+  if (!sec || !grid || DEMO_MODE) return;
+  try {
+    const snap = await firebase.firestore().collection('antesdepois').get();
+    const itens = snap.docs.map(d => d.data()).filter(x => x && x.antes && x.depois)
+      .sort((x, y) => ((y.criadoEm && y.criadoEm.seconds) || 0) - ((x.criadoEm && x.criadoEm.seconds) || 0)).slice(0, 8);
+    if (!itens.length) { sec.style.display = 'none'; return; }
+    grid.innerHTML = itens.map(it => `
+      <figure class="ad-card">
+        <div class="ad-comp" style="--pos:50%">
+          <img class="ad-img" src="${it.depois}" alt="Depois" loading="lazy">
+          <img class="ad-img ad-antes" src="${it.antes}" alt="Antes" loading="lazy">
+          <span class="ad-tag ad-tag-a">Antes</span><span class="ad-tag ad-tag-d">Depois</span>
+          <div class="ad-linha"></div>
+          <input class="ad-range" type="range" min="0" max="100" value="50" aria-label="Arraste para comparar antes e depois"
+            oninput="this.parentNode.style.setProperty('--pos', this.value + '%')">
+        </div>
+        ${it.legenda ? `<figcaption>${adEsc(it.legenda)}</figcaption>` : ''}
+      </figure>`).join('');
+    sec.style.display = '';
+  } catch (e) { console.warn('Antes e depois:', e); }
+}
+
+function aplicarAvaliacaoCTA() {
+  const sec = document.getElementById('avaliacoes'), a = document.getElementById('aval-link');
+  if (!sec || !a) return;
+  const link = String((BARBEARIA.politicas || {}).avalLink || '').trim();
+  if (/^https?:\/\//i.test(link)) { a.href = link; sec.style.display = ''; } else { sec.style.display = 'none'; }
+}
