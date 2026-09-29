@@ -1,4 +1,16 @@
 // ── Firebase ─────────────────────────────────────
+// Garante os padrões de sinal, fidelidade e mensagens mesmo se o config.js for de uma versão mais antiga.
+BARBEARIA.politicas = Object.assign({
+  sinalAtivo: true, sinalPct: 30, sinalMinPreco: 0, sinalTotalAcima: 0,   // sinal via Pix ao agendar (pagamento total acima de R$ X, se > 0)
+  cancelHoras: 2,                                                          // prazo mínimo (horas) para cancelar/remarcar pelo site; 0 = sem prazo
+  fidelAtivo: true, fidelCada: 5, fidelDescPct: 20,                        // a cada N atendimentos pagos, o próximo tem X% de desconto
+  aniversarioDescPct: 10,
+  avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
+  msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
+  msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
+  msgAvaliacao: 'Olá, {nome}! Obrigado por vir na {barbearia}. Se gostou do atendimento, pode nos avaliar? Leva menos de um minuto: {link}',
+}, BARBEARIA.politicas || {});
+
 const firebaseConfig = BARBEARIA.firebase;   // vem do config.js
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
