@@ -148,6 +148,29 @@
     <div class="services-grid" id="services-grid"></div>
   </section>
 
+  <!-- GALERIA DE FOTOS -->
+  <section id="cortes-section" class="section cortes-section">
+    <div class="section-header">
+      <span class="section-tag">NOSSO</span>
+      <h2>Trabalho</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="cortes-slider-wrap">
+      <div class="cortes-slider" id="cortes-slider"></div>
+    </div>
+  </section>
+
+  <!-- ANTES E DEPOIS -->
+  <section id="antes-depois" class="section ad-section" style="display:none">
+    <div class="section-header">
+      <span class="section-tag">ANTES E</span>
+      <h2>Depois</h2>
+      <div class="section-line"></div>
+    </div>
+    <p class="ad-intro">Arraste a barra para ver a transformação.</p>
+    <div class="ad-grid" id="ad-grid"></div>
+  </section>
+
   <!-- PLANOS -->
   <section id="planos" class="section plans-section">
     <div class="section-header">
@@ -242,6 +265,15 @@
     </div>
   </section>
 
+  <!-- AVALIAÇÃO -->
+  <section id="avaliacoes" class="section aval-section" style="display:none">
+    <div class="aval-box">
+      <h3>Gostou do atendimento?</h3>
+      <p>Sua avaliação ajuda outras pessoas a nos encontrar. Leva menos de um minuto.</p>
+      <a id="aval-link" class="aval-btn" href="#" target="_blank" rel="noopener">Avaliar a barbearia</a>
+    </div>
+  </section>
+
   <!-- MODAL LOGIN / CADASTRO -->
   <div class="modal-overlay" id="login-modal">
     <div class="modal-box login-modal-box">
@@ -315,6 +347,7 @@
       <div class="modal-icon">✓</div>
       <h3>Agendamento Enviado!</h3>
       <p>Seu pedido foi registrado com sucesso.</p>
+      <p id="success-sinal" style="display:none;"></p>
       <div id="success-pix-box" style="display:none;"></div>
       <button onclick="closeModal()">Fechar</button>
     </div>
@@ -365,7 +398,7 @@
   //   'redonda'  → sempre recorta em círculo (ideal para emblemas redondos sobre fundo quadrado)
   //   'auto'     → detecta sozinho: logo com fundo sólido vira redonda; logo transparente fica como está
   //   'original' → não mexe na forma da logo
-  var FORMA = 'original';
+  var FORMA = 'auto';
 
   // Fundo da tela inicial usando as cores do tema (sem azul fixo)
   var CORRIGIR_FUNDO_HERO = false; // o style.css já usa as cores do tema
