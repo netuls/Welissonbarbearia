@@ -506,6 +506,10 @@
               <div class="aj-campo"><span class="aj-lbl">Desconto do próximo (%)</span><input class="aj-in" id="aj-fid-desc" type="number" min="1" max="100" step="1" inputmode="numeric"></div>
               <div class="aj-campo"><span class="aj-lbl">Desconto de aniversário (%)</span><input class="aj-in" id="aj-aniv-desc" type="number" min="0" max="100" step="1" inputmode="numeric"></div>
             </div>
+            <div class="aj-linha">
+              <div class="aj-campo"><span class="aj-lbl">Desconto para quem sumiu (%)</span><input class="aj-in" id="aj-ret-desc" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="0 = desligado"></div>
+              <div class="aj-campo"><span class="aj-lbl">Vale para quem está sem vir há (dias)</span><input class="aj-in" id="aj-ret-dias" type="number" min="7" max="730" step="1" inputmode="numeric" placeholder="45"></div>
+            </div>
             <div class="aj-campo"><span class="aj-lbl">Link para avaliar (Google, por exemplo)</span><input class="aj-in" id="aj-aval-link" placeholder="https://g.page/r/..." inputmode="url"></div>
             <div class="aj-campo"><span class="aj-lbl">Mensagem de aniversário</span><textarea class="aj-in" id="aj-msg-aniv" rows="3"></textarea></div>
             <div class="aj-campo"><span class="aj-lbl">Mensagem para clientes que sumiram</span><textarea class="aj-in" id="aj-msg-ret" rows="3"></textarea></div>
@@ -601,8 +605,10 @@
             <p class="aj-desc">Quem já foi atendido, não tem horário marcado e está sumido há um tempo. Chame de volta com um toque.</p>
             <div class="rel-filtro"><span class="aj-lbl">Sem vir há</span>
               <select id="rel-aus-dias" class="aj-in" style="width:auto;" onchange="renderRelAusentes()">
-                <option value="30">30 dias ou mais</option><option value="45" selected>45 dias ou mais</option><option value="60">60 dias ou mais</option><option value="90">90 dias ou mais</option>
-              </select></div>
+                <option value="7">7 dias ou mais</option><option value="10">10 dias ou mais</option><option value="15">15 dias ou mais</option><option value="20">20 dias ou mais</option><option value="30" selected>30 dias ou mais</option><option value="45">45 dias ou mais</option><option value="60">60 dias ou mais</option><option value="90">90 dias ou mais</option>
+              </select>
+              <span class="aj-lbl" style="margin-left:10px;">ou digite</span>
+              <input id="rel-aus-custom" class="aj-in" type="number" min="1" max="730" step="1" inputmode="numeric" placeholder="dias" style="width:90px;" oninput="renderRelAusentes()"></div>
             <div id="rel-aus-lista"></div>
           </div>
 
