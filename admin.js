@@ -1998,13 +1998,21 @@ function statusPlano(venceISO) {
   if (dif < 0)   return { tipo: 'vencido', dias: -dif };
   return { tipo: 'ativo', dias: dif };
 }
+// Chave Pix ativa cadastrada em Ajustes → Formas de Pagamento (a mesma usada no QR Code dos serviços).
+// Retorna '' se não houver nenhuma forma Pix ativa com chave preenchida.
+function chavePixAtiva() {
+  const forma = (FORMAS_PAGAMENTO || []).find(f => f && f.tipo === 'pix' && f.ativo !== false && (f.pixChave || '').trim());
+  return forma ? forma.pixChave.trim() : '';
+}
 function mensagemCobrancaPlano(nomeCompleto, planoId, venceISO) {
   const primeiro = String(nomeCompleto || '').trim().split(' ')[0];
   const p = planoDados(planoId);
   const st = statusPlano(venceISO);
   const quando = st.tipo === 'vencido' ? 'venceu em ' + fmtDataBR(venceISO) : 'vence hoje';
+  const chave = chavePixAtiva();
   return 'Olá ' + primeiro + '! Passando para lembrar que o seu plano ' + p.nome + ' da ' + BARBEARIA.nome + ' (' +
-    fmtMoedaPlano(p.preco) + '/mês) ' + quando + '. Para renovar, é só realizar o pagamento e nos avisar por aqui. Obrigado!';
+    fmtMoedaPlano(p.preco) + '/mês) ' + quando + '. Para renovar, é só realizar o pagamento' +
+    (chave ? ' via Pix na chave ' + chave : '') + ' e nos avisar por aqui. Obrigado!';
 }
 // Atualiza a cópia local da lista de pagamentos (sem duplicar o mesmo pagamento)
 function somarPagamentoLocal(cliente, pag) {
