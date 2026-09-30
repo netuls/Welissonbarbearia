@@ -540,7 +540,6 @@ function aplicarFonteTopo() {
 // A última versão fica guardada no aparelho para a tela já abrir certa, sem piscar.
 BARBEARIA.logo = '';
 BARBEARIA.tema = null;
-BARBEARIA.pixSeguranca = BARBEARIA.pixSeguranca || {};
 const AJUSTES_CACHE_KEY = 'barbearia_ajustes_' + BARBEARIA.firebase.projectId;
 
 function aplicarAjustes(o) {
@@ -553,9 +552,8 @@ function aplicarAjustes(o) {
   if (typeof o.planosAtivos === 'boolean') BARBEARIA.planosAtivos = o.planosAtivos;
   if (Array.isArray(o.planos)) BARBEARIA.planos = o.planos;
   if ('logo' in o) BARBEARIA.logo = o.logo || '';
+  if (o.politicas && typeof o.politicas === 'object') BARBEARIA.politicas = Object.assign({}, BARBEARIA.politicas, o.politicas);
   if (FONTES_TOPO.some(f => f.id === o.fonte)) BARBEARIA.fonte = o.fonte;   // letra do nome no topo do site
-  // E-mail de segurança usado para confirmar troca da chave Pix (aba Ajustes > Formas de Pagamento)
-  if (o.pixSeguranca && typeof o.pixSeguranca === 'object') BARBEARIA.pixSeguranca = o.pixSeguranca;
   // Cores escolhidas no painel (aba Ajustes): { destaque, fundo }. Sem elas, vale o que foi escolhido na criação.
   const cs = o.cores;
   BARBEARIA.tema = (cs && TEMA_BARBEARIA.ehHex(cs.destaque) && TEMA_BARBEARIA.ehHex(cs.fundo))
@@ -563,6 +561,19 @@ function aplicarAjustes(o) {
   TEMA_BARBEARIA.definir(BARBEARIA.tema);
   aplicarFonteTopo();
 }
+// Regras de agendamento, fidelidade e mensagens. O dono muda tudo isso na aba Ajustes do painel.
+BARBEARIA.politicas = Object.assign({
+  sinalAtivo: true, sinalPct: 30, sinalMinPreco: 0, sinalTotalAcima: 0,   // sinal via Pix ao agendar (pagamento total acima de R$ X, se > 0)
+  cancelHoras: 2,                                                          // prazo mínimo (horas) para cancelar/remarcar pelo site; 0 = sem prazo
+  fidelAtivo: true, fidelCada: 5, fidelDescPct: 20,                        // a cada N atendimentos pagos, o próximo tem X% de desconto
+  aniversarioDescPct: 10,
+  retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
+  avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
+  msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
+  msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
+  msgAvaliacao: 'Olá, {nome}! Obrigado por vir na {barbearia}. Se gostou do atendimento, pode nos avaliar? Leva menos de um minuto: {link}',
+}, BARBEARIA.politicas || {});
+
 try { aplicarAjustes(JSON.parse(localStorage.getItem(AJUSTES_CACHE_KEY) || 'null')); } catch (e) { /* sem cache */ }
 aplicarFonteTopo();   // primeira visita (sem cache): usa a letra escolhida na criação do site
 
