@@ -510,6 +510,18 @@
               <div class="aj-campo"><span class="aj-lbl">Desconto para quem sumiu (%)</span><input class="aj-in" id="aj-ret-desc" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="0 = desligado"></div>
               <div class="aj-campo"><span class="aj-lbl">Vale para quem está sem vir há (dias)</span><input class="aj-in" id="aj-ret-dias" type="number" min="7" max="730" step="1" inputmode="numeric" placeholder="45"></div>
             </div>
+            <div class="aj-linha">
+              <div class="aj-campo"><span class="aj-lbl">Fidelidade: o prêmio é</span><select class="aj-in" id="aj-fid-tipo" onchange="ajBeneficioTipo()"><option value="desconto">Desconto (%)</option><option value="servico">Serviço de cortesia</option></select></div>
+              <div class="aj-campo" id="aj-fid-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (fidelidade)</span><select class="aj-in" id="aj-fid-serv"></select></div>
+            </div>
+            <div class="aj-linha">
+              <div class="aj-campo"><span class="aj-lbl">Aniversário: o prêmio é</span><select class="aj-in" id="aj-aniv-tipo" onchange="ajBeneficioTipo()"><option value="desconto">Desconto (%)</option><option value="servico">Serviço de cortesia</option></select></div>
+              <div class="aj-campo" id="aj-aniv-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (aniversário)</span><select class="aj-in" id="aj-aniv-serv"></select></div>
+            </div>
+            <div class="aj-linha">
+              <div class="aj-campo"><span class="aj-lbl">Quem sumiu: o prêmio é</span><select class="aj-in" id="aj-ret-tipo" onchange="ajBeneficioTipo()"><option value="desconto">Desconto (%)</option><option value="servico">Serviço de cortesia</option></select></div>
+              <div class="aj-campo" id="aj-ret-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (quem sumiu)</span><select class="aj-in" id="aj-ret-serv"></select></div>
+            </div>
             <div class="aj-campo"><span class="aj-lbl">Link para avaliar (Google, por exemplo)</span><input class="aj-in" id="aj-aval-link" placeholder="https://g.page/r/..." inputmode="url"></div>
             <div class="aj-campo"><span class="aj-lbl">Mensagem de aniversário</span><textarea class="aj-in" id="aj-msg-aniv" rows="3"></textarea></div>
             <div class="aj-campo"><span class="aj-lbl">Mensagem para clientes que sumiram</span><textarea class="aj-in" id="aj-msg-ret" rows="3"></textarea></div>
