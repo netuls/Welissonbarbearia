@@ -6,6 +6,7 @@ BARBEARIA.politicas = Object.assign({
   fidelAtivo: true, fidelCada: 5, fidelDescPct: 20,                        // a cada N atendimentos pagos, o próximo tem X% de desconto
   aniversarioDescPct: 10,
   retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
+  fidelTipo: 'desconto', fidelServicoId: '', aniversarioTipo: 'desconto', aniversarioServicoId: '', retornoTipo: 'desconto', retornoServicoId: '',   // prêmio de cada benefício: 'desconto' (%) ou 'servico' (cortesia)
   avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
   msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
   msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
@@ -1291,7 +1292,9 @@ const DISP_DURACAO_LEGADO = { 'nevou_corte': 60, 'Nevou + Corte': 60, 'Corte + S
 function dispDuracao(a) {
   const ref = a.servicoId || a.servico;
   const sv = SERVICES.find(x => x.id === ref || x.name === ref);
-  return (sv && sv.duracao) || DISP_DURACAO_LEGADO[ref] || DISP_DURACAO_PADRAO;
+  let dur = (sv && sv.duracao) || DISP_DURACAO_LEGADO[ref] || DISP_DURACAO_PADRAO;
+  if (a.cortesiaId) { const c = SERVICES.find(x => x.id === a.cortesiaId); if (c && c.duracao) dur += c.duracao; }   // serviço de cortesia também ocupa a agenda
+  return dur;
 }
 function renderDisponibilidade() {
   const grid = document.getElementById('disp-grid');
@@ -1499,7 +1502,7 @@ function renderAgendamentosTable(data) {
   tbody.innerHTML = data.map(a => `<tr data-id="${a.id}" ${a.origem === 'avulso' ? 'style="border-left:2px solid rgba(235, 197, 49,0.3);"' : ''}>
     <td data-label="Cliente"><strong style="color:var(--white)">${a.cliente||'--'}</strong>${a.origem==='avulso' ? ' <span style="font-family:\'Oswald\',sans-serif;font-size:8px;letter-spacing:1.5px;background:rgba(235, 197, 49,0.1);color:#EBC531;border:1px solid rgba(235, 197, 49,0.25);padding:2px 6px;border-radius:3px;vertical-align:middle;">AVULSO</span>' : ''}</td>
     <td data-label="WhatsApp"><a href="https://wa.me/55${(a.telefone||'').replace(/\D/g,'')}" target="_blank" style="color:var(--gold);text-decoration:none;">${a.telefone||'--'}</a></td>
-    <td data-label="Serviço">${a.servico||'--'}</td>
+    <td data-label="Serviço">${a.servico||'--'}${a.cortesia ? '<div style="font-size:11px;color:#94A4CC;">+ cortesia: ' + a.cortesia + '</div>' : ''}</td>
     <td data-label="Data">${a.data ? formatDate(a.data) : '--'}</td>
     <td data-label="Horário">${a.horario||'--'}</td>
     <td data-label="Pagamento">${a.formaPagamento||'--'}</td>
@@ -1540,7 +1543,7 @@ function mensagemStatusWpp(ag, status) {
   const primeiroNome = (ag.cliente || 'Cliente').split(' ')[0];
   const detalhes = [
     '*Detalhes:*',
-    '*Serviço:* ' + (ag.servico || '--'),
+    '*Serviço:* ' + (ag.servico || '--') + (ag.cortesia ? ' + ' + ag.cortesia + ' (cortesia)' : ''),
     '*Data:* ' + (ag.data ? formatDate(ag.data) : '--'),
     '*Horário:* ' + (ag.horario || '--'),
   ];
@@ -3784,8 +3787,20 @@ document.addEventListener('click', function unlockOnce() {
 function relPol() { return BARBEARIA.politicas || {}; }
 function relPrimeiroNome(n) { return String(n || '').trim().split(/\s+/)[0] || ''; }
 function relEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+// Prêmio de cada benefício no painel: desconto (%) ou serviço de cortesia. k = 'fidel' | 'aniversario' | 'retorno'
+function relBeneficio(k) {
+  const p = relPol();
+  if (p[k + 'Tipo'] === 'servico') {
+    const sv = SERVICES.find(s => s.id === p[k + 'ServicoId']);
+    return sv ? { tipo: 'servico', nome: sv.name } : null;
+  }
+  const pct = Number(p[k + 'DescPct']) || 0;
+  return pct > 0 ? { tipo: 'desconto', pct } : null;
+}
 function relMsg(modelo, c, extra) {
   extra = extra || {};
+  // Com serviço de cortesia, "{desconto} de desconto" vira "Serviço de cortesia"
+  if (extra.servico) modelo = String(modelo || '').replace(/\{desconto\}(\s+de\s+desconto)?/g, extra.servico + ' de cortesia');
   return String(modelo || '').replace(/\{nome\}/g, relPrimeiroNome(c.nome)).replace(/\{barbearia\}/g, BARBEARIA.nome)
     .replace(/\{desconto\}/g, extra.desconto || '').replace(/\{link\}/g, extra.link || '');
 }
@@ -3829,27 +3844,29 @@ function renderRelAniversarios() {
     return dias <= janela ? { c, dias, dia: String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0'), idade: y > 1900 ? prox.getFullYear() - y : 0 } : null;
   }).filter(Boolean).sort((a, b) => a.dias - b.dias);
   if (!lista.length) { el.innerHTML = '<p class="rel-vazio">Nenhum aniversariante nesse período.</p>'; return; }
-  const pct = Number(relPol().aniversarioDescPct) || 0;
+  const benAniv = relBeneficio('aniversario');
+  const extraAniv = benAniv && benAniv.tipo === 'servico' ? { servico: benAniv.nome } : { desconto: (benAniv ? benAniv.pct : 0) + '%' };
   el.innerHTML = lista.map(x => {
     const quando = x.dias === 0 ? '<b>Hoje</b>' : x.dias === 1 ? '<b>Amanhã</b>' : 'Em ' + x.dias + ' dias';
-    const msg = relMsg(relPol().msgAniversario, x.c, { desconto: pct + '%' });
+    const msg = relMsg(relPol().msgAniversario, x.c, extraAniv);
     return '<div class="rel-item"><div class="rel-quem"><span class="rel-nome">' + relEsc(x.c.nome) + '</span><span class="rel-info">' + quando + ' · ' + x.dia + (x.idade ? ' · ' + x.idade + ' anos' : '') + '</span></div>' +
       relBotaoWA('aniv:' + x.c.key + ':' + new Date().getFullYear(), x.c.telefone, msg) + '</div>';
   }).join('');
 }
 
 // Mensagem para quem sumiu. Com desconto de retorno ligado e o cliente já dentro do prazo, avisa o desconto.
-function relMsgRetorno(c, pct) {
+function relMsgRetorno(c, vale) {
   let modelo = String(relPol().msgRetorno || '');
-  const desc = pct > 0 ? pct + '%' : '';
-  if (pct > 0 && modelo.indexOf('{desconto}') < 0) modelo += ' Ao voltar, você ganha {desconto} de desconto no atendimento.';
-  return relMsg(modelo, c, { desconto: desc }).replace(/\s{2,}/g, ' ').trim();
+  const b = vale ? relBeneficio('retorno') : null;
+  if (b && modelo.indexOf('{desconto}') < 0) modelo += ' Ao voltar, você ganha {desconto} de desconto no atendimento.';
+  const extra = !b ? { desconto: '' } : b.tipo === 'servico' ? { servico: b.nome } : { desconto: b.pct + '%' };
+  return relMsg(modelo, c, extra).replace(/\s{2,}/g, ' ').trim();
 }
 function renderRelAusentes() {
   const el = document.getElementById('rel-aus-lista'); if (!el) return;
   const custom = parseInt((document.getElementById('rel-aus-custom') || {}).value, 10);
   const minimo = custom > 0 ? custom : (parseInt((document.getElementById('rel-aus-dias') || {}).value, 10) || 30);
-  const polRet = relPol(), pctRet = Number(polRet.retornoDescPct) || 0, diasRet = parseInt(polRet.retornoDias, 10) || 45;
+  const polRet = relPol(), pctRet = relBeneficio('retorno') ? 1 : 0, diasRet = parseInt(polRet.retornoDias, 10) || 45;
   const hoje = relHoje();
   const lista = relClientes().map(c => {
     const ags = (c.agendamentos || []).filter(a => a.data && a.status !== 'cancelado');
@@ -3941,14 +3958,36 @@ function renderPoliticasEditor() {
   chk('aj-sinal-ativo', p.sinalAtivo); set('aj-sinal-pct', p.sinalPct); set('aj-sinal-min', p.sinalMinPreco || ''); set('aj-sinal-total', p.sinalTotalAcima || '');
   set('aj-cancel-horas', p.cancelHoras);
   chk('aj-fid-ativo', p.fidelAtivo); set('aj-fid-cada', p.fidelCada); set('aj-fid-desc', p.fidelDescPct); set('aj-aniv-desc', p.aniversarioDescPct); set('aj-ret-desc', p.retornoDescPct); set('aj-ret-dias', p.retornoDias);
+  [['fid', 'fidel'], ['aniv', 'aniversario'], ['ret', 'retorno']].forEach(par => {
+    const sel = document.getElementById('aj-' + par[0] + '-serv');
+    if (sel) sel.innerHTML = '<option value="">Escolha o serviço...</option>' + SERVICES.map(s => '<option value="' + escPlano(s.id) + '">' + escPlano(s.name) + '</option>').join('');
+    set('aj-' + par[0] + '-tipo', p[par[1] + 'Tipo'] === 'servico' ? 'servico' : 'desconto');
+    set('aj-' + par[0] + '-serv', p[par[1] + 'ServicoId'] || '');
+  });
+  ajBeneficioTipo();
   set('aj-aval-link', p.avalLink); set('aj-msg-aniv', p.msgAniversario); set('aj-msg-ret', p.msgRetorno); set('aj-msg-aval', p.msgAvaliacao);
   ajStatus('aj-pol-status', ''); ajStatus('aj-pol2-status', '');
   atualizarAvisoSinal();
   const cb = document.getElementById('aj-sinal-ativo'); if (cb && !cb._av) { cb._av = true; cb.addEventListener('change', atualizarAvisoSinal); }
 }
+// Mostra o campo de % ou o de serviço, conforme o prêmio escolhido em cada benefício
+function ajBeneficioTipo() {
+  [['fid', 'aj-fid-desc'], ['aniv', 'aj-aniv-desc'], ['ret', 'aj-ret-desc']].forEach(par => {
+    const t = document.getElementById('aj-' + par[0] + '-tipo'), wrap = document.getElementById('aj-' + par[0] + '-serv-wrap'), pc = document.getElementById(par[1]);
+    if (!t) return;
+    const serv = t.value === 'servico';
+    if (wrap) wrap.style.display = serv ? '' : 'none';
+    if (pc && pc.closest('.aj-campo')) pc.closest('.aj-campo').style.display = serv ? 'none' : '';
+  });
+}
 async function salvarPoliticas() {
   const num = (id, min, max, padrao) => { const v = parseFloat(String(document.getElementById(id).value).replace(',', '.')); return isFinite(v) ? Math.min(max, Math.max(min, v)) : padrao; };
   const txt = id => (document.getElementById(id).value || '').trim();
+  const tipoDe = pre => (document.getElementById('aj-' + pre + '-tipo') || {}).value === 'servico' ? 'servico' : 'desconto';
+  const servDe = pre => (document.getElementById('aj-' + pre + '-serv') || {}).value || '';
+  for (const [pre, nome] of [['fid', 'fidelidade'], ['aniv', 'aniversário'], ['ret', 'clientes que sumiram']]) {
+    if (tipoDe(pre) === 'servico' && !servDe(pre)) { ajStatus('aj-pol2-status', 'Escolha o serviço de cortesia de ' + nome + '.', '#e05555'); return; }
+  }
   const link = txt('aj-aval-link');
   if (link && !/^https?:\/\//i.test(link)) { ajStatus('aj-pol2-status', 'O link de avaliação precisa começar com https://', '#e05555'); return; }
   const politicas = {
@@ -3958,6 +3997,7 @@ async function salvarPoliticas() {
     fidelAtivo: document.getElementById('aj-fid-ativo').checked,
     fidelCada: Math.round(num('aj-fid-cada', 2, 50, 5)), fidelDescPct: num('aj-fid-desc', 1, 100, 20), aniversarioDescPct: num('aj-aniv-desc', 0, 100, 10),
     retornoDescPct: num('aj-ret-desc', 0, 100, 0), retornoDias: Math.round(num('aj-ret-dias', 7, 730, 45)),
+    fidelTipo: tipoDe('fid'), fidelServicoId: servDe('fid'), aniversarioTipo: tipoDe('aniv'), aniversarioServicoId: servDe('aniv'), retornoTipo: tipoDe('ret'), retornoServicoId: servDe('ret'),
     avalLink: link, msgAniversario: txt('aj-msg-aniv'), msgRetorno: txt('aj-msg-ret'), msgAvaliacao: txt('aj-msg-aval'),
   };
   ['aj-pol-status', 'aj-pol2-status'].forEach(id => ajStatus(id, 'Salvando...'));
