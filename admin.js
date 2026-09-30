@@ -5,6 +5,7 @@ BARBEARIA.politicas = Object.assign({
   cancelHoras: 2,                                                          // prazo mínimo (horas) para cancelar/remarcar pelo site; 0 = sem prazo
   fidelAtivo: true, fidelCada: 5, fidelDescPct: 20,                        // a cada N atendimentos pagos, o próximo tem X% de desconto
   aniversarioDescPct: 10,
+  retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
   avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
   msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
   msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
@@ -3837,9 +3838,18 @@ function renderRelAniversarios() {
   }).join('');
 }
 
+// Mensagem para quem sumiu. Com desconto de retorno ligado e o cliente já dentro do prazo, avisa o desconto.
+function relMsgRetorno(c, pct) {
+  let modelo = String(relPol().msgRetorno || '');
+  const desc = pct > 0 ? pct + '%' : '';
+  if (pct > 0 && modelo.indexOf('{desconto}') < 0) modelo += ' Ao voltar, você ganha {desconto} de desconto no atendimento.';
+  return relMsg(modelo, c, { desconto: desc }).replace(/\s{2,}/g, ' ').trim();
+}
 function renderRelAusentes() {
   const el = document.getElementById('rel-aus-lista'); if (!el) return;
-  const minimo = parseInt((document.getElementById('rel-aus-dias') || {}).value, 10) || 45;
+  const custom = parseInt((document.getElementById('rel-aus-custom') || {}).value, 10);
+  const minimo = custom > 0 ? custom : (parseInt((document.getElementById('rel-aus-dias') || {}).value, 10) || 30);
+  const polRet = relPol(), pctRet = Number(polRet.retornoDescPct) || 0, diasRet = parseInt(polRet.retornoDias, 10) || 45;
   const hoje = relHoje();
   const lista = relClientes().map(c => {
     const ags = (c.agendamentos || []).filter(a => a.data && a.status !== 'cancelado');
@@ -3853,7 +3863,7 @@ function renderRelAusentes() {
   const LIM = 60;
   el.innerHTML = lista.slice(0, LIM).map(x =>
     '<div class="rel-item"><div class="rel-quem"><span class="rel-nome">' + relEsc(x.c.nome) + '</span><span class="rel-info">Último atendimento: ' + relFmt(x.ultimo) + ' · <b>' + x.dias + ' dias</b> · ' + x.total + (x.total === 1 ? ' visita' : ' visitas') + '</span></div>' +
-    relBotaoWA('ret:' + x.c.key, x.c.telefone, relMsg(relPol().msgRetorno, x.c)) + '</div>'
+    relBotaoWA('ret:' + x.c.key, x.c.telefone, relMsgRetorno(x.c, x.dias >= diasRet ? pctRet : 0)) + '</div>'
   ).join('') + (lista.length > LIM ? '<p class="rel-vazio">Mostrando os ' + LIM + ' mais antigos de ' + lista.length + '.</p>' : '');
 }
 
@@ -3891,6 +3901,7 @@ function extrasAgdHTML(a) {
     if (!ok && a.status !== 'cancelado') h += '<button type="button" class="btn-action btn-confirmar" style="margin-top:4px;" onclick="marcarSinalPago(\'' + a.id + '\')">Sinal recebido</button>';
   }
   if (a.aniversario) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de aniversário</div>';
+  if (a.retorno) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de retorno</div>';
   if (a.fidelidade) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de fidelidade</div>';
   if (a.remarcadoEm) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Remarcado pelo cliente</div>';
   return h;
@@ -3929,7 +3940,7 @@ function renderPoliticasEditor() {
   const chk = (id, v) => { const e = document.getElementById(id); if (e) e.checked = !!v; };
   chk('aj-sinal-ativo', p.sinalAtivo); set('aj-sinal-pct', p.sinalPct); set('aj-sinal-min', p.sinalMinPreco || ''); set('aj-sinal-total', p.sinalTotalAcima || '');
   set('aj-cancel-horas', p.cancelHoras);
-  chk('aj-fid-ativo', p.fidelAtivo); set('aj-fid-cada', p.fidelCada); set('aj-fid-desc', p.fidelDescPct); set('aj-aniv-desc', p.aniversarioDescPct);
+  chk('aj-fid-ativo', p.fidelAtivo); set('aj-fid-cada', p.fidelCada); set('aj-fid-desc', p.fidelDescPct); set('aj-aniv-desc', p.aniversarioDescPct); set('aj-ret-desc', p.retornoDescPct); set('aj-ret-dias', p.retornoDias);
   set('aj-aval-link', p.avalLink); set('aj-msg-aniv', p.msgAniversario); set('aj-msg-ret', p.msgRetorno); set('aj-msg-aval', p.msgAvaliacao);
   ajStatus('aj-pol-status', ''); ajStatus('aj-pol2-status', '');
   atualizarAvisoSinal();
@@ -3946,6 +3957,7 @@ async function salvarPoliticas() {
     cancelHoras: num('aj-cancel-horas', 0, 168, 2),
     fidelAtivo: document.getElementById('aj-fid-ativo').checked,
     fidelCada: Math.round(num('aj-fid-cada', 2, 50, 5)), fidelDescPct: num('aj-fid-desc', 1, 100, 20), aniversarioDescPct: num('aj-aniv-desc', 0, 100, 10),
+    retornoDescPct: num('aj-ret-desc', 0, 100, 0), retornoDias: Math.round(num('aj-ret-dias', 7, 730, 45)),
     avalLink: link, msgAniversario: txt('aj-msg-aniv'), msgRetorno: txt('aj-msg-ret'), msgAvaliacao: txt('aj-msg-aval'),
   };
   ['aj-pol-status', 'aj-pol2-status'].forEach(id => ajStatus(id, 'Salvando...'));
