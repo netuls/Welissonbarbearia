@@ -1226,6 +1226,7 @@ function fmtValorAgd(a) {
   if (atendimentoCobertoPorPlano(a)) return 'Plano';
   const v = precoAgendamento(a);
   if (v === 0 && /^Plano /.test(a.obs || '')) return 'Plano';
+  if (v === 0 && a.cortesia) return 'Cortesia';
   return 'R$' + v.toFixed(2).replace('.', ',');
 }
 
@@ -1502,7 +1503,7 @@ function renderAgendamentosTable(data) {
   tbody.innerHTML = data.map(a => `<tr data-id="${a.id}" ${a.origem === 'avulso' ? 'style="border-left:2px solid rgba(235, 197, 49,0.3);"' : ''}>
     <td data-label="Cliente"><strong style="color:var(--white)">${a.cliente||'--'}</strong>${a.origem==='avulso' ? ' <span style="font-family:\'Oswald\',sans-serif;font-size:8px;letter-spacing:1.5px;background:rgba(235, 197, 49,0.1);color:#EBC531;border:1px solid rgba(235, 197, 49,0.25);padding:2px 6px;border-radius:3px;vertical-align:middle;">AVULSO</span>' : ''}</td>
     <td data-label="WhatsApp"><a href="https://wa.me/55${(a.telefone||'').replace(/\D/g,'')}" target="_blank" style="color:var(--gold);text-decoration:none;">${a.telefone||'--'}</a></td>
-    <td data-label="Serviço">${a.servico||'--'}${a.cortesia ? '<div style="font-size:11px;color:#94A4CC;">+ cortesia: ' + a.cortesia + '</div>' : ''}</td>
+    <td data-label="Serviço">${a.servico||'--'}${a.cortesia ? '<div style="font-size:11px;color:#94A4CC;">' + (a.cortesiaId ? '+ cortesia: ' + a.cortesia : 'serviço de cortesia') + '</div>' : ''}</td>
     <td data-label="Data">${a.data ? formatDate(a.data) : '--'}</td>
     <td data-label="Horário">${a.horario||'--'}</td>
     <td data-label="Pagamento">${a.formaPagamento||'--'}</td>
@@ -1543,7 +1544,7 @@ function mensagemStatusWpp(ag, status) {
   const primeiroNome = (ag.cliente || 'Cliente').split(' ')[0];
   const detalhes = [
     '*Detalhes:*',
-    '*Serviço:* ' + (ag.servico || '--') + (ag.cortesia ? ' + ' + ag.cortesia + ' (cortesia)' : ''),
+    '*Serviço:* ' + (ag.servico || '--') + (ag.cortesia ? (ag.cortesiaId ? ' + ' + ag.cortesia + ' (cortesia)' : ' (cortesia)') : ''),
     '*Data:* ' + (ag.data ? formatDate(ag.data) : '--'),
     '*Horário:* ' + (ag.horario || '--'),
   ];
