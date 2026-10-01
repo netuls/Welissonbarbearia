@@ -459,6 +459,7 @@ function precoCobrado(service) {
   if (servicoCoberto(service)) return 0;
   const base = Number(service.price);
   const d = descontoAtual();
+  if (d && d.modo === 'servico') return d.servico.id === service.id ? 0 : base;   // o próprio serviço de cortesia sai sem custo
   if (!d || d.modo !== 'desconto') return base;
   return Math.round(base * (100 - d.pct)) / 100;
 }
@@ -566,7 +567,7 @@ function extraConfirmHTML(sel) {
   const p = BARBEARIA.politicas || {};
   let h = '';
   const dsc = beneficioDoAtendimento(sel);
-  if (dsc && dsc.modo === 'servico') h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">Cortesia: ${dsc.servico.name} (sem custo)</span></div>`;
+  if (dsc && dsc.modo === 'servico') h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">${dsc.servico.id === sel.id ? 'Este atendimento sai sem custo (cortesia)' : 'Cortesia: ' + dsc.servico.name + ', sem custo'}</span></div>`;
   else if (dsc) h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">${dsc.pct}% de desconto: -${R(descontoFidelidade(sel))}</span></div>`;
   const sinal = sinalDoServico(sel);
   if (sinal > 0) {
@@ -850,7 +851,7 @@ window.openMyBookings = async function() {
           <div class="agd-info">
             <div class="agd-servico">${a.servico}</div>
             <div class="agd-detalhe">${formatDate(a.data)} · ${a.horario}</div>
-            <div class="agd-preco"${Number(a.preco) === 0 ? ' style="font-size:14px;"' : ''}>${Number(a.preco) === 0 ? 'Incluso no plano' : 'R$' + Number(a.preco).toFixed(2).replace('.',',')}</div>
+            <div class="agd-preco"${Number(a.preco) === 0 ? ' style="font-size:14px;"' : ''}>${Number(a.preco) === 0 ? (a.cortesia ? 'Cortesia' : 'Incluso no plano') : 'R$' + Number(a.preco).toFixed(2).replace('.',',')}</div>
             ${statusLabel}
             ${Number(a.sinal) > 0 ? `<div class="agd-sinal">Sinal R$${Number(a.sinal).toFixed(2).replace('.', ',')}: ${a.sinalPago ? 'recebido' : 'aguardando confirmação'}</div>` : ''}
           </div>
@@ -1010,6 +1011,8 @@ function renderServiceOptions() {
     const coberto = servicoCoberto(s);
     const preco = coberto
       ? '<span class="option-price" style="font-family:Oswald,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Incluso no plano</span>'
+      : (descontoAtual() && descontoAtual().modo === 'servico' && descontoAtual().servico.id === s.id)
+        ? '<span class="option-price" style="font-family:Oswald,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Cortesia</span>'
       : ((descontoAtual() && descontoAtual().modo === 'desconto')
           ? `<span class="option-price"><s class="preco-antigo">R$${s.price.toFixed(2).replace('.', ',')}</s> R$${precoCobrado(s).toFixed(2).replace('.', ',')}</span>`
           : `<span class="option-price">R$${s.price.toFixed(2).replace('.', ',')}</span>`);
@@ -1152,7 +1155,7 @@ async function carregarSlotsParaData(dataSelecionada) {
     const servicoAtual = state && state.selected ? state.selected : null;
     let duracao = servicoAtual ? duracaoServico(servicoAtual.id) : DURACAO_PADRAO;
     const bnfSlot = servicoAtual ? beneficioDoAtendimento(servicoAtual) : null;
-    if (bnfSlot && bnfSlot.modo === 'servico') duracao += duracaoServico(bnfSlot.servico.id);   // a cortesia ocupa tempo na agenda
+    if (bnfSlot && bnfSlot.modo === 'servico' && bnfSlot.servico.id !== servicoAtual.id) duracao += duracaoServico(bnfSlot.servico.id);   // a cortesia ocupa tempo na agenda
     const fimExpediente = horaParaMin(cfg.fim);
     const pausaAtiva = cfg.almoco === true
       && typeof cfg.almoco_inicio === 'string' && cfg.almoco_inicio.includes(':')
@@ -1318,7 +1321,7 @@ function atualizarVisibilidadePagamento() {
   const grupo = document.getElementById('pagamento-form-group');
   if (grupo && state.remarcando) { grupo.style.display = 'none'; return; }
   if (!grupo || !state.selected) return;
-  const coberto = servicoCoberto(state.selected);
+  const coberto = servicoCoberto(state.selected) || precoCobrado(state.selected) <= 0;   // incluso no plano ou sem custo (cortesia)
   grupo.style.display = coberto ? 'none' : '';
   if (coberto) {
     state.formaPagamento = null;
@@ -1345,7 +1348,7 @@ window.goToConfirm = async function() {
   if (state.remarcando) { renderConfirmRemarcacao(); showStep(3); return; }
   state.planoUso = await checarUsoPlano(date); // limite de uso do plano (ex.: Simples = 2x no mês)
   atualizarVisibilidadePagamento(); // agora já dá pra saber com certeza se o serviço será cobrado ou não
-  if (!servicoCoberto(state.selected) && !state.formaPagamento) {
+  if (!servicoCoberto(state.selected) && precoCobrado(state.selected) > 0 && !state.formaPagamento) {
     alert('Esse atendimento será cobrado (fora do plano ou limite do mês atingido) — escolha a forma de pagamento antes de continuar.');
     return;
   }
@@ -1374,6 +1377,8 @@ function renderConfirm() {
     <div class="confirm-row confirm-total"><label>Valor</label>
       ${servicoCoberto(sel)
         ? `<span style="font-size:16px;">Incluso no plano ${nomeDoPlano(currentUser.plano)}</span>`
+        : (precoCobrado(sel) <= 0 && Number(sel.price) > 0)
+          ? `<span style="font-size:16px;"><s class="preco-antigo">R$${Number(sel.price).toFixed(2).replace('.', ',')}</s> Cortesia (sem custo)</span>`
         : `<span>${descontoFidelidade(sel) > 0 ? '<s class="preco-antigo">R$' + Number(sel.price).toFixed(2).replace('.', ',') + '</s> ' : ''}R$${precoCobrado(sel).toFixed(2).replace('.', ',')}</span>`}
     </div>
     ${extraConfirmHTML(sel)}`;
@@ -1461,7 +1466,7 @@ window.submitBooking = async function() {
         tipo: 'servico', servico: state.selected.name, preco: precoCobrado(state.selected),
         cliente: state.name, telefone: key,
         data: state.date, horario: state.time, obs: obsFinal,
-        formaPagamento: formaSelecionada ? formaSelecionada.nome : 'Incluso no plano',
+        formaPagamento: formaSelecionada ? formaSelecionada.nome : (!coberto && precoCobrado(state.selected) <= 0 ? 'Cortesia' : 'Incluso no plano'),
         status: 'agendado',
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
       };
@@ -1471,8 +1476,11 @@ window.submitBooking = async function() {
         if (dscAtual.tipo === 'aniversario') novo.aniversario = new Date().getFullYear();
         else if (dscAtual.tipo === 'retorno') novo.retorno = true;
         else novo.fidelidade = true;
-        if (dscAtual.modo === 'servico') { novo.cortesia = dscAtual.servico.name; novo.cortesiaId = dscAtual.servico.id; }
-        else novo.precoOriginal = Number(state.selected.price);
+        if (dscAtual.modo === 'servico') {
+          novo.cortesia = dscAtual.servico.name;
+          if (dscAtual.servico.id === state.selected.id) novo.precoOriginal = Number(state.selected.price);   // o próprio serviço sai sem custo
+          else novo.cortesiaId = dscAtual.servico.id;                                                         // serviço extra, sem custo
+        } else novo.precoOriginal = Number(state.selected.price);
       }
       await firebase.firestore().collection('agendamentos').add(novo);
       if (novo.aniversario && currentUser) { currentUser.anivUsadoAno = novo.aniversario; saveSession(currentUser); }
