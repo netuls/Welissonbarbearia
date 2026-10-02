@@ -2,6 +2,8 @@
 //  App Principal (Cliente) — os dados da barbearia ficam no config.js
 // ================================================
 
+// Versão do código deste site (aparece no painel, em Ajustes > Sobre o sistema)
+const VERSAO_SISTEMA = '2026.10.1';
 // Garante os padrões de sinal, fidelidade e mensagens mesmo se o config.js for de uma versão mais antiga.
 BARBEARIA.politicas = Object.assign({
   sinalAtivo: true, sinalPct: 30, sinalMinPreco: 0, sinalTotalAcima: 0,   // sinal via Pix ao agendar (pagamento total acima de R$ X, se > 0)
@@ -1169,7 +1171,7 @@ async function carregarSlotsParaData(dataSelecionada) {
       if (fim > fimExpediente) return false;                              // passa do fim do expediente
       if (pausaAtiva && ini < pausaFim && fim > pausaIni) return false;   // invade o almoço
       if (ocupados.some(([oi, oe]) => ini < oe && fim > oi)) return false; // choca com outro agendamento
-      if (dataSelecionada === hoje && ini <= agoraMin) return false; // horário que já passou
+      if (dataSelecionada === hoje && ini <= agoraMin + 30) return false; // horário que já passou
       return true;
     });
     if (!livres.length) {
