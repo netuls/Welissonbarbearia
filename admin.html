@@ -189,10 +189,14 @@
         <a href="#" class="nav-item" onclick="showTab('relacionamento', this)">
           <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span><span>Relacionamento</span>
         </a>
+        <a href="#" class="nav-item" onclick="showTab('relatorios', this)">
+          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span>Relatórios</span>
+        </a>
       </nav>
       <div class="sidebar-bottom">
         <button class="btn-logout" onclick="doLogout()">Sair</button>
         <a href="index.html" class="btn-site" target="_blank">Ver Site ↗</a>
+        <div id="versao-sistema" style="text-align:center;font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;padding-top:6px;"></div>
       </div>
     </aside>
 
@@ -432,6 +436,13 @@
             </div>
           </div>
 
+          <!-- SOBRE O SISTEMA -->
+          <div class="aj-card">
+            <h3 class="aj-titulo">Sobre o sistema</h3>
+            <p class="aj-desc">Versão de cada arquivo instalado. Depois de uma atualização, as três versões precisam ser iguais.</p>
+            <div id="sobre-sistema" style="font-family:'Roboto',sans-serif;font-size:13px;color:#B4BEDC;line-height:1.9;">Carregando...</div>
+          </div>
+
           <!-- LETRA DO TOPO -->
           <div class="aj-card">
             <h3 class="aj-titulo">Letra do Nome no Topo</h3>
@@ -629,6 +640,28 @@
             <p class="aj-desc">Atendimentos concluídos nos últimos 14 dias que ainda não receberam o pedido. Quem já recebeu sai da lista.</p>
             <div id="rel-aval-lista"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- RELATÓRIOS -->
+      <div class="tab-content" id="tab-relatorios">
+        <div style="max-width:980px;">
+          <div class="aj-card">
+            <h3 class="aj-titulo">Relatórios</h3>
+            <p class="aj-desc">Receita e atendimentos por mês e por serviço. Os atendimentos concluídos entram pela data do atendimento e as mensalidades de plano pela data do pagamento. Valores "zerados" no painel continuam aparecendo aqui, porque o relatório é o histórico; só o que você tirou da receita em "Editar receita" fica de fora.</p>
+            <div class="aj-linha" style="align-items:flex-end;">
+              <div class="aj-campo" style="max-width:190px;"><span class="aj-lbl">Mês</span><input type="month" id="relat-mes" class="aj-in" style="color-scheme:dark;" onchange="renderRelatorios()"></div>
+              <div class="aj-campo" style="flex:none;"><div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="aj-btn2" onclick="relatMesAtalho(0)">Este mês</button>
+                <button type="button" class="aj-btn2" onclick="relatMesAtalho(-1)">Mês passado</button>
+                <button type="button" class="aj-btn2" onclick="exportarRelatorioCSV()">Exportar CSV</button>
+              </div></div>
+            </div>
+          </div>
+          <div id="relat-resumo"></div>
+          <div class="aj-card"><h3 class="aj-titulo">Por serviço</h3><div id="relat-servicos"></div></div>
+          <div class="aj-card"><h3 class="aj-titulo">Por forma de pagamento</h3><div id="relat-pagamentos"></div></div>
+          <div class="aj-card"><h3 class="aj-titulo">Últimos 12 meses</h3><p class="aj-desc" style="margin-bottom:12px;">Toque em um mês para ver o detalhe dele.</p><div id="relat-meses"></div></div>
         </div>
       </div>
 
@@ -1168,6 +1201,9 @@
     </a>
     <a class="bottom-nav-item" id="bnav-relacionamento" onclick="showTab('relacionamento', this); syncBottomNav('bnav-relacionamento')">
       <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>Contato
+    </a>
+    <a class="bottom-nav-item" id="bnav-relatorios" onclick="showTab('relatorios', this); syncBottomNav('bnav-relatorios')">
+      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Relatórios
     </a>
     <a class="bottom-nav-item" id="bnav-sair" onclick="doLogout()">
       <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></span>Sair
