@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
-//  CONFIGURAÇÃO DA BARBEARIA — Welisson Barber
-//  Arquivo gerado por criar-barbearia.html. Depois de instalado, nome, logo, WhatsApp e
+//  CONFIGURAÇÃO DO SITE — Welisson Barber
+//  Arquivo gerado por criar-sistema.html. Depois de instalado, nome, logo, WhatsApp e
 //  planos podem ser mudados pela aba "Ajustes" do painel (as cores também), sem editar este arquivo.
 // ═══════════════════════════════════════════════════════════════════
 const BARBEARIA = {
@@ -11,6 +11,8 @@ const BARBEARIA = {
   whatsapp: "5585982358729",
   whatsappAvisos: "5585982358729",
   modoDemonstracao: false,
+  tipoNegocio: "barbearia",   // barbearia ou sobrancelha
+  geradoEm: "2026-10-02",
   firebase: {
     "apiKey": "AIzaSyA7oHFbbLaMi5Ptwic0o4cqvuZN1jD039M",
     "authDomain": "welisson-77143.firebaseapp.com",
@@ -195,6 +197,7 @@ const BARBEARIA = {
   fonte: "assinatura",   // letra do nome no topo (mudável na aba Ajustes do painel)
 };
 
+const VERSAO_CONFIG = '2026.10.1';   // versão do config.js (conferida no painel, em Ajustes > Sobre o sistema)
 // ═══════════════════════════════════════════════════════════════════
 //  A partir daqui não precisa mexer.
 // ═══════════════════════════════════════════════════════════════════
