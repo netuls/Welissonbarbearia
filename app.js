@@ -1171,7 +1171,7 @@ async function carregarSlotsParaData(dataSelecionada) {
       if (fim > fimExpediente) return false;                              // passa do fim do expediente
       if (pausaAtiva && ini < pausaFim && fim > pausaIni) return false;   // invade o almoço
       if (ocupados.some(([oi, oe]) => ini < oe && fim > oi)) return false; // choca com outro agendamento
-      if (dataSelecionada === hoje && ini <= agoraMin + 30) return false; // horário que já passou
+      if (dataSelecionada === hoje && ini <= agoraMin) return false; // horário que já passou
       return true;
     });
     if (!livres.length) {
