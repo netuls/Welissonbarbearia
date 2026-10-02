@@ -1,4 +1,6 @@
 // ── Firebase ─────────────────────────────────────
+// Versão do código deste painel (aparece em Ajustes > Sobre o sistema)
+const VERSAO_SISTEMA = '2026.10.1';
 // Garante os padrões de sinal, fidelidade e mensagens mesmo se o config.js for de uma versão mais antiga.
 BARBEARIA.politicas = Object.assign({
   sinalAtivo: true, sinalPct: 30, sinalMinPreco: 0, sinalTotalAcima: 0,   // sinal via Pix ao agendar (pagamento total acima de R$ X, se > 0)
@@ -152,6 +154,7 @@ function initAdmin() {
   if ('Notification' in window && Notification.permission === 'granted') iniciarPushNotifications();
   atualizarBotaoPush();
   renderNotifPanel(); // inicia painel vazio
+  mostrarVersaoSistema();
 }
 
 // ── Ajustes da barbearia (aba Ajustes): identidade, logo e planos ─────────
@@ -1132,13 +1135,15 @@ function showTab(tab, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   if (el) el.classList.add('active');
-  const titles = { dashboard: 'Dashboard', agendamentos: 'Agendamentos', horarios: 'Horarios de Atendimento', servicos: 'Ajustes', datas: 'Datas Especiais', clientes: 'Clientes', relacionamento: 'Relacionamento' };
+  const titles = { relatorios: 'Relatórios', dashboard: 'Dashboard', agendamentos: 'Agendamentos', horarios: 'Horarios de Atendimento', servicos: 'Ajustes', datas: 'Datas Especiais', clientes: 'Clientes', relacionamento: 'Relacionamento' };
   document.getElementById('page-title').textContent = titles[tab] || tab;
   if (tab === 'horarios') carregarHorarios();
   if (tab === 'servicos') { _servicosEdit = JSON.parse(JSON.stringify(SERVICES)); renderServicosEditor(); _pagamentoEdit = JSON.parse(JSON.stringify(FORMAS_PAGAMENTO)); renderFormasPagamentoEditor(); _galeriaEdit = JSON.parse(JSON.stringify(GALERIA_FOTOS)); renderGaleriaEditor(); renderAjustes(); renderPoliticasEditor(); carregarAntesDepoisAdmin(); }
   if (tab === 'datas') carregarDatasEspeciais();
   if (tab === 'clientes') renderClientes();
   if (tab === 'relacionamento') renderRelacionamento();
+  if (tab === 'relatorios') { renderRelatorios(); carregarClientesFirestore().then(() => { try { renderRelatorios(); } catch (e) {} }); }
+  if (tab === 'servicos') renderSobreSistema();
   gerenciarFab(tab);
   // Scroll para o topo no mobile
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1177,6 +1182,7 @@ function loadAgendamentos() {
     allAgendamentos = docs;
     renderDashboard();
     renderAgendamentosTable(allAgendamentos);
+    try { const t = document.getElementById('tab-relatorios'); if (t && t.classList.contains('active')) renderRelatorios(); } catch (e) {}
   });
 }
 
@@ -2479,14 +2485,14 @@ async function salvarEditarReceita() {
     if (!e.removido && (isNaN(novo) || novo < 0)) { invalido = true; return; }
     if (!e.removido && Math.abs(novo - it.valor) < 0.004) return;   // nada mudou
     if (it.tipo === 'ag') {
-      ops.push({ ref: db.collection('agendamentos').doc(it.agId), data: e.removido ? { receitaZerada: true } : { preco: novo }, ag: it.agId, removido: !!e.removido, novo });
+      ops.push({ ref: db.collection('agendamentos').doc(it.agId), data: e.removido ? { receitaZerada: true, receitaRemovida: true } : { preco: novo }, ag: it.agId, removido: !!e.removido, novo });
     } else {
       const c = _clientesFirestore[it.key];
       if (!c || !Array.isArray(c.planoPagamentos)) return;
       const lista = clientes[it.key] || (clientes[it.key] = c.planoPagamentos.map(p => ({ ...p })));
       const p = lista[it.idx];
       if (!p || p.data !== it.data || (Number(p.valor) || 0) !== it.valor) return;   // mudou por outro lado: ignora
-      if (e.removido) p.zerado = true; else p.valor = novo;
+      if (e.removido) { p.zerado = true; p.removido = true; } else p.valor = novo;
     }
   });
   if (invalido) { st.style.color = '#e05555'; st.textContent = 'Há valores inválidos. Use números maiores ou iguais a zero.'; return; }
@@ -2503,7 +2509,7 @@ async function salvarEditarReceita() {
     }
     agOps.forEach(o => {
       const a = allAgendamentos.find(x => x.id === o.ag);
-      if (a) { if (o.removido) a.receitaZerada = true; else a.preco = o.novo; }
+      if (a) { if (o.removido) { a.receitaZerada = true; a.receitaRemovida = true; } else a.preco = o.novo; }
     });
     clOps.forEach(o => { if (_clientesFirestore[o.key]) _clientesFirestore[o.key].planoPagamentos = o.lista; });
     fecharEditarReceita();
@@ -3802,7 +3808,7 @@ function relMsg(modelo, c, extra) {
   extra = extra || {};
   // Com serviço de cortesia, "{desconto} de desconto" vira "Serviço de cortesia"
   if (extra.servico) modelo = String(modelo || '').replace(/\{desconto\}(\s+de\s+desconto)?/g, extra.servico + ' de cortesia');
-  return String(modelo || '').replace(/\{nome\}/g, relPrimeiroNome(c.nome)).replace(/\{barbearia\}/g, BARBEARIA.nome)
+  return String(modelo || '').replace(/\{nome\}/g, relPrimeiroNome(c.nome)).replace(/\{(?:salao|barbearia)\}/g, BARBEARIA.nome)
     .replace(/\{desconto\}/g, extra.desconto || '').replace(/\{link\}/g, extra.link || '');
 }
 function relLinkWA(tel, msg) {
@@ -4079,4 +4085,190 @@ async function removerAntesDepois(id) {
   if (!confirm('Remover este par de fotos do site?')) return;
   try { await db.collection('antesdepois').doc(id).delete(); await carregarAntesDepoisAdmin(); showToast('Par removido.'); }
   catch (e) { console.warn(e); alert('Não consegui remover. Tente de novo.'); }
+}
+
+
+// ══════════════════════════════════════════════════
+//  RELATÓRIOS (por mês, por serviço e por forma de pagamento)
+// ══════════════════════════════════════════════════
+// Receita de um atendimento no relatório. É um histórico: o "Zerar receitas" não apaga nada daqui;
+// só sai o que foi tirado da receita em "Editar receita" (receitaRemovida). Atendimento coberto por plano não gera receita
+// (a receita do plano é a mensalidade).
+function relatValorAtendimento(a) {
+  if (!a || a.receitaRemovida) return 0;
+  if (atendimentoCobertoPorPlano(a)) return 0;
+  return precoAgendamento(a);
+}
+function relatMesDe(iso) { return String(iso || '').slice(0, 7); }
+function relatMesAtual() { return hojeISOAdmin().slice(0, 7); }
+function relatSomarMeses(mes, delta) {
+  const [y, m] = mes.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function relatNomeMes(mes) {
+  const nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const [y, m] = mes.split('-').map(Number);
+  return nomes[m - 1] + ' de ' + y;
+}
+// Números de um mês ('AAAA-MM'). Usa allAgendamentos e os pagamentos de plano já carregados.
+function relatorioDoMes(mes) {
+  const ags = allAgendamentos.filter(a => a && a.data && relatMesDe(a.data) === mes);
+  const conc = ags.filter(a => a.status === 'concluido');
+  const r = { mes, concluidos: conc.length, cancelados: ags.filter(a => a.status === 'cancelado').length,
+    abertos: ags.filter(a => a.status === 'agendado' || a.status === 'confirmado').length,
+    receitaServicos: 0, pagos: 0, pelosPlano: 0, descontos: 0, cortesias: 0, receitaPlanos: 0, mensalidades: 0 };
+  const porServico = {}, porPagamento = {};
+  conc.forEach(a => {
+    const coberto = atendimentoCobertoPorPlano(a);
+    const v = relatValorAtendimento(a);
+    const nome = a.servico || 'Sem serviço';
+    const s = porServico[nome] || (porServico[nome] = { nome, qtd: 0, pagos: 0, plano: 0, receita: 0 });
+    s.qtd++;
+    r.receitaServicos += v;
+    if (coberto) { r.pelosPlano++; s.plano++; }
+    else if (v > 0) { r.pagos++; s.pagos++; s.receita += v; }
+    if (!coberto && !a.cortesia && Number(a.precoOriginal) > precoAgendamento(a)) r.descontos += Number(a.precoOriginal) - precoAgendamento(a);
+    if (a.cortesia) r.cortesias++;
+    if (!coberto && v > 0) {
+      const forma = a.formaPagamento || 'Não informado';
+      const f = porPagamento[forma] || (porPagamento[forma] = { forma, qtd: 0, valor: 0 });
+      f.qtd++; f.valor += v;
+    }
+  });
+  pagamentosDePlanos().forEach(p => {
+    if (!p.data || p.removido || relatMesDe(p.data) !== mes) return;
+    r.receitaPlanos += Number(p.valor) || 0; r.mensalidades++;
+  });
+  r.total = r.receitaServicos + r.receitaPlanos;
+  r.ticket = r.pagos ? r.receitaServicos / r.pagos : 0;
+  r.servicos = Object.values(porServico).sort((x, y) => (y.receita - x.receita) || (y.qtd - x.qtd) || x.nome.localeCompare(y.nome));
+  r.pagamentos = Object.values(porPagamento).sort((x, y) => y.valor - x.valor);
+  return r;
+}
+// Últimos n meses, do mais antigo ao mais recente, terminando em 'fim'
+function relatorioPorMes(fim, n) {
+  const lista = [];
+  for (let i = n - 1; i >= 0; i--) lista.push(relatorioDoMes(relatSomarMeses(fim, -i)));
+  return lista;
+}
+function relatMesEscolhido() {
+  const el = document.getElementById('relat-mes');
+  const v = el && el.value;
+  return /^\d{4}-\d{2}$/.test(v || '') ? v : relatMesAtual();
+}
+function relatMesAtalho(delta) {
+  const el = document.getElementById('relat-mes');
+  if (el) el.value = relatSomarMeses(relatMesAtual(), delta);
+  renderRelatorios();
+}
+function relatCard(rotulo, valor, destaque, sub) {
+  return '<div style="background:#0A1330;border:1px solid #122452;border-radius:8px;padding:14px 16px;min-width:0;">' +
+    '<div style="font-family:Oswald,sans-serif;font-size:9px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;margin-bottom:6px;">' + escPlano(rotulo) + '</div>' +
+    '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:24px;color:' + (destaque ? '#EBC531' : '#F1EAD6') + ';line-height:1.1;">' + valor + '</div>' +
+    (sub ? '<div style="font-family:Roboto,sans-serif;font-size:11px;color:#7183B4;margin-top:4px;">' + sub + '</div>' : '') + '</div>';
+}
+function relatVariacao(atual, anterior) {
+  if (!(anterior > 0)) return atual > 0 ? 'primeiro mês com receita' : '';
+  const pct = Math.round((atual - anterior) / anterior * 100);
+  return (pct > 0 ? '▲ ' : pct < 0 ? '▼ ' : '= ') + Math.abs(pct) + '% vs mês anterior';
+}
+function relatBarra(pct, cor) {
+  return '<div style="background:#122452;border-radius:3px;height:6px;overflow:hidden;"><div style="background:' + (cor || '#EBC531') + ';height:100%;width:' + Math.max(0, Math.min(100, pct)) + '%;"></div></div>';
+}
+function renderRelatorios() {
+  const alvo = document.getElementById('relat-resumo');
+  if (!alvo) return;
+  const input = document.getElementById('relat-mes');
+  if (input && !input.value) input.value = relatMesAtual();
+  const mes = relatMesEscolhido();
+  const r = relatorioDoMes(mes), ant = relatorioDoMes(relatSomarMeses(mes, -1));
+  const R = fmtMoedaPlano;
+  const cards = [
+    relatCard('Receita total', R(r.total), true, relatVariacao(r.total, ant.total)),
+    relatCard('Atendimentos', String(r.concluidos), false, r.concluidos ? r.pagos + ' pagos' + (r.pelosPlano ? ' · ' + r.pelosPlano + ' pelo plano' : '') : ''),
+    relatCard('Receita de serviços', R(r.receitaServicos), false, ''),
+  ];
+  if (BARBEARIA.planosAtivos !== false) cards.push(relatCard('Mensalidades de planos', R(r.receitaPlanos), false, r.mensalidades ? r.mensalidades + ' pagamento' + (r.mensalidades === 1 ? '' : 's') : ''));
+  cards.push(relatCard('Ticket médio', R(r.ticket), false, 'só atendimentos pagos'));
+  cards.push(relatCard('Cancelados', String(r.cancelados), false, r.concluidos + r.cancelados ? Math.round(r.cancelados / (r.concluidos + r.cancelados) * 100) + '% dos finalizados' : ''));
+  if (r.abertos) cards.push(relatCard('Ainda agendados', String(r.abertos), false, 'não concluídos'));
+  if (r.descontos > 0) cards.push(relatCard('Descontos dados', R(r.descontos), false, 'fidelidade, aniversário e retorno'));
+  if (r.cortesias) cards.push(relatCard('Cortesias', String(r.cortesias), false, 'serviços sem custo'));
+  alvo.innerHTML = '<div style="font-family:Oswald,sans-serif;font-size:13px;letter-spacing:2px;color:#94A4CC;text-transform:uppercase;margin-bottom:12px;">' + escPlano(relatNomeMes(mes)) + '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:28px;">' + cards.join('') + '</div>';
+
+  const maxServ = Math.max(1, ...r.servicos.map(s => s.receita));
+  document.getElementById('relat-servicos').innerHTML = !r.servicos.length
+    ? '<p style="color:#5E6E9E;font-size:13px;font-family:Roboto,sans-serif;">Nenhum atendimento concluído neste mês.</p>'
+    : r.servicos.map(s => {
+        const pctRec = r.receitaServicos > 0 ? Math.round(s.receita / r.receitaServicos * 100) : 0;
+        return '<div style="padding:10px 0;border-bottom:1px solid #122452;">' +
+          '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;">' +
+            '<span style="font-family:Oswald,sans-serif;font-size:14px;color:#F1EAD6;">' + escPlano(s.nome) + '</span>' +
+            '<span style="font-family:Roboto,sans-serif;font-size:13px;color:#EBC531;">' + R(s.receita) + (r.receitaServicos > 0 ? ' <span style="color:#7183B4;">(' + pctRec + '%)</span>' : '') + '</span></div>' +
+          relatBarra(s.receita / maxServ * 100) +
+          '<div style="font-family:Roboto,sans-serif;font-size:11px;color:#7183B4;margin-top:5px;">' + s.qtd + ' atendimento' + (s.qtd === 1 ? '' : 's') +
+            (s.plano ? ' · ' + s.plano + ' pelo plano' : '') + (s.pagos ? ' · ticket ' + R(s.receita / s.pagos) : '') + '</div></div>';
+      }).join('');
+
+  const maxPag = Math.max(1, ...r.pagamentos.map(f => f.valor));
+  document.getElementById('relat-pagamentos').innerHTML = !r.pagamentos.length
+    ? '<p style="color:#5E6E9E;font-size:13px;font-family:Roboto,sans-serif;">Nenhum atendimento pago neste mês.</p>'
+    : r.pagamentos.map(f => '<div style="padding:9px 0;border-bottom:1px solid #122452;">' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:5px;"><span style="font-family:Oswald,sans-serif;font-size:13px;color:#F1EAD6;">' + escPlano(f.forma) + '</span>' +
+        '<span style="font-family:Roboto,sans-serif;font-size:13px;color:#EBC531;">' + R(f.valor) + ' <span style="color:#7183B4;">· ' + f.qtd + '</span></span></div>' + relatBarra(f.valor / maxPag * 100, '#2db866') + '</div>').join('');
+
+  const meses = relatorioPorMes(relatMesAtual(), 12);
+  const maxMes = Math.max(1, ...meses.map(m => m.total));
+  document.getElementById('relat-meses').innerHTML = meses.slice().reverse().map(m => {
+    const sel = m.mes === mes;
+    return '<div onclick="document.getElementById(\'relat-mes\').value=\'' + m.mes + '\';renderRelatorios();window.scrollTo({top:0,behavior:\'smooth\'});" style="cursor:pointer;padding:9px 10px;border-radius:6px;' + (sel ? 'background:#0F1F45;' : '') + 'border-bottom:1px solid #122452;">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:5px;">' +
+        '<span style="font-family:Oswald,sans-serif;font-size:13px;color:' + (sel ? '#EBC531' : '#F1EAD6') + ';">' + escPlano(relatNomeMes(m.mes)) + '</span>' +
+        '<span style="font-family:Roboto,sans-serif;font-size:13px;color:#EBC531;">' + R(m.total) + '</span></div>' + relatBarra(m.total / maxMes * 100) +
+      '<div style="font-family:Roboto,sans-serif;font-size:11px;color:#7183B4;margin-top:5px;">' + m.concluidos + ' atendimento' + (m.concluidos === 1 ? '' : 's') +
+        (m.receitaPlanos > 0 ? ' · planos ' + R(m.receitaPlanos) : '') + (m.cancelados ? ' · ' + m.cancelados + ' cancelado' + (m.cancelados === 1 ? '' : 's') : '') + '</div></div>';
+  }).join('');
+}
+function exportarRelatorioCSV() {
+  const mes = relatMesEscolhido(), r = relatorioDoMes(mes);
+  const n = v => Number(v).toFixed(2).replace('.', ',');
+  const linhas = [['Relatório', relatNomeMes(mes)], [], ['Resumo'], ['Receita total', n(r.total)], ['Receita de serviços', n(r.receitaServicos)], ['Mensalidades de planos', n(r.receitaPlanos)],
+    ['Atendimentos concluídos', r.concluidos], ['Atendimentos pagos', r.pagos], ['Pelo plano', r.pelosPlano], ['Ticket médio', n(r.ticket)], ['Cancelados', r.cancelados], ['Descontos dados', n(r.descontos)], ['Cortesias', r.cortesias], [],
+    ['Por serviço'], ['Serviço', 'Atendimentos', 'Pagos', 'Pelo plano', 'Receita']]
+    .concat(r.servicos.map(s => [s.nome, s.qtd, s.pagos, s.plano, n(s.receita)]))
+    .concat([[], ['Por forma de pagamento'], ['Forma', 'Atendimentos', 'Valor']], r.pagamentos.map(f => [f.forma, f.qtd, n(f.valor)]))
+    .concat([[], ['Últimos 12 meses'], ['Mês', 'Atendimentos', 'Receita de serviços', 'Mensalidades', 'Total', 'Cancelados']],
+      relatorioPorMes(relatMesAtual(), 12).map(m => [m.mes, m.concluidos, n(m.receitaServicos), n(m.receitaPlanos), n(m.total), m.cancelados]));
+  const csv = linhas.map(l => l.map(c => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(';')).join('\n');
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'relatorio_' + mes + '.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════
+//  VERSÃO DO SISTEMA
+// ══════════════════════════════════════════════════
+function mostrarVersaoSistema() {
+  const el = document.getElementById('versao-sistema');
+  if (el) el.textContent = 'Versão ' + VERSAO_SISTEMA;
+}
+async function renderSobreSistema() {
+  const el = document.getElementById('sobre-sistema');
+  if (!el) return;
+  const cfg = (typeof VERSAO_CONFIG !== 'undefined') ? VERSAO_CONFIG : 'antiga (sem versão)';
+  let site = 'não consegui ler';
+  try {
+    const r = await fetch('app.js?_=' + Date.now(), { cache: 'no-store' });
+    const m = /const VERSAO_SISTEMA = '([^']+)'/.exec(await r.text());
+    site = m ? m[1] : 'antiga (sem versão)';
+  } catch (e) {}
+  const iguais = VERSAO_SISTEMA === site && VERSAO_SISTEMA === cfg;
+  const linha = (rot, val) => '<div><span style="color:#7183B4;">' + rot + ':</span> <strong style="color:#F1EAD6;">' + escPlano(val) + '</strong></div>';
+  const tipo = BARBEARIA.tipoNegocio === 'sobrancelha' ? 'Salão de sobrancelha' : BARBEARIA.tipoNegocio === 'barbearia' ? 'Barbearia' : '—';
+  el.innerHTML = linha('Painel (admin.js)', VERSAO_SISTEMA) + linha('Site (app.js)', site) + linha('Configuração (config.js)', cfg) +
+    linha('Tipo de negócio', tipo) + linha('Gerado em', BARBEARIA.geradoEm ? fmtDataBR(BARBEARIA.geradoEm) : 'não informado') +
+    '<div style="margin-top:8px;color:' + (iguais ? '#2db866' : '#e0a030') + ';">' + (iguais ? '✓ Todos os arquivos estão na mesma versão.' : '⚠ Arquivos de versões diferentes. Troque todos os arquivos do pacote (app.js, admin.js, admin.html, config.js...) e atualize com Ctrl+F5.') + '</div>';
 }
