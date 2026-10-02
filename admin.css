@@ -1255,3 +1255,10 @@ body.admin-body {
 .ad-item img { width:100%; aspect-ratio:4/5; object-fit:cover; display:block; }
 .ad-item .ad-leg { font-family:'Roboto',sans-serif; font-size:11px; color:#94A4CC; padding:6px 8px; }
 .ad-item button { position:absolute; top:4px; right:4px; background:rgba(8,8,8,0.75); border:1px solid rgba(200,60,60,.5); color:#e05555; width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:13px; }
+
+
+/* ── Menu inferior com muitas abas: rola para o lado em vez de espremer ── */
+@media (max-width: 768px) {
+  .bottom-nav { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+  .bottom-nav-item { min-width: 64px !important; flex: 1 0 auto !important; }
+}
