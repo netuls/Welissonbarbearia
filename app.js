@@ -511,17 +511,18 @@ async function refreshFidelidade() {
 function htmlFidelidade() {
   const p = BARBEARIA.politicas || {};
   const f = currentUser && currentUser.fid;
-  if (aniversarioDisponivel()) {
-    return `<div class="fid-box fid-ganhou"><strong>Feliz aniversário! ${rotuloBeneficio('aniversario')}</strong><span>Vale no seu próximo atendimento pago este mês, aplicado na hora de agendar.</span></div>` + ((p.fidelAtivo && f) ? '' : '');
-  }
+  // A caixa segue o MESMO benefício que descontoAtual() aplica na hora de agendar (o de maior valor).
   const dAtual = descontoAtual();
+  if (dAtual && dAtual.tipo === 'aniversario') {
+    return `<div class="fid-box fid-ganhou"><strong>Feliz aniversário! ${rotuloBeneficio('aniversario')}</strong><span>Vale no seu próximo atendimento pago este mês, aplicado na hora de agendar.</span></div>`;
+  }
   if (dAtual && dAtual.tipo === 'retorno') {
     return `<div class="fid-box fid-ganhou"><strong>Sentimos sua falta! ${rotuloBeneficio('retorno')}</strong><span>Vale no seu próximo atendimento pago, aplicado na hora de agendar.</span></div>`;
   }
-  if (!p.fidelAtivo || !f || !beneficioConfig('fidel') || planoAtivo(currentUser, hojeISO())) return '';
-  if (f.disponiveis > 0) {
+  if (dAtual && dAtual.tipo === 'fidelidade') {
     return `<div class="fid-box fid-ganhou"><strong>Você tem ${rotuloBeneficio('fidel')}!</strong><span>Vale no seu próximo atendimento pago, aplicado na hora de agendar.</span></div>`;
   }
+  if (!p.fidelAtivo || !f || !beneficioConfig('fidel') || planoAtivo(currentUser, hojeISO())) return '';
   const pontos = Array.from({ length: f.cada }, (_, i) => `<i class="${i < f.noCiclo ? 'on' : ''}"></i>`).join('');
   return `<div class="fid-box"><strong>Programa de fidelidade</strong><div class="fid-pontos">${pontos}</div><span>${f.noCiclo} de ${f.cada} atendimentos. Faltam ${f.cada - f.noCiclo} para ganhar ${rotuloBeneficio('fidel')}.</span></div>`;
 }
