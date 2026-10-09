@@ -434,6 +434,7 @@ function retornoDisponivel() {
 function rotuloDesconto(tipo) { return tipo === 'aniversario' ? 'Aniversário' : tipo === 'retorno' ? 'Retorno' : 'Fidelidade'; }
 function fidelDisponivel() {
   const p = BARBEARIA.politicas || {};
+  if (planoAtivo(currentUser)) return false;   // quem tem plano ativo não participa da fidelidade
   return !!(p.fidelAtivo && beneficioConfig('fidel') && currentUser && currentUser.fid && currentUser.fid.disponiveis > 0);
 }
 // Aniversário: desconto automático no mês do aniversário, uma vez por ano
@@ -517,7 +518,7 @@ function htmlFidelidade() {
   if (dAtual && dAtual.tipo === 'retorno') {
     return `<div class="fid-box fid-ganhou"><strong>Sentimos sua falta! ${rotuloBeneficio('retorno')}</strong><span>Vale no seu próximo atendimento pago, aplicado na hora de agendar.</span></div>`;
   }
-  if (!p.fidelAtivo || !f || !beneficioConfig('fidel')) return '';
+  if (!p.fidelAtivo || !f || !beneficioConfig('fidel') || planoAtivo(currentUser, hojeISO())) return '';
   if (f.disponiveis > 0) {
     return `<div class="fid-box fid-ganhou"><strong>Você tem ${rotuloBeneficio('fidel')}!</strong><span>Vale no seu próximo atendimento pago, aplicado na hora de agendar.</span></div>`;
   }
