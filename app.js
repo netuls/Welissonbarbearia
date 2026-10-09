@@ -434,7 +434,7 @@ function retornoDisponivel() {
 function rotuloDesconto(tipo) { return tipo === 'aniversario' ? 'Aniversário' : tipo === 'retorno' ? 'Retorno' : 'Fidelidade'; }
 function fidelDisponivel() {
   const p = BARBEARIA.politicas || {};
-  if (planoAtivo(currentUser)) return false;   // quem tem plano ativo não participa da fidelidade
+  if (planoAtivo(currentUser, hojeISO())) return false;   // plano ativo na conta hoje: sem fidelidade
   return !!(p.fidelAtivo && beneficioConfig('fidel') && currentUser && currentUser.fid && currentUser.fid.disponiveis > 0);
 }
 // Aniversário: desconto automático no mês do aniversário, uma vez por ano
