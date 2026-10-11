@@ -195,9 +195,12 @@ const BARBEARIA = {
     "bordaBotao": "#2C4E9E"
   },
   fonte: "assinatura",   // letra do nome no topo (mudável na aba Ajustes do painel)
+  // Onde estamos e depoimentos (o dono edita pela aba Ajustes do painel)
+  local: { endereco: "", mapaLink: "", instagram: "" },
+  depoimentos: [],
 };
 
-const VERSAO_CONFIG = '2026.10.1';   // versão do config.js (conferida no painel, em Ajustes > Sobre o sistema)
+const VERSAO_CONFIG = '2026.10.2';   // versão do config.js (conferida no painel, em Ajustes > Sobre o sistema)
 // ═══════════════════════════════════════════════════════════════════
 //  A partir daqui não precisa mexer.
 // ═══════════════════════════════════════════════════════════════════
@@ -557,6 +560,8 @@ function aplicarAjustes(o) {
   if ('logo' in o) BARBEARIA.logo = o.logo || '';
   if (o.politicas && typeof o.politicas === 'object') BARBEARIA.politicas = Object.assign({}, BARBEARIA.politicas, o.politicas);
   if (FONTES_TOPO.some(f => f.id === o.fonte)) BARBEARIA.fonte = o.fonte;   // letra do nome no topo do site
+  if (o.local && typeof o.local === 'object') BARBEARIA.local = Object.assign({}, BARBEARIA.local, o.local);   // onde estamos
+  if (Array.isArray(o.depoimentos)) BARBEARIA.depoimentos = o.depoimentos;                                      // depoimentos
   // Cores escolhidas no painel (aba Ajustes): { destaque, fundo }. Sem elas, vale o que foi escolhido na criação.
   const cs = o.cores;
   BARBEARIA.tema = (cs && TEMA_BARBEARIA.ehHex(cs.destaque) && TEMA_BARBEARIA.ehHex(cs.fundo))
