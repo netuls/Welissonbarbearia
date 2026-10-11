@@ -408,7 +408,7 @@
           <!-- IDENTIDADE -->
           <div class="aj-card">
             <h3 class="aj-titulo">Dados da Barbearia</h3>
-            <p class="aj-desc">Nome, logo e WhatsApp. As mudanças aparecem no site e no painel assim que você salvar.</p>
+            <p class="aj-desc">Nome, logo, WhatsApp, endereço e Instagram. As mudanças aparecem no site e no painel assim que você salvar.</p>
             <div class="aj-linha">
               <div class="aj-campo" style="flex:2;min-width:200px;"><span class="aj-lbl">Nome da barbearia</span><input class="aj-in" id="aj-nome" placeholder="Ex.: Barbearia do João"></div>
               <div class="aj-campo"><span class="aj-lbl">WhatsApp (com DDD)</span><input class="aj-in" id="aj-whatsapp" inputmode="tel" placeholder="85999998888"></div>
@@ -417,6 +417,15 @@
               <div class="aj-campo"><span class="aj-lbl">Topo do site · linha 1</span><input class="aj-in" id="aj-linha1" placeholder="João"></div>
               <div class="aj-campo"><span class="aj-lbl">Topo do site · linha 2</span><input class="aj-in" id="aj-linha2" placeholder="Barbearia"></div>
               <div class="aj-campo"><span class="aj-lbl">Nome curto (app)</span><input class="aj-in" id="aj-nomecurto" placeholder="João" maxlength="14"></div>
+            </div>
+            <div class="aj-linha">
+              <div class="aj-campo" style="flex:2;min-width:200px;"><span class="aj-lbl">Endereço (aparece em "Onde estamos")</span><input class="aj-in" id="aj-endereco" placeholder="Rua, número, bairro, cidade"></div>
+              <div class="aj-campo"><span class="aj-lbl">Instagram (@usuário)</span><input class="aj-in" id="aj-instagram" placeholder="@seuperfil"></div>
+            </div>
+            <div class="aj-campo">
+              <span class="aj-lbl">Link do mapa (opcional)</span>
+              <input class="aj-in" id="aj-mapa" inputmode="url" placeholder="https://maps.app.goo.gl/...">
+              <span style="color:#5E6E9E;font-size:12px;font-family:'Roboto',sans-serif;line-height:1.5;margin-top:4px;">Se deixar em branco, o botão abre o endereço no Google Maps.</span>
             </div>
             <div class="aj-campo">
               <span class="aj-lbl">Logo</span>
@@ -433,6 +442,18 @@
             <div class="aj-acoes">
               <button class="aj-btn" onclick="salvarIdentidade()">Salvar dados</button>
               <span id="aj-identidade-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
+            </div>
+          </div>
+
+          <!-- DEPOIMENTOS -->
+          <div class="aj-card">
+            <h3 class="aj-titulo">Depoimentos</h3>
+            <p class="aj-desc">Avaliações de clientes que aparecem no site. Copie o texto de uma avaliação real (com a autorização do cliente) e cole aqui. A seção só aparece quando há pelo menos um depoimento. Máximo de 6.</p>
+            <div id="aj-dep-lista"></div>
+            <button type="button" class="aj-btn2" onclick="adicionarDepoimento()">+ Adicionar depoimento</button>
+            <div class="aj-acoes" style="margin-top:16px;">
+              <button class="aj-btn" onclick="salvarDepoimentos()">Salvar depoimentos</button>
+              <span id="aj-dep-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
             </div>
           </div>
 
@@ -1073,7 +1094,7 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="admin.js?v=1"></script>
+  <script src="admin.js?v=2"></script>
   <!-- ════════════════════════════════════════════════
        MODAL — ATENDIMENTO AVULSO (walk-in)
        ════════════════════════════════════════════════ -->
