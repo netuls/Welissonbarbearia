@@ -1,6 +1,6 @@
 // ── Firebase ─────────────────────────────────────
 // Versão do código deste painel (aparece em Ajustes > Sobre o sistema)
-const VERSAO_SISTEMA = '2026.10.2';
+const VERSAO_SISTEMA = '2026.10.1';
 // Garante os padrões de sinal, fidelidade e mensagens mesmo se o config.js for de uma versão mais antiga.
 BARBEARIA.politicas = Object.assign({
   sinalAtivo: true, sinalPct: 30, sinalMinPreco: 0, sinalTotalAcima: 0,   // sinal via Pix ao agendar (pagamento total acima de R$ X, se > 0)
@@ -181,13 +181,6 @@ function renderAjustes(manterCores) {
   set('aj-linha2', BARBEARIA.marca.linha2);
   set('aj-nomecurto', BARBEARIA.nomeCurto);
   set('aj-whatsapp', BARBEARIA.whatsapp);
-  const loc = BARBEARIA.local || {};
-  set('aj-endereco', loc.endereco);
-  set('aj-instagram', loc.instagram ? '@' + String(loc.instagram).replace(/^@/, '') : '');
-  set('aj-mapa', loc.mapaLink);
-  _depEdit = JSON.parse(JSON.stringify(BARBEARIA.depoimentos || []));
-  renderDepoimentosEditor();
-  ajStatus('aj-dep-status', '');
   atualizarPreviewLogo();
   ajStatus('aj-identidade-status', '');
   document.getElementById('aj-planos-ativos').checked = BARBEARIA.planosAtivos !== false;
@@ -388,11 +381,7 @@ async function salvarIdentidade() {
   if (!nome || !linha1) { ajStatus('aj-identidade-status', 'Informe o nome da barbearia e a 1ª linha do topo do site.', '#e05555'); return; }
   if (whats && (whats.length === 10 || whats.length === 11)) whats = '55' + whats;
   if (whats && !/^55\d{10,11}$/.test(whats)) { ajStatus('aj-identidade-status', 'WhatsApp: use DDD + número (ex.: 85999998888).', '#e05555'); return; }
-  const endereco = val('aj-endereco'), mapaLink = val('aj-mapa');
-  const instagram = val('aj-instagram').replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/[/?#].*$/, '');
-  if (mapaLink && !/^https?:\/\//i.test(mapaLink)) { ajStatus('aj-identidade-status', 'O link do mapa precisa começar com https://', '#e05555'); return; }
-  if (instagram && !/^[A-Za-z0-9._]{1,30}$/.test(instagram)) { ajStatus('aj-identidade-status', 'Instagram: use só o nome de usuário, sem espaços.', '#e05555'); return; }
-  const dados = { nome, linha1, linha2, nomeCurto: nomeCurto || linha1, local: { endereco, mapaLink, instagram }, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+  const dados = { nome, linha1, linha2, nomeCurto: nomeCurto || linha1, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() };
   if (whats) dados.whatsapp = whats;
   if (_logoPendente !== undefined) dados.logo = _logoPendente;
   ajStatus('aj-identidade-status', 'Salvando...');
@@ -406,61 +395,6 @@ async function salvarIdentidade() {
   } catch (e) {
     console.warn(e);
     ajStatus('aj-identidade-status', 'Erro ao salvar: ' + (e.message || e.code || e), '#e05555');
-  }
-}
-
-// ── Depoimentos (aba Ajustes) ──
-// Ficam em config/barbearia (campo "depoimentos"); o site lê esse documento na abertura.
-let _depEdit = [];
-function renderDepoimentosEditor() {
-  const el = document.getElementById('aj-dep-lista');
-  if (!el) return;
-  if (!_depEdit.length) { el.innerHTML = '<p style="color:#5E6E9E;font-size:13px;font-family:Roboto,sans-serif;">Nenhum depoimento cadastrado.</p>'; return; }
-  el.innerHTML = _depEdit.map((d, i) =>
-    '<div class="aj-plano aj-dep">' +
-      '<div class="aj-linha">' +
-        '<div class="aj-campo" style="flex:2;min-width:160px;"><span class="aj-lbl">Nome do cliente</span><input class="aj-in aj-dep-nome" maxlength="40" value="' + escPlano(d.nome) + '"></div>' +
-        '<div class="aj-campo" style="width:110px;flex:none;"><span class="aj-lbl">Estrelas</span><select class="aj-in aj-dep-est">' +
-          [5, 4, 3, 2, 1].map(n => '<option value="' + n + '"' + (Number(d.estrelas || 5) === n ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div>' +
-      '</div>' +
-      '<div class="aj-campo"><span class="aj-lbl">Depoimento</span><textarea class="aj-in aj-dep-texto" rows="3" maxlength="300">' + escPlano(d.texto) + '</textarea></div>' +
-      '<div><button type="button" class="aj-btn2" style="color:#e05555;border-color:rgba(200,60,60,.4);" onclick="removerDepoimento(' + i + ')">Remover</button></div>' +
-    '</div>').join('');
-}
-function lerDepoimentosDoDOM() {
-  return [...document.querySelectorAll('#aj-dep-lista .aj-dep')].map(row => ({
-    nome: row.querySelector('.aj-dep-nome').value.trim(),
-    estrelas: parseInt(row.querySelector('.aj-dep-est').value, 10) || 5,
-    texto: row.querySelector('.aj-dep-texto').value.trim(),
-  }));
-}
-function adicionarDepoimento() {
-  _depEdit = lerDepoimentosDoDOM();
-  if (_depEdit.length >= 6) { ajStatus('aj-dep-status', 'Limite de 6 depoimentos. Remova um para adicionar outro.', '#e05555'); return; }
-  _depEdit.push({ nome: '', estrelas: 5, texto: '' });
-  renderDepoimentosEditor();
-  ajStatus('aj-dep-status', '');
-}
-function removerDepoimento(i) {
-  _depEdit = lerDepoimentosDoDOM();
-  _depEdit.splice(i, 1);
-  renderDepoimentosEditor();
-  ajStatus('aj-dep-status', 'Removido. Clique em Salvar depoimentos para aplicar.');
-}
-async function salvarDepoimentos() {
-  const lista = lerDepoimentosDoDOM().filter(d => d.nome || d.texto);
-  if (lista.some(d => !d.nome || !d.texto)) { ajStatus('aj-dep-status', 'Preencha o nome e o texto de cada depoimento.', '#e05555'); return; }
-  ajStatus('aj-dep-status', 'Salvando...');
-  try {
-    await db.collection('config').doc('barbearia').set({ depoimentos: lista, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    await carregarAjustesRemotos();
-    _depEdit = JSON.parse(JSON.stringify(BARBEARIA.depoimentos || []));
-    renderDepoimentosEditor();
-    ajStatus('aj-dep-status', 'Salvo! O site já mostra os depoimentos.', '#4caf50');
-    showToast('Depoimentos atualizados.');
-  } catch (e) {
-    console.warn(e);
-    ajStatus('aj-dep-status', 'Erro ao salvar: ' + (e.message || e.code || e), '#e05555');
   }
 }
 
@@ -1587,7 +1521,6 @@ function renderAgendamentosTable(data) {
         ${a.status==='confirmado' ? `<button class="btn-action btn-concluir" onclick="updateStatus('${a.id}','concluido')">Concluir</button>` : ''}
         ${['agendado','confirmado'].includes(a.status) ? `<button class="btn-action btn-cancelar" onclick="updateStatus('${a.id}','cancelado')">Cancelar</button>` : ''}
         ${a.status==='concluido' && (a.telefone||'').replace(/\D/g,'') ? `<button class="btn-action btn-whats" onclick="relPedirAvaliacao('${a.id}')">${a.avaliacaoPedida ? 'Avaliação enviada' : 'Pedir avaliação'}</button>` : ''}
-        ${['agendado','confirmado'].includes(a.status) && a.data >= localDateStr() && (a.telefone||'').replace(/\D/g,'') ? `<button class="btn-action btn-whats" onclick="enviarLembrete('${a.id}')">${a.lembreteEnviado ? 'Lembrete enviado' : 'Lembrete'}</button>` : ''}
         <a class="btn-action btn-whats" href="https://wa.me/55${(a.telefone||'').replace(/\D/g,'')}" target="_blank">WhatsApp</a>
         <button class="btn-action btn-excluir" onclick="deleteAgendamento('${a.id}')">Excluir</button>
       </div>
@@ -4338,22 +4271,4 @@ async function renderSobreSistema() {
   el.innerHTML = linha('Painel (admin.js)', VERSAO_SISTEMA) + linha('Site (app.js)', site) + linha('Configuração (config.js)', cfg) +
     linha('Tipo de negócio', tipo) + linha('Gerado em', BARBEARIA.geradoEm ? fmtDataBR(BARBEARIA.geradoEm) : 'não informado') +
     '<div style="margin-top:8px;color:' + (iguais ? '#2db866' : '#e0a030') + ';">' + (iguais ? '✓ Todos os arquivos estão na mesma versão.' : '⚠ Arquivos de versões diferentes. Troque todos os arquivos do pacote (app.js, admin.js, admin.html, config.js...) e atualize com Ctrl+F5.') + '</div>';
-}
-
-// ── Lembrete de horário (WhatsApp) ──
-// Abre o WhatsApp do cliente com a mensagem pronta e marca o agendamento como "lembrete enviado".
-function mensagemLembrete(a) {
-  return 'Olá, ' + relPrimeiroNome(a.cliente) + '! Passando para lembrar do seu horário na ' + BARBEARIA.nome + ': ' +
-    (a.servico || 'atendimento') + ', ' + (a.data ? formatDate(a.data) : '') + (a.horario ? ' às ' + a.horario : '') +
-    '. Se precisar remarcar ou cancelar, é só nos avisar por aqui. Até lá!';
-}
-async function enviarLembrete(id) {
-  const a = allAgendamentos.find(x => x.id === id);
-  if (!a) return;
-  window.open(relLinkWA(a.telefone, mensagemLembrete(a)), '_blank');   // abre primeiro (o iPhone bloqueia depois de await)
-  try {
-    await db.collection('agendamentos').doc(id).update({ lembreteEnviado: true });
-    a.lembreteEnviado = true;
-  } catch (e) { console.warn('Não consegui marcar o lembrete como enviado', e); }
-  try { applyFilters(); } catch (e) {}
 }
