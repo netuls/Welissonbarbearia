@@ -99,29 +99,29 @@
 
   // ── Cria as seções (e o link do menu) uma única vez ──
   function criarSecoes() {
-    if (el('onde-estamos')) return;
+    if (el('ext-visitar')) return;
 
     var dep = document.createElement('section');
-    dep.id = 'depoimentos';
+    dep.id = 'ext-depoimentos';
     dep.className = 'section dep-section';
     dep.style.display = 'none';
-    dep.innerHTML = '<div class="section-header"><span class="section-tag">O QUE DIZEM</span><h2>Nossos Clientes</h2><div class="section-line"></div></div><div class="dep-grid" id="dep-grid"></div>';
+    dep.innerHTML = '<div class="section-header"><span class="section-tag">O QUE DIZEM</span><h2>Nossos Clientes</h2><div class="section-line"></div></div><div class="dep-grid" id="ext-dep-grid"></div>';
     var planos = el('planos');
     if (planos && planos.parentNode) planos.parentNode.insertBefore(dep, planos); else document.body.appendChild(dep);
 
     var oe = document.createElement('section');
-    oe.id = 'onde-estamos';
+    oe.id = 'ext-visitar';
     oe.className = 'section oe-section';
     oe.style.display = 'none';
-    oe.innerHTML = '<div class="section-header"><span class="section-tag">VENHA NOS</span><h2>Visitar</h2><div class="section-line"></div></div><div class="oe-card" id="oe-card"></div>';
+    oe.innerHTML = '<div class="section-header"><span class="section-tag">VENHA NOS</span><h2>Visitar</h2><div class="section-line"></div></div><div class="oe-card" id="ext-oe-card"></div>';
     var rodape = document.querySelector('footer.footer');
     if (rodape && rodape.parentNode) rodape.parentNode.insertBefore(oe, rodape); else document.body.appendChild(oe);
 
     var links = el('nav-links');
     if (links) {
       var a = document.createElement('a');
-      a.href = '#onde-estamos';
-      a.id = 'nav-onde';
+      a.href = '#ext-visitar';
+      a.id = 'ext-nav-visitar';
       a.textContent = 'Onde estamos';
       a.style.display = 'none';
       a.addEventListener('click', function () { if (typeof closeMenu === 'function') closeMenu(); });
@@ -131,7 +131,7 @@
 
   // ── Depoimentos ──
   function renderDepoimentos() {
-    var sec = el('depoimentos'), grid = el('dep-grid');
+    var sec = el('ext-depoimentos'), grid = el('ext-dep-grid');
     if (!sec || !grid) return;
     var lista = (ajustes().depoimentos || []).filter(function (d) { return d && d.nome && d.texto; }).slice(0, 10);
     if (!lista.length) { sec.style.display = 'none'; return; }
@@ -146,7 +146,7 @@
 
   // ── Onde estamos ──
   function renderOnde() {
-    var sec = el('onde-estamos'), card = el('oe-card'), nav = el('nav-onde');
+    var sec = el('ext-visitar'), card = el('ext-oe-card'), nav = el('ext-nav-visitar');
     if (!sec || !card) return;
     var l = ajustes().local || {};
     var endereco = String(l.endereco || '').trim();
