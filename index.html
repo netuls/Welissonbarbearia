@@ -119,6 +119,7 @@
       <div class="nav-links" id="nav-links">
         <a href="#servicos" onclick="closeMenu()">Serviços</a>
         <a href="#planos" onclick="closeMenu()">Planos</a>
+        <a href="#onde-estamos" onclick="closeMenu()">Onde estamos</a>
         <a href="#agendar" class="btn-nav" onclick="closeMenu()">Agendar</a>
       </div>
     </nav>
@@ -265,12 +266,46 @@
     </div>
   </section>
 
+  <!-- DEPOIMENTOS -->
+  <section id="depoimentos" class="section dep-section" style="display:none">
+    <div class="section-header">
+      <span class="section-tag">O QUE DIZEM</span>
+      <h2>Clientes</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="dep-grid" id="dep-grid"></div>
+  </section>
+
   <!-- AVALIAÇÃO -->
   <section id="avaliacoes" class="section aval-section" style="display:none">
     <div class="aval-box">
       <h3>Gostou do atendimento?</h3>
       <p>Sua avaliação ajuda outras pessoas a nos encontrar. Leva menos de um minuto.</p>
       <a id="aval-link" class="aval-btn" href="#" target="_blank" rel="noopener">Avaliar a barbearia</a>
+    </div>
+  </section>
+
+  <!-- ONDE ESTAMOS -->
+  <section id="onde-estamos" class="section local-section" style="display:none">
+    <div class="section-header">
+      <span class="section-tag">ONDE</span>
+      <h2>Estamos</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="local-card">
+      <div class="local-bloco" id="local-end" style="display:none">
+        <span class="local-lbl">Endereço</span>
+        <p id="local-end-txt"></p>
+        <a id="local-mapa" class="local-btn" href="#" target="_blank" rel="noopener" style="display:none">Abrir no mapa</a>
+      </div>
+      <div class="local-bloco" id="local-ig" style="display:none">
+        <span class="local-lbl">Instagram</span>
+        <a id="local-ig-link" class="local-ig" href="#" target="_blank" rel="noopener"></a>
+      </div>
+      <div class="local-bloco" id="local-hor" style="display:none">
+        <span class="local-lbl">Horário de atendimento</span>
+        <ul class="local-horas" id="local-horas"></ul>
+      </div>
     </div>
   </section>
 
