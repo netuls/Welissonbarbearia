@@ -3,7 +3,7 @@
 // ================================================
 
 // Versão do código deste site (aparece no painel, em Ajustes > Sobre o sistema)
-const VERSAO_SISTEMA = '2026.10.1';
+const VERSAO_SISTEMA = '2026.10.2';
 // Garante os padrões de sinal, fidelidade e mensagens mesmo se o config.js for de uma versão mais antiga.
 BARBEARIA.politicas = Object.assign({
   sinalAtivo: true, sinalPct: 30, sinalMinPreco: 0, sinalTotalAcima: 0,   // sinal via Pix ao agendar (pagamento total acima de R$ X, se > 0)
@@ -1545,6 +1545,7 @@ function aplicarAjustesNoSite() {
   aplicarVisibilidadePlanos();
   aplicarMarca();
   aplicarAvaliacaoCTA();
+  aplicarLocalEDepoimentos();
   try { if (currentUser) refreshPlano(); } catch (e) {}
 }
 
@@ -1560,6 +1561,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   carregarAntesDepois();   // seção "Antes e depois" (some se o dono não cadastrou fotos)
   aplicarAvaliacaoCTA();   // botão de avaliação (só aparece se o dono cadastrou o link)
+  aplicarLocalEDepoimentos();   // "Onde estamos" e depoimentos (somem se o dono não preencheu nada)
 
   // Sessão
   currentUser = loadSession();
@@ -1723,4 +1725,81 @@ function aplicarAvaliacaoCTA() {
   if (!sec || !a) return;
   const link = String((BARBEARIA.politicas || {}).avalLink || '').trim();
   if (/^https?:\/\//i.test(link)) { a.href = link; sec.style.display = ''; } else { sec.style.display = 'none'; }
+}
+
+// ══════════════════════════════════════════════════
+//  ONDE ESTAMOS + DEPOIMENTOS
+//  Dados: BARBEARIA.local e BARBEARIA.depoimentos (config.js + aba Ajustes do painel).
+//  Horários: lidos de config/horarios, os mesmos usados no agendamento.
+// ══════════════════════════════════════════════════
+const LOCAL_DIAS = [['segunda', 'Segunda'], ['terca', 'Terça'], ['quarta', 'Quarta'], ['quinta', 'Quinta'], ['sexta', 'Sexta'], ['sabado', 'Sábado'], ['domingo', 'Domingo']];
+
+function instagramUsuario(raw) {
+  const u = String(raw || '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/[/?#].*$/, '');
+  return /^[A-Za-z0-9._]{1,30}$/.test(u) ? u : '';
+}
+
+function renderDepoimentos() {
+  const sec = document.getElementById('depoimentos'), grid = document.getElementById('dep-grid');
+  if (!sec || !grid) return;
+  const lista = (Array.isArray(BARBEARIA.depoimentos) ? BARBEARIA.depoimentos : [])
+    .filter(d => d && d.nome && d.texto).slice(0, 6);
+  if (!lista.length) { sec.style.display = 'none'; return; }
+  grid.innerHTML = lista.map(d => {
+    const n = Math.min(5, Math.max(1, parseInt(d.estrelas, 10) || 5));
+    return `<figure class="dep-card">
+      <div class="dep-estrelas" role="img" aria-label="${n} de 5 estrelas">${'★'.repeat(n)}${'☆'.repeat(5 - n)}</div>
+      <blockquote>${adEsc(d.texto)}</blockquote>
+      <figcaption>${adEsc(d.nome)}</figcaption>
+    </figure>`;
+  }).join('');
+  sec.style.display = '';
+}
+
+async function renderLocal() {
+  const sec = document.getElementById('onde-estamos');
+  if (!sec) return;
+  const L = BARBEARIA.local || {};
+  const end = String(L.endereco || '').trim();
+  const ig = instagramUsuario(L.instagram);
+  const mapaLink = String(L.mapaLink || '').trim();
+  const mapa = /^https?:\/\//i.test(mapaLink) ? mapaLink
+    : (end ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(end) : '');
+  const mostrar = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+
+  document.getElementById('local-end-txt').textContent = end;
+  const aMapa = document.getElementById('local-mapa');
+  if (mapa) aMapa.href = mapa;
+  mostrar('local-end', !!end);
+  mostrar('local-mapa', !!(end && mapa));
+
+  const aIg = document.getElementById('local-ig-link');
+  if (ig) { aIg.href = 'https://instagram.com/' + ig; aIg.textContent = '@' + ig; }
+  mostrar('local-ig', !!ig);
+
+  // Horários da semana (os mesmos do agendamento)
+  let linhas = [];
+  try { await carregarConfigCalendario(); } catch (e) {}
+  const H = _calHorarios || {};
+  LOCAL_DIAS.forEach(([k, nome]) => {
+    const c = H[k];
+    if (!c) return;
+    if (c.ativo === false || c.fechado || !c.inicio || !c.fim) {
+      linhas.push(`<li class="fechado"><span>${nome}</span><span>Fechado</span></li>`);
+    } else {
+      const almoco = c.almoco && c.almoco_inicio && c.almoco_fim ? `<small>(pausa ${adEsc(c.almoco_inicio)}–${adEsc(c.almoco_fim)})</small>` : '';
+      linhas.push(`<li><span>${nome}</span><span>${adEsc(c.inicio)} – ${adEsc(c.fim)}${almoco}</span></li>`);
+    }
+  });
+  document.getElementById('local-horas').innerHTML = linhas.join('');
+  mostrar('local-hor', linhas.length > 0);
+
+  const temAlgo = !!(end || ig || linhas.length);
+  sec.style.display = temAlgo ? '' : 'none';
+  document.querySelectorAll('a[href="#onde-estamos"]').forEach(l => { l.style.display = temAlgo ? '' : 'none'; });
+}
+
+function aplicarLocalEDepoimentos() {
+  renderDepoimentos();
+  renderLocal();
 }
