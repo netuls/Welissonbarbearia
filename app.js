@@ -387,7 +387,7 @@ async function checarUsoPlano(data) {
   const u = currentUser;
   const lim = u && PLAN_LIMITS[u.plano];
   if (!lim || DEMO_MODE || !planoAtivo(u, data)) return null;
-  const [ini, fim] = lim.por === 'semana' ? semanaDe(data) : lim.por === 'mes' ? mesDe(data) : [u.planoPagoEm || '0000-00-00', u.planoVenceEm];
+  const [ini, fim] = lim.por === 'semana' ? semanaDe(data) : lim.por === 'mes' ? mesDe(data) : (u.planoVenceEm >= '2099-01-01' ? mesDe(data) : [u.planoPagoEm || '0000-00-00', u.planoVenceEm]);
   // Mesma regra do painel: conta qualquer atendimento NÃO cancelado, dentro da janela, de um serviço
   // coberto pelo plano, exceto os já gravados como "Limite do plano atingido" (esses foram cobrados).
   const nomesCobertos = SERVICES.filter(sv => (PLAN_COVERAGE[u.plano] || []).includes(sv.id)).map(sv => sv.name);
