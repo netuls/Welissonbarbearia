@@ -2083,8 +2083,10 @@ function mesDeISO(dataISO) {
 function janelaLimite(lim, dataISO, ini, fim) {
   if (lim.por === 'semana') return semanaDeISO(dataISO);
   if (lim.por === 'mes') return mesDeISO(dataISO);
+  if (fim === VENCIMENTO_VITALICIO) return mesDeISO(dataISO);
   return [ini, fim];
 }
+  
 function periodoCobre(p, x) {
   return x.data >= p.ini && x.data <= p.fim && (!p.ate || x.data < p.ate) &&
     (COBERTURA_PLANO_NOMES[p.plano] || []).includes(x.servico);
@@ -2128,7 +2130,7 @@ function usoPlanoHtml(c) {
     x.data >= ini && x.data <= fim && atendimentoCobertoPorPlano(x)).length;
   const cor = usados >= lim.qtd ? '#e0a030' : '#5E6E9E';
   return '<div style="font-family:Roboto,sans-serif;font-size:12px;color:' + cor + ';margin-top:2px;">Usou ' + usados + ' de ' + lim.qtd +
-    (lim.por === 'semana' ? ' nesta semana' : lim.por === 'mes' ? ' neste mês' : ' neste período') + '</div>';
+    (lim.por === 'semana' ? ' nesta semana' : (lim.por === 'mes' || c.planoVenceEm === VENCIMENTO_VITALICIO) ? ' neste mês' : ' neste período') + '</div>';
 }
 // Data em que o plano foi removido. Remoções antigas (sem data gravada) valem a partir de hoje.
 function dataRemocaoPlano(c) {
