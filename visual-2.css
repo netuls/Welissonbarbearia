@@ -133,3 +133,9 @@ button,.btn,.btn-primary,.btn-secondary,input,select,textarea{border-radius:12px
 .v3-cta .btn-hero:hover{transform:translateY(-2px);box-shadow:0 18px 44px -12px color-mix(in srgb,var(--accent) 70%,transparent)!important}
 .v3-cta .btn-hero,.btn-nav{transition:transform .25s var(--v3-ease),box-shadow .25s!important}
 .section-line{background:linear-gradient(90deg,var(--accent),transparent)!important;width:96px!important}
+
+/* ===== Serviços: sem o quadro cinza atrás, cartões soltos e alinhados ===== */
+.services-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))!important;gap:14px!important;
+  max-width:1200px!important;background:none!important;border:0!important;border-radius:0!important;overflow:visible!important;box-shadow:none!important;padding:0!important}
+.services-grid .service-card{margin:0!important;min-height:84px}
+@media (max-width:640px){.services-grid{grid-template-columns:1fr!important;gap:10px!important}}
