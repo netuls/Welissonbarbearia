@@ -188,3 +188,7 @@ button,.btn,.btn-primary,.btn-secondary,input,select,textarea{border-radius:12px
 
 /* Botão antigo "Agendar horário →" removido (ficava solto/azul e cobria o WhatsApp) */
 .mb-cta{display:none!important}
+
+/* Sem botão "Agendar" flutuante */
+.v3-sticky,.mb-cta{display:none!important}
+@media (max-width:768px){.footer{padding-bottom:calc(36px + var(--sab))!important}}
