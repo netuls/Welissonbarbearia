@@ -192,3 +192,23 @@ button,.btn,.btn-primary,.btn-secondary,input,select,textarea{border-radius:12px
 /* Sem botão "Agendar" flutuante */
 .v3-sticky,.mb-cta{display:none!important}
 @media (max-width:768px){.footer{padding-bottom:calc(36px + var(--sab))!important}}
+
+/* ===== Agendamento: horários em botões (vale para computador e celular) ===== */
+.mb-sub{display:none}
+.mb-sub.active{display:block;animation:v2up .5s var(--ease) both}
+#pref-time{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;overflow:hidden}
+
+.mb-slots{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;margin-top:8px}
+.mb-slot{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;min-height:46px;padding:0 10px;
+  border-radius:12px!important;border:1px solid var(--v3-line);cursor:pointer;text-align:center;
+  background:color-mix(in srgb,var(--dark3) 55%,transparent);color:var(--white);
+  font:700 15px/1 'Manrope',sans-serif;letter-spacing:.3px;font-variant-numeric:tabular-nums;
+  transition:background .2s,border-color .2s,color .2s,transform .15s,box-shadow .2s}
+.mb-slot:hover{border-color:color-mix(in srgb,var(--accent) 65%,transparent);transform:translateY(-1px)}
+.mb-slot:active{transform:scale(.96)}
+.mb-slot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mb-slot.sel{background:var(--accent);border-color:var(--accent);color:var(--black);box-shadow:0 10px 24px -12px color-mix(in srgb,var(--accent) 80%,transparent)}
+.mb-slot:disabled{opacity:.32;text-decoration:line-through;cursor:not-allowed;transform:none}
+.mb-slots-hint{grid-column:1/-1;color:var(--gray2);font-size:14px;margin:4px 0 0}
+.mb-actions{margin-top:22px!important}
+@media (max-width:480px){.mb-slots{grid-template-columns:repeat(3,1fr);gap:8px}}
