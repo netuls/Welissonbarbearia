@@ -185,3 +185,6 @@ button,.btn,.btn-primary,.btn-secondary,input,select,textarea{border-radius:12px
 .hero .hero-bg,.hero-bg{background:radial-gradient(70% 55% at 50% 40%,color-mix(in srgb,var(--dark4) 60%,transparent) 0%,transparent 70%)!important;
   background-size:auto!important;background-position:0 0!important;background-repeat:no-repeat!important}
 .hero .hero-bg::before,.hero .hero-bg::after,.hero-bg::before,.hero-bg::after{content:none!important;display:none!important;background:none!important}
+
+/* Botão antigo "Agendar horário →" removido (ficava solto/azul e cobria o WhatsApp) */
+.mb-cta{display:none!important}
