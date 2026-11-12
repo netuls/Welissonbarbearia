@@ -1,1217 +1,662 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <title data-marca="nomePainel">Painel Admin</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title data-marca="nome">Minha Barbearia</title>
+  <!-- Ícones Android / Desktop -->
+  <link rel="icon" type="image/png" sizes="512x512" href="logo_512.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="logo_192.png"/>
+  <link rel="icon" type="image/png" href="logo_512.png"/>
+
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json"/>
+  <link rel="manifest" href="manifest-client.json"/>
   <meta name="theme-color" content="#070E24"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="Minha Barbearia Admin" data-marca-attr="content:nomePainel"/>
-  <!-- Ícone Apple (iOS/iPadOS) -->
+  <meta name="apple-mobile-web-app-title" content="Minha Barbearia" data-marca-attr="content:nome"/>
+  <!-- Ícones Apple (iOS/iPadOS) -->
   <link rel="apple-touch-icon" sizes="180x180" href="logo_180.png"/>
   <link rel="apple-touch-icon" sizes="192x192" href="logo_192.png"/>
   <link rel="apple-touch-icon" sizes="512x512" href="logo_512.png"/>
-  <!-- Ícone Android / Desktop -->
-  <link rel="icon" type="image/png" sizes="512x512" href="logo_512.png"/>
-  <link rel="icon" type="image/png" sizes="192x192" href="logo_192.png"/>
-  <link rel="icon" type="image/png" href="logo_512.png"/>
-  <link rel="stylesheet" href="admin.css"/>
+
+  <link rel="stylesheet" href="style.css"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,900;1,700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet"/>
+
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+  <!-- Configuração da barbearia (nome, WhatsApp, Firebase, serviços e planos): edite só o config.js -->
+  <script src="config.js"></script>
+  <script>
+    firebase.initializeApp(BARBEARIA.firebase);
+  </script>
+
   <style>
-    #dash-filter-de::-webkit-calendar-picker-indicator,
-    #dash-filter-ate::-webkit-calendar-picker-indicator { filter: invert(0.5) sepia(1) saturate(2) hue-rotate(5deg); cursor: pointer; }
-    #stat-card-receita-dia { animation: fadeInCard .35s ease; }
-    @keyframes fadeInCard { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-    #dash-date-filter-bar input[type="date"]:focus { border-color: #EBC531 !important; box-shadow: 0 0 0 2px rgba(235, 197, 49,.15); }
-
-    /* ── iOS PWA Safe Area ── */
-    @supports (padding-bottom: env(safe-area-inset-bottom)) {
-      .bottom-nav {
-        height: calc(62px + env(safe-area-inset-bottom)) !important;
-        padding-bottom: env(safe-area-inset-bottom) !important;
-      }
-      .admin-main {
-        padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
-      }
-    }
-    /* Evita que conteudo fique atras do notch lateral */
-    body {
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-    }
-    input[type="time"] { color-scheme: dark; }
-    /* ── Badge Agendado ── */
-    .badge-agendado { background: rgba(235, 197, 49,.15); color: #EBC531; border: 1px solid rgba(235, 197, 49,.3); padding: 3px 10px; border-radius: 4px; font-size: 11px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
-    .badge-confirmado { background: rgba(39,174,96,.15); color: #1f9e54; border: 1px solid rgba(39,174,96,.3); padding: 3px 10px; border-radius: 4px; font-size: 11px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
-    .badge-concluido  { background: rgba(52,152,219,.15); color: #2b7bc2; border: 1px solid rgba(52,152,219,.3); padding: 3px 10px; border-radius: 4px; font-size: 11px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
-    .badge-cancelado  { background: rgba(192,57,43,.15);  color: #b03030; border: 1px solid rgba(192,57,43,.3);  padding: 3px 10px; border-radius: 4px; font-size: 11px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
-
-    /* ── Sidebar Logo ── */
-    .sidebar-brand {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 0 4px;
-    }
-    .sidebar-logo {
-      width: 110px;
-      height: 110px;
-      object-fit: contain;
-      filter: none;
-      opacity: 0.93;
-      transition: opacity 0.3s ease, transform 0.3s ease;
-      display: block;
-    }
-    .sidebar-logo:hover {
-      opacity: 1;
-      transform: scale(1.05);
-    }
-    .sidebar-brand-text {
+    /* ── Nav Logo ── */
+    .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .nav-logo-img { height: 46px; width: auto; display: block; }
+    .nav-logo-text { display: flex; flex-direction: column; line-height: 1.05; }
+    .nav-logo-text strong {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: 13px;
-      letter-spacing: 5px;
-      color: rgba(240,236,228,0.4);
-      text-transform: uppercase;
+      font-weight: 700; font-size: 19px; color: #F1EAD6; letter-spacing: .5px;
+    }
+    .nav-logo-text em {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic; font-weight: 700; font-size: 15px; color: #EBC531; letter-spacing: 1.5px;
     }
     @media (max-width: 768px) {
-      .sidebar-logo { width: 56px; height: 56px; }
+      .nav-logo-img { height: 38px; }
+      .nav-logo-text strong { font-size: 16px; }
+      .nav-logo-text em { font-size: 13px; }
     }
-    .toggle-slider {
-      width: 44px; height: 24px; border-radius: 12px;
-      position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; display:inline-block;
-    }
-    .toggle-knob {
-      width: 18px; height: 18px; border-radius: 50%; background: #fff;
-      position: absolute; top: 3px; transition: left .2s;
-    }
-    /* Inputs inline nos painéis de horários e datas */
-    #horarios-grid input[type="time"],
-    #de-data, #de-desc, #de-tipo, #de-inicio, #de-fim,
-    #de-almoco-inicio, #de-almoco-fim {
-      background: #122452 !important;
-      border: 1px solid #233F80 !important;
-      color: #F1EAD6 !important;
-    }
-    /* Botão salvar horários */
-    #btn-salvar-horarios {
-      background: #1B3168 !important;
-      border: 1px solid #2C4E9E !important;
-      color: #F1EAD6 !important;
-      font-family: 'Oswald', sans-serif !important;
-      font-size: 12px !important;
-      letter-spacing: 2px !important;
-      text-transform: uppercase !important;
-      padding: 13px 32px !important;
-      border-radius: 6px !important;
-      cursor: pointer !important;
-      transition: background .2s !important;
-    }
-    #btn-salvar-horarios:hover { background: #233F80 !important; }
   </style>
-  <style id="css-ajustes">
-    body.sem-planos .so-planos { display: none !important; }
-    .aj-card { background:#0C1838; border:1px solid #122452; border-radius:10px; padding:22px 20px; margin-bottom:28px; }
-    .aj-titulo { font-family:'Oswald',sans-serif; letter-spacing:2px; text-transform:uppercase; color:#F1EAD6; font-size:16px; margin-bottom:6px; }
-    .aj-desc { color:#94A4CC; font-size:13px; font-family:'Roboto',sans-serif; line-height:1.6; margin-bottom:18px; }
-    .aj-linha { display:flex; gap:12px; flex-wrap:wrap; }
-    .aj-campo { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; flex:1; min-width:140px; }
-    .aj-lbl { font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:2px; color:#5E6E9E; text-transform:uppercase; }
-    .aj-in { background:#0F1F45; border:1px solid #233F80; border-radius:6px; padding:10px 12px; color:#F1EAD6; font-family:'Roboto',sans-serif; font-size:14px; outline:none; width:100%; box-sizing:border-box; }
-    textarea.aj-in { resize:vertical; }
-    .aj-btn { background:#1B3168; border:1px solid #2C4E9E; color:#F1EAD6; padding:12px 28px; font-family:'Oswald',sans-serif; font-size:12px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; border-radius:4px; font-weight:700; }
-    .aj-btn2 { background:transparent; border:1px solid #233F80; color:#94A4CC; padding:10px 18px; font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; border-radius:4px; }
-    .aj-checks { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
-    .aj-check { display:flex; align-items:center; gap:6px; color:#94A4CC; font-family:'Roboto',sans-serif; font-size:13px; cursor:pointer; }
-    .aj-plano { background:#0A1330; border:1px solid #122452; border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
-    .aj-acoes { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:8px; }
-    .aj-fonte { background:#0A1330; border:1px solid #233F80; border-radius:10px; padding:14px 12px 10px; cursor:pointer; text-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; transition:border-color .15s, background .15s; min-width:0; overflow:hidden; font:inherit; color:inherit; }
-    .aj-fonte:hover { border-color:#2C4E9E; }
-    .aj-fonte.sel { border-color:#EBC531; background:#0C1838; box-shadow:0 0 0 1px #EBC531; }
-    .aj-fonte-nome { font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#5E6E9E; margin-top:10px; }
-    .aj-fonte.sel .aj-fonte-nome { color:#EBC531; }
+
+  <style>
+    /* ── Logo do topo ── */
+    .hero-content { position: relative; }
+    .hero-title {
+      margin: 0;
+      line-height: 0;
+    }
+    .hero-logo {
+      width: min(250px, 56vw);
+      max-height: 40svh;
+      height: auto;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+      filter: drop-shadow(0 18px 40px rgba(0,0,0,0.55));
+    }
+    /* Nome sob o emblema (texto real, no lugar da imagem com "Barbearia") */
+    .hero-name { display: block; text-align: center; margin-top: 14px; line-height: 1; }
+    /* A letra do nome vem do estilo escolhido em Ajustes → "Letra do nome no topo".
+       O config.js preenche as variáveis --topo1-* e --topo2-*; o que está depois da vírgula é o estilo Clássico (reserva). */
+    .hero-title .hero-name-top {
+      display: block; margin: 0;
+      font-family: var(--topo1-fonte, 'Oswald', sans-serif); font-weight: var(--topo1-peso, 400); font-style: var(--topo1-estilo, normal);
+      font-size: var(--topo1-tam, clamp(30px, 8.5vw, 48px)); letter-spacing: var(--topo1-espaco, 7px);
+      text-transform: var(--topo1-caixa, uppercase); color: #F1EAD6;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.55), 0 6px 22px rgba(0,0,0,0.75);
+    }
+    .hero-title .hero-name-bottom {
+      display: block; margin: var(--topo2-mt, 8px) 0 0;
+      font-family: var(--topo2-fonte, 'Playfair Display', Georgia, serif); font-style: var(--topo2-estilo, italic); font-weight: var(--topo2-peso, 700);
+      font-size: var(--topo2-tam, clamp(44px, 12.5vw, 72px)); letter-spacing: var(--topo2-espaco, 8px);
+      text-transform: var(--topo2-caixa, uppercase); color: #EBC531;
+      text-shadow: 0 3px 0 rgba(0,0,0,0.6), 0 8px 26px rgba(0,0,0,0.75), 0 0 28px rgba(235, 197, 49,0.30);
+    }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px;
+      margin: -1px; padding: 0; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+    .hero-title, .hero-sub, .btn-hero { position: relative; z-index: 2; }
   </style>
+
+  <style>
+    /* ── agd-status badges ── */
+    .agd-status { display:inline-block; margin-top:4px; padding:2px 10px; border-radius:3px; font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1px; }
+    .agd-status.agendado   { background:rgba(235, 197, 49,.15); color:#EBC531; }
+    .agd-status.confirmado { background:rgba(39,174,96,.15);   color:#27ae60; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght;500;600&family=DM+Serif+Display:ital;1&family=Manrope:wght;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="visual-2.css"/>
 </head>
-<body class="admin-body">
+<body>
 
-  <!-- LOGIN -->
-  <div id="login-screen" class="login-screen">
-    <div class="login-card">
-      <img src="logo.png" alt="Minha Barbearia" class="login-logo" data-marca-attr="alt:nome" data-logo/>
-      <h2>Painel Administrativo</h2>
-      <p>Entre com a senha do dono</p>
-      <div class="form-group">
-        <label>Senha</label>
-        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"/>
+  <!-- FUNDO DO SITE (fixo, acompanha a rolagem) -->
+  <div class="v3-page-bg" aria-hidden="true"></div>
+
+  <!-- NAVBAR -->
+  <header class="hero">
+    <div class="hero-bg"></div>
+    <div class="v3-bigtext" aria-hidden="true"><div class="v3-bigtext-track"></div></div>
+    <nav class="navbar">
+      <a href="#" class="nav-logo" aria-label="Minha Barbearia" data-marca-attr="aria-label:nome">
+        <img src="logo_emblema.png" alt="" class="nav-logo-img" data-logo/>
+        <span class="nav-logo-text"><strong data-marca="linha1">Minha</strong><em data-marca="linha2">Barbearia</em></span>
+      </a>
+      <!-- Hamburger mobile -->
+      <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="nav-links" id="nav-links">
+        <a href="#servicos" onclick="closeMenu()">Serviços</a>
+        <a href="#planos" onclick="closeMenu()">Planos</a>
+        <a href="#onde-estamos" onclick="closeMenu()">Onde estamos</a>
+        <a href="#agendar" class="btn-nav" onclick="closeMenu()">Agendar</a>
       </div>
-      <button class="btn-login" onclick="doLogin()">Entrar</button>
-      <p class="login-error" id="login-error"></p>
+    </nav>
+
+    <div class="hero-content v3-hero">
+      <div class="v3-hero-text">
+        <span class="v3-eyebrow">Barbearia &bull; Agendamento online</span>
+        <h1 class="hero-title">
+          <span class="hero-name" aria-hidden="true">
+            <span class="hero-name-top" data-marca="linha1">Minha</span>
+            <span class="hero-name-bottom" data-marca="linha2">Barbearia</span>
+          </span>
+          <span class="visually-hidden" data-marca="nome">Minha Barbearia</span>
+        </h1>
+        <p class="hero-sub"><span class="hero-sub-item">Barba</span><span class="hero-sub-dot">&middot;</span><span class="hero-sub-item">Cabelo</span><span class="hero-sub-dot">&middot;</span><span class="hero-sub-item">Estilo</span></p>
+        <div class="v3-cta">
+          <a href="#agendar" class="btn-hero">Agendar horário</a>
+          <a href="#servicos" class="v3-btn-ghost">Ver serviços</a>
+        </div>
+        <ul class="v3-facts">
+          <li><strong>Online</strong><span>Agende em 1 minuto</span></li>
+          <li><strong>Planos</strong><span>Mensais</span></li>
+          <li><strong>Lembrete</strong><span>Aviso do seu horário</span></li>
+        </ul>
+      </div>
+      <div class="v3-hero-art">
+        <img src="logo_emblema.png" alt="" class="hero-logo" data-logo/>
+      </div>
+    </div>
+    <div class="hero-scroll">▼</div>
+  </header>
+
+  <!-- SERVIÇOS -->
+  <section id="servicos" class="section services-section">
+    <div class="section-header">
+      <span class="section-tag"><b class="v3-num">01</b>NOSSOS</span>
+      <h2>Serviços</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="services-grid" id="services-grid"></div>
+  </section>
+
+  <!-- GALERIA DE FOTOS -->
+  <section id="cortes-section" class="section cortes-section">
+    <div class="section-header">
+      <span class="section-tag"><b class="v3-num">02</b>NOSSO</span>
+      <h2>Trabalho</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="cortes-slider-wrap">
+      <div class="cortes-slider" id="cortes-slider"></div>
+    </div>
+  </section>
+
+  <!-- ANTES E DEPOIS -->
+  <section id="antes-depois" class="section ad-section" style="display:none">
+    <div class="section-header">
+      <span class="section-tag"><b class="v3-num">03</b>ANTES E</span>
+      <h2>Depois</h2>
+      <div class="section-line"></div>
+    </div>
+    <p class="ad-intro">Arraste a barra para ver a transformação.</p>
+    <div class="ad-grid" id="ad-grid"></div>
+  </section>
+
+  <!-- PLANOS -->
+  <section id="planos" class="section plans-section">
+    <div class="section-header">
+      <span class="section-tag"><b class="v3-num">04</b>NOSSOS</span>
+      <h2>Planos</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="plans-grid" id="plans-grid"></div>
+  </section>
+
+  <!-- AUTH BAR -->
+  <div class="auth-bar-wrap">
+    <div class="auth-bar" id="auth-bar">
+      <!-- preenchido via JS -->
     </div>
   </div>
 
-  <!-- PAINEL -->
-  <div id="admin-panel" class="admin-panel" style="display:none;">
-    <aside class="sidebar">
-      <div class="sidebar-top">
-        <div class="sidebar-brand">
-          <img src="logo_emblema.png" alt="" class="sidebar-logo" data-logo/>
-          <span class="sidebar-brand-text" data-marca="nome">Minha Barbearia</span>
-        </div>
-      </div>
-      <nav class="sidebar-nav">
-        <a href="#" class="nav-item active" onclick="showTab('dashboard', this)">
-          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span>Dashboard</span>
-        </a>
-        <a href="#" class="nav-item" onclick="showTab('agendamentos', this)">
-          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span>Agendamentos</span>
-        </a>
-        <a href="#" class="nav-item" onclick="showTab('horarios', this)">
-          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span><span>Horários</span>
-        </a>
-        <a href="#" class="nav-item" onclick="showTab('datas', this)">
-          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><span>Datas Especiais</span>
-        </a>
-        <a href="#" class="nav-item" onclick="showTab('servicos', this)">
-          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span>Ajustes
-        </a>
-        <a href="#" class="nav-item" onclick="showTab('clientes', this)">
-          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span><span>Clientes</span>
-        </a>
-        <a href="#" class="nav-item" onclick="showTab('relacionamento', this)">
-          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span><span>Relacionamento</span>
-        </a>
-        <a href="#" class="nav-item" onclick="showTab('relatorios', this)">
-          <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span>Relatórios</span>
-        </a>
-      </nav>
-      <div class="sidebar-bottom">
-        <button class="btn-logout" onclick="doLogout()">Sair</button>
-        <a href="index.html" class="btn-site" target="_blank">Ver Site ↗</a>
-        <div id="versao-sistema" style="text-align:center;font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;padding-top:6px;"></div>
-      </div>
-    </aside>
+  <!-- AGENDAMENTO -->
+  <section id="agendar" class="section booking-section">
+    <div class="section-header">
+      <span class="section-tag"><b class="v3-num">05</b>FAÇA SEU</span>
+      <h2>Agendamento</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="booking-container">
+      <div class="booking-card">
 
-    <main class="admin-main">
-      <header class="admin-header">
-        <div>
-          <h1 id="page-title">Dashboard</h1>
-          <p id="admin-date"></p>
-        </div>
-        <div class="header-actions">
-          <!-- Botão para ativar notificações (necessário no iPhone) -->
-          <button id="btn-ativar-push" onclick="ativarNotificacoes()" style="display:none;background:#EBC531;color:#0A1330;border:1px solid #F5DC4A;border-radius:4px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;white-space:nowrap;">Ativar notificações</button>
-          <!-- Sino de notificações -->
-          <div id="notif-bell" onclick="toggleNotifPanel()" style="position:relative;cursor:pointer;padding:8px;border-radius:4px;transition:background .2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#8496C4" stroke-width="1.5" id="bell-icon">
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 01-3.46 0"/>
-            </svg>
-            <span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;background:#d45a5a;border-radius:50%;border:1.5px solid #0f0f0f;"></span>
-          </div>
-          <!-- Painel de notificações -->
-          <div id="notif-panel" style="display:none;position:absolute;top:60px;right:20px;width:340px;background:#0C1838;border:1px solid #16295C;border-radius:4px;box-shadow:0 24px 60px rgba(0,0,0,0.8);z-index:9997;overflow:hidden;max-height:480px;display:none;flex-direction:column;">
-            <div style="padding:14px 18px;border-bottom:1px solid #122452;display:flex;align-items:center;justify-content:space-between;">
-              <span style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8496C4;">Notificações</span>
-              <button onclick="limparNotificacoes()" style="background:none;border:none;font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#284794;cursor:pointer;transition:color .2s;" onmouseover="this.style.color='#8496C4'" onmouseout="this.style.color='#284794'">Limpar</button>
-            </div>
-            <div id="notif-list" style="overflow-y:auto;max-height:400px;"></div>
-          </div>
-          <span class="badge-status">Online</span>
-        </div>
-      </header>
-
-      <!-- DASHBOARD -->
-      <div class="tab-content active" id="tab-dashboard">
-
-        <!-- FILTRO DE DATA NO TOPO DO DASHBOARD -->
-        <div id="dash-date-filter-bar" style="background:#0A1330;border:1px solid #16295C;border-radius:10px;padding:16px 22px;margin-bottom:28px;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span style="color:#5E6E9E;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;white-space:nowrap;">Filtrar por período</span>
-            <div style="width:1px;height:20px;background:#1B3168;flex-shrink:0;"></div>
-
-            <!-- DE -->
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">De</span>
-              <input type="date" id="dash-filter-de" onchange="renderDashboard()"
-                style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:8px 12px;outline:none;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;cursor:pointer;color-scheme:dark;"/>
-            </div>
-
-            <span style="color:#2C4E9E;font-size:16px;">→</span>
-
-            <!-- ATÉ -->
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Até</span>
-              <input type="date" id="dash-filter-ate" onchange="renderDashboard()"
-                style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:8px 12px;outline:none;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;cursor:pointer;color-scheme:dark;"/>
-            </div>
-
-            <div style="width:1px;height:20px;background:#1B3168;flex-shrink:0;"></div>
-
-            <!-- Atalhos rápidos -->
-            <button onclick="setDashFilterToday()"
-              style="background:#122452;border:1px solid #233F80;color:#B4BEDC;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">
-              Hoje
-            </button>
-            <button onclick="setDashFilterWeek()"
-              style="background:#122452;border:1px solid #233F80;color:#B4BEDC;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">
-              Essa Semana
-            </button>
-            <button onclick="setDashFilterMonth()"
-              style="background:#122452;border:1px solid #233F80;color:#B4BEDC;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">
-              Este Mês
-            </button>
-            <button onclick="clearDashFilter()"
-              style="background:#122452;border:1px solid #233F80;color:#7183B4;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">
-              Limpar
-            </button>
-            <span id="dash-filter-label" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#5E6E9E;margin-left:auto;white-space:nowrap;"></span>
-          </div>
+        <div class="step-indicator">
+          <div class="step active" id="step-ind-1"><span>1</span><p>Serviço</p></div>
+          <div class="step-line"></div>
+          <div class="step" id="step-ind-2"><span>2</span><p>Dia e dados</p></div>
+          <div class="step-line"></div>
+          <div class="step" id="step-ind-3"><span>3</span><p>Confirmar</p></div>
         </div>
 
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-            <div class="stat-info">
-              <span class="stat-value" id="stat-hoje">0</span>
-              <span class="stat-label" id="stat-hoje-label">Agendamentos Hoje</span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
-            <div class="stat-info">
-              <span class="stat-value" id="stat-agendados">0</span>
-              <span class="stat-label" id="stat-agendados-label">Agendados</span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-            <div class="stat-info">
-              <span class="stat-value" id="stat-confirmados">0</span>
-              <span class="stat-label" id="stat-confirmados-label">Confirmados</span>
-            </div>
-          </div>
-          <!-- Card de Receita do Período (aparece só quando há filtro) -->
-          <div class="stat-card gold" id="stat-card-receita-dia" style="display:none;">
-            <div class="stat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 21h8M12 17v4M17 3H7L6 8c0 3.31 2.69 6 6 6s6-2.69 6-6l-1-5z"/><path d="M6 8H3a1 1 0 00-1 1v1a4 4 0 004 4M18 8h3a1 1 0 011 1v1a4 4 0 01-4 4"/></svg></div>
-            <div class="stat-info">
-              <span class="stat-value" id="stat-receita-dia">R$0</span>
-              <span class="stat-label" id="stat-receita-dia-label">Receita do Dia</span>
-            </div>
-          </div>
+        <!-- Passo 1 -->
+        <div class="form-step active" id="step-1">
+          <h3>Escolha o Serviço</h3>
+          <div class="options-list" id="options-list"></div>
         </div>
 
-        <!-- Horários disponíveis (por dia) -->
-        <div class="recent-section" style="margin-bottom:28px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-            <h3 style="margin:0;">Horários Disponíveis</h3>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <button onclick="dispMudarDia(-1)" aria-label="Dia anterior" style="background:#122452;border:1px solid #233F80;color:#94A4CC;width:34px;height:34px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">‹</button>
-              <input type="date" id="disp-data" onchange="dispEscolherData(this.value)" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:7px 12px;outline:none;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;color-scheme:dark;"/>
-              <button onclick="dispMudarDia(1)" aria-label="Próximo dia" style="background:#122452;border:1px solid #233F80;color:#94A4CC;width:34px;height:34px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">›</button>
-              <button onclick="dispEscolherData('')" style="background:#122452;border:1px solid #233F80;color:#94A4CC;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Hoje</button>
-              <button id="disp-copiar" onclick="dispCopiarLivres()" style="background:transparent;border:1px solid #EBC53166;color:#EBC531;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Copiar livres</button>
+        <!-- Passo 2 (dividido em: 2a dia e horário, 2b seus dados) -->
+        <div class="form-step" id="step-2">
+          <div class="mb-sub active" id="step-2a">
+            <h3>Escolha o dia e o horário</h3>
+            <div class="form-group">
+              <label>Dia *</label>
+              <input type="date" id="pref-date" style="display:none;"/>
+              <div id="cal-wrap" style="background:#0A1330;border:1px solid #1B3168;border-radius:8px;padding:16px;"></div>
             </div>
-          </div>
-          <div id="disp-resumo" style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;margin-bottom:12px;"></div>
-          <div id="disp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;"></div>
-          <div id="disp-extra" style="font-family:'Roboto',sans-serif;font-size:12px;color:#e0a030;margin-top:10px;"></div>
-          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-family:'Roboto',sans-serif;font-size:11px;color:#5E6E9E;">
-            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#123a24;border:1px solid #1f9e54;margin-right:6px;"></span>Livre</span>
-            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#3a2c08;border:1px solid #EBC531;margin-right:6px;"></span>Ocupado</span>
-            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#0C1838;border:1px solid #16295C;margin-right:6px;"></span>Indisponível</span>
-          </div>
-        </div>
-
-        <div class="recent-section">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
-            <h3 style="margin:0;" id="recent-section-title">Agendamentos Recentes</h3>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button onclick="abrirEditarReceita()" style="background:transparent;border:1px solid #EBC53166;color:#EBC531;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Editar receita</button>
-              <button onclick="abrirZerarReceitas()" style="background:transparent;border:1px solid rgba(200,60,60,0.35);color:#e05555;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Zerar receitas</button>
-            </div>
-          </div>
-          <div class="table-wrap" id="recent-list"></div>
-        </div>
-      </div>
-
-      <!-- AGENDAMENTOS -->
-      <div class="tab-content" id="tab-agendamentos">
-        <div class="tab-toolbar">
-          <div class="filter-group">
-            <select id="filter-status" onchange="applyFilters()">
-              <option value="">Todos os Status</option>
-              <option value="agendado">Agendado</option>
-              <option value="confirmado">Confirmado</option>
-              <option value="concluido">Concluído</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
-            <input type="date" id="filter-date" onchange="applyFilters()"/>
-            <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Buscar cliente..."/>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn-export" onclick="exportCSV()">Exportar CSV</button>
-            <button class="btn-export" onclick="abrirModalConcluirTodos()" style="border-color:#1f9e54;color:#2db866;">Concluir Todos</button>
-            <button class="btn-export" onclick="abrirModalAvulso()" style="border-color:#EBC531;color:#EBC531;display:flex;align-items:center;gap:7px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-              Atendimento Avulso
-            </button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Cliente</th><th>WhatsApp</th><th>Serviço</th>
-                <th>Data</th><th>Horário</th><th>Pagamento</th>
-                <th>Valor</th><th>Status</th><th>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="agendamentos-body"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- HORÁRIOS -->
-      <div class="tab-content" id="tab-horarios">
-        <div style="max-width:800px;">
-          <div style="margin-bottom:28px;">
-            <h3 style="font-family:'Oswald',sans-serif;letter-spacing:2px;text-transform:uppercase;color:#F1EAD6;font-size:16px;margin-bottom:6px;">Configurar Horários de Atendimento</h3>
-            <p style="color:#94A4CC;font-size:13px;font-family:'Roboto',sans-serif;line-height:1.6;">Ative os dias e defina os horários de atendimento. Você pode ativar o intervalo de almoço para bloquear aquele período. Os horários aparecem automaticamente no site com intervalos de 30 minutos.</p>
-          </div>
-          <div id="horarios-grid" style="display:flex;flex-direction:column;gap:10px;margin-bottom:32px;"></div>
-          <div style="display:flex;gap:12px;align-items:center;">
-            <button onclick="salvarHorarios()" id="btn-salvar-horarios"
-              style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:14px 36px;font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:4px;font-weight:700;">
-              Salvar Horários
-            </button>
-            <span id="horarios-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
-          </div>
-          <div style="margin-top:36px;padding:20px;background:#0C1838;border:1px solid #122452;border-radius:6px;">
-            <p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#B4BEDC;text-transform:uppercase;margin-bottom:8px;">Como funciona</p>
-            <p style="font-size:13px;color:#94A4CC;line-height:1.7;">Ao salvar, os horários ficam disponíveis no site para agendamento. Dias desativados não aparecem para o cliente. Quando o intervalo de almoço está ativo, os horários durante aquele período ficam bloqueados. O intervalo entre horários é sempre de 30 minutos.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- SERVIÇOS -->
-      <div class="tab-content" id="tab-servicos">
-        <div style="max-width:720px;">
-          <!-- IDENTIDADE -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Dados da Barbearia</h3>
-            <p class="aj-desc">Nome, logo e WhatsApp. As mudanças aparecem no site e no painel assim que você salvar.</p>
-            <div class="aj-linha">
-              <div class="aj-campo" style="flex:2;min-width:200px;"><span class="aj-lbl">Nome da barbearia</span><input class="aj-in" id="aj-nome" placeholder="Ex.: Barbearia do João"></div>
-              <div class="aj-campo"><span class="aj-lbl">WhatsApp (com DDD)</span><input class="aj-in" id="aj-whatsapp" inputmode="tel" placeholder="85999998888"></div>
-            </div>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">Topo do site · linha 1</span><input class="aj-in" id="aj-linha1" placeholder="João"></div>
-              <div class="aj-campo"><span class="aj-lbl">Topo do site · linha 2</span><input class="aj-in" id="aj-linha2" placeholder="Barbearia"></div>
-              <div class="aj-campo"><span class="aj-lbl">Nome curto (app)</span><input class="aj-in" id="aj-nomecurto" placeholder="João" maxlength="14"></div>
-            </div>
-            <div class="aj-campo">
-              <span class="aj-lbl">Logo</span>
-              <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                <img id="aj-logo-preview" src="logo_emblema.png" alt="Logo" style="width:84px;height:84px;object-fit:contain;background:#070E24;border:1px solid #233F80;border-radius:10px;padding:6px;">
-                <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                  <button type="button" class="aj-btn2" onclick="document.getElementById('aj-logo-file').click()">Escolher imagem</button>
-                  <button type="button" class="aj-btn2" onclick="removerLogo()">Usar a logo padrão</button>
-                  <input type="file" id="aj-logo-file" accept="image/*" style="display:none" onchange="escolherLogo(this)">
-                </div>
-              </div>
-              <span style="color:#5E6E9E;font-size:12px;font-family:'Roboto',sans-serif;line-height:1.5;margin-top:4px;">Use uma imagem quadrada, de preferência PNG com fundo transparente. Ela aparece no topo do site e no painel. O ícone do app instalado no celular só muda trocando os arquivos <b>logo_192.png</b> e <b>logo_512.png</b>.</span>
-            </div>
-            <div class="aj-acoes">
-              <button class="aj-btn" onclick="salvarIdentidade()">Salvar dados</button>
-              <span id="aj-identidade-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
-            </div>
-          </div>
-
-          <!-- SOBRE O SISTEMA -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Sobre o sistema</h3>
-            <p class="aj-desc">Versão de cada arquivo instalado. Depois de uma atualização, as três versões precisam ser iguais.</p>
-            <div id="sobre-sistema" style="font-family:'Roboto',sans-serif;font-size:13px;color:#B4BEDC;line-height:1.9;">Carregando...</div>
-          </div>
-
-          <!-- LETRA DO TOPO -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Letra do Nome no Topo</h3>
-            <p class="aj-desc">Escolha o estilo de letra do nome grande que aparece no início do site. Muda só a aparência: as palavras continuam sendo as de "Topo do site", em Dados da Barbearia.</p>
-            <div id="aj-fontes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px;"></div>
-            <div class="aj-acoes">
-              <button class="aj-btn" onclick="salvarFonte()">Salvar letra</button>
-              <span id="aj-fonte-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
-            </div>
-          </div>
-
-          <!-- CORES -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Cores do Site</h3>
-            <p class="aj-desc">Escolha as duas cores principais: destaque e fundo. O sistema ajusta todos os tons sozinho, no site e no painel. Se preferir, peça uma sugestão de cores a partir da logo.</p>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
-              <button type="button" class="aj-btn2" onclick="sugerirCoresLogo(false)">Sugerir cores pela logo</button>
-              <span id="aj-cores-logo-status" style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;"></span>
-            </div>
-            <div id="aj-presets" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
-            <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
-              <label style="display:flex;flex-direction:column;gap:4px;"><span class="aj-lbl">Cor de destaque</span><input type="color" id="aj-cor-destaque" oninput="atualizarPreviewCores()" style="width:70px;height:40px;border:1px solid #233F80;border-radius:6px;background:none;padding:2px;cursor:pointer;"></label>
-              <label style="display:flex;flex-direction:column;gap:4px;"><span class="aj-lbl">Cor de fundo</span><input type="color" id="aj-cor-fundo" oninput="atualizarPreviewCores()" style="width:70px;height:40px;border:1px solid #233F80;border-radius:6px;background:none;padding:2px;cursor:pointer;"></label>
-            </div>
-            <div id="aj-cores-preview" data-sem-tema style="border-radius:10px;padding:16px;margin-bottom:6px;"></div>
-            <div class="aj-acoes">
-              <button class="aj-btn" onclick="salvarCores()">Salvar cores</button>
-              <button type="button" class="aj-btn2" onclick="restaurarCoresOriginais()">Voltar às cores originais</button>
-              <span id="aj-cores-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
-            </div>
-          </div>
-
-          <!-- GALERIA DE FOTOS -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Fotos do Site (Nosso Trabalho)</h3>
-            <p class="aj-desc">Envie as fotos que aparecem no carrossel "Nosso Trabalho" do site, direto pelo celular ou computador. Você pode enviar várias de uma vez e remover com o ✕.</p>
-            <div id="aj-galeria-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:16px;"></div>
-            <div class="aj-acoes">
-              <button type="button" class="aj-btn2" onclick="document.getElementById('aj-galeria-file').click()">+ Adicionar fotos</button>
-              <input type="file" id="aj-galeria-file" accept="image/*" multiple style="display:none" onchange="escolherFotosGaleria(this)">
-              <button class="aj-btn" onclick="salvarGaleria()">Salvar fotos</button>
-              <span id="aj-galeria-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
-            </div>
-          </div>
-
-          <!-- SINAL, CANCELAMENTO E FIDELIDADE -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Sinal e cancelamento</h3>
-            <p class="aj-desc">O sinal é pago por Pix na hora de agendar e abatido do valor final. Na aba Agendamentos, você marca "Sinal recebido". Só funciona se houver uma forma de pagamento Pix cadastrada em Formas de pagamento, logo abaixo.</p>
-            <div id="aj-sinal-aviso" style="display:none;background:rgba(224,160,48,0.1);border:1px solid #e0a030;color:#F1EAD6;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-family:'Roboto',sans-serif;font-size:13px;line-height:1.5;"></div>
-            <label class="aj-chk"><input type="checkbox" id="aj-sinal-ativo"> Cobrar sinal ao agendar</label>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">Sinal (% do valor)</span><input class="aj-in" id="aj-sinal-pct" type="number" min="1" max="100" step="1" inputmode="numeric"></div>
-              <div class="aj-campo"><span class="aj-lbl">Só a partir de (R$)</span><input class="aj-in" id="aj-sinal-min" type="number" min="0" step="1" inputmode="numeric" placeholder="0 = todos"></div>
-              <div class="aj-campo"><span class="aj-lbl">Pagar tudo a partir de (R$)</span><input class="aj-in" id="aj-sinal-total" type="number" min="0" step="1" inputmode="numeric" placeholder="0 = desligado"></div>
-            </div>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">Cancelar ou remarcar até (horas antes)</span><input class="aj-in" id="aj-cancel-horas" type="number" min="0" max="168" step="1" inputmode="numeric" placeholder="0 = sem prazo"></div>
-            </div>
-            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-              <button type="button" class="aj-btn" onclick="salvarPoliticas()">Salvar regras</button>
-              <span id="aj-pol-status" style="font-family:'Roboto',sans-serif;font-size:13px;"></span>
-            </div>
-          </div>
-
-          <div class="aj-card">
-            <h3 class="aj-titulo">Fidelidade, aniversário e avaliações</h3>
-            <p class="aj-desc">O cliente ganha desconto automático a cada certo número de atendimentos pagos e concluídos. O desconto de aniversário é automático: vale no mês do aniversário do cliente, uma vez por ano, e não soma com a fidelidade (vale o maior). Nas mensagens, use {nome}, {barbearia}, {desconto} e {link}.</p>
-            <label class="aj-chk"><input type="checkbox" id="aj-fid-ativo"> Programa de fidelidade ligado</label>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">A cada (atendimentos)</span><input class="aj-in" id="aj-fid-cada" type="number" min="2" max="50" step="1" inputmode="numeric"></div>
-              <div class="aj-campo"><span class="aj-lbl">Desconto do próximo (%)</span><input class="aj-in" id="aj-fid-desc" type="number" min="1" max="100" step="1" inputmode="numeric"></div>
-              <div class="aj-campo"><span class="aj-lbl">Desconto de aniversário (%)</span><input class="aj-in" id="aj-aniv-desc" type="number" min="0" max="100" step="1" inputmode="numeric"></div>
-            </div>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">Desconto para quem sumiu (%)</span><input class="aj-in" id="aj-ret-desc" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="0 = desligado"></div>
-              <div class="aj-campo"><span class="aj-lbl">Vale para quem está sem vir há (dias)</span><input class="aj-in" id="aj-ret-dias" type="number" min="7" max="730" step="1" inputmode="numeric" placeholder="45"></div>
-            </div>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">Fidelidade: o prêmio é</span><select class="aj-in" id="aj-fid-tipo" onchange="ajBeneficioTipo()"><option value="desconto">Desconto (%)</option><option value="servico">Serviço de cortesia</option></select></div>
-              <div class="aj-campo" id="aj-fid-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (fidelidade)</span><select class="aj-in" id="aj-fid-serv"></select></div>
-            </div>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">Aniversário: o prêmio é</span><select class="aj-in" id="aj-aniv-tipo" onchange="ajBeneficioTipo()"><option value="desconto">Desconto (%)</option><option value="servico">Serviço de cortesia</option></select></div>
-              <div class="aj-campo" id="aj-aniv-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (aniversário)</span><select class="aj-in" id="aj-aniv-serv"></select></div>
-            </div>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">Quem sumiu: o prêmio é</span><select class="aj-in" id="aj-ret-tipo" onchange="ajBeneficioTipo()"><option value="desconto">Desconto (%)</option><option value="servico">Serviço de cortesia</option></select></div>
-              <div class="aj-campo" id="aj-ret-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (quem sumiu)</span><select class="aj-in" id="aj-ret-serv"></select></div>
-            </div>
-            <div class="aj-campo"><span class="aj-lbl">Link para avaliar (Google, por exemplo)</span><input class="aj-in" id="aj-aval-link" placeholder="https://g.page/r/..." inputmode="url"></div>
-            <div class="aj-campo"><span class="aj-lbl">Mensagem de aniversário</span><textarea class="aj-in" id="aj-msg-aniv" rows="3"></textarea></div>
-            <div class="aj-campo"><span class="aj-lbl">Mensagem para clientes que sumiram</span><textarea class="aj-in" id="aj-msg-ret" rows="3"></textarea></div>
-            <div class="aj-campo"><span class="aj-lbl">Mensagem de pedido de avaliação</span><textarea class="aj-in" id="aj-msg-aval" rows="3"></textarea></div>
-            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-              <button type="button" class="aj-btn" onclick="salvarPoliticas()">Salvar</button>
-              <span id="aj-pol2-status" style="font-family:'Roboto',sans-serif;font-size:13px;"></span>
-            </div>
-          </div>
-
-          <!-- ANTES E DEPOIS -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Antes e depois</h3>
-            <p class="aj-desc">Fotos do mesmo enquadramento, antes e depois do serviço. O site mostra uma barra para arrastar e comparar. A seção só aparece quando há pelo menos um par.</p>
-            <div id="aj-ad-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px;"></div>
-            <div class="aj-linha">
-              <div class="aj-campo"><span class="aj-lbl">Foto do antes</span><input class="aj-in" id="aj-ad-antes" type="file" accept="image/*"></div>
-              <div class="aj-campo"><span class="aj-lbl">Foto do depois</span><input class="aj-in" id="aj-ad-depois" type="file" accept="image/*"></div>
-            </div>
-            <div class="aj-campo"><span class="aj-lbl">Legenda (opcional)</span><input class="aj-in" id="aj-ad-legenda" maxlength="80" placeholder="Ex.: Design de sobrancelha"></div>
-            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-              <button type="button" class="aj-btn" id="aj-ad-btn" onclick="adicionarAntesDepois()">Adicionar par</button>
-              <span id="aj-ad-status" style="font-family:'Roboto',sans-serif;font-size:13px;"></span>
-            </div>
-          </div>
-
-          <!-- PLANOS -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Planos Mensais</h3>
-            <p class="aj-desc">Ative se a barbearia vende plano. Desativado, o plano some do site e do painel. Você pode mudar nomes, valores, benefícios e o que cada plano cobre.</p>
-            <label class="aj-check" style="margin-bottom:16px;font-size:14px;color:#F1EAD6;"><input type="checkbox" id="aj-planos-ativos" onchange="alternarPlanosAtivos()"> Vender planos mensais</label>
-            <div id="aj-planos-corpo">
-              <div id="aj-planos-lista"></div>
-              <button type="button" class="aj-btn2" onclick="adicionarPlanoAjuste()">+ Adicionar plano</button>
-            </div>
-            <div class="aj-acoes" style="margin-top:16px;">
-              <button class="aj-btn" onclick="salvarPlanos()">Salvar planos</button>
-              <span id="aj-planos-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
-            </div>
-          </div>
-
-          <!-- FORMAS DE PAGAMENTO -->
-          <div class="aj-card">
-            <h3 class="aj-titulo">Formas de Pagamento</h3>
-            <p class="aj-desc">Escolha as formas de pagamento que o cliente vê ao agendar. Para o Pix, informe a chave e/ou envie a imagem do QR Code (a mesma que seu banco gera) — ela aparece pro cliente pagar assim que ele confirmar o agendamento.</p>
-            <div id="pagamento-lista" style="display:flex;flex-direction:column;gap:14px;margin-bottom:14px;"></div>
-            <button type="button" class="aj-btn2" onclick="adicionarFormaPagamento()">+ Adicionar forma de pagamento</button>
-            <div class="aj-acoes" style="margin-top:16px;">
-              <button class="aj-btn" onclick="salvarFormasPagamento()">Salvar formas de pagamento</button>
-              <span id="aj-pagamento-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
-            </div>
-          </div>
-
-          <div class="aj-card">
-          <div style="margin-bottom:24px;">
-            <h3 style="font-family:'Oswald',sans-serif;letter-spacing:2px;text-transform:uppercase;color:#F1EAD6;font-size:16px;margin-bottom:6px;">Serviços</h3>
-            <p style="color:#94A4CC;font-size:13px;font-family:'Roboto',sans-serif;line-height:1.6;">Adicione novos serviços, arraste pela alcinha (⠿) para mudar a ordem em que aparecem no site, ou remova um serviço com o ✕. Altere o nome, o preço e o tempo (em minutos) de cada um — o tempo é o quanto o serviço ocupa na agenda, usado para oferecer só horários que cabem. Ao salvar, tudo passa a valer no site e no atendimento avulso do painel. Agendamentos que já existem mantêm os dados de quando foram feitos.</p>
-          </div>
-          <div id="servicos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
-          <div style="margin-bottom:20px;">
-            <button type="button" class="aj-btn2" onclick="adicionarServico()">+ Adicionar serviço</button>
-          </div>
-          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-            <button onclick="salvarServicos()" id="btn-salvar-servicos"
-              style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:14px 36px;font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:4px;font-weight:700;">
-              Salvar Serviços
-            </button>
-            <button onclick="restaurarPrecosPadrao()"
-              style="background:transparent;border:1px solid #233F80;color:#94A4CC;padding:14px 22px;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:4px;">
-              Voltar aos padrões
-            </button>
-            <span id="servicos-status" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;color:#94A4CC;"></span>
-          </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RELACIONAMENTO -->
-      <div class="tab-content" id="tab-relacionamento">
-        <div style="max-width:820px;">
-          <div class="aj-card">
-            <h3 class="aj-titulo">Aniversariantes</h3>
-            <p class="aj-desc">Clientes que fazem aniversário nos próximos dias. O botão abre o WhatsApp com a mensagem pronta; dá para editar antes de enviar. O texto e o desconto ficam em Ajustes.</p>
-            <div class="rel-filtro"><span class="aj-lbl">Mostrar</span>
-              <select id="rel-aniv-janela" class="aj-in" style="width:auto;" onchange="renderRelAniversarios()">
-                <option value="7">Próximos 7 dias</option><option value="30">Próximos 30 dias</option>
-              </select></div>
-            <div id="rel-aniv-lista"></div>
-          </div>
-
-          <div class="aj-card">
-            <h3 class="aj-titulo">Clientes que não voltam</h3>
-            <p class="aj-desc">Quem já foi atendido, não tem horário marcado e está sumido há um tempo. Chame de volta com um toque.</p>
-            <div class="rel-filtro"><span class="aj-lbl">Sem vir há</span>
-              <select id="rel-aus-dias" class="aj-in" style="width:auto;" onchange="renderRelAusentes()">
-                <option value="7">7 dias ou mais</option><option value="10">10 dias ou mais</option><option value="15">15 dias ou mais</option><option value="20">20 dias ou mais</option><option value="30" selected>30 dias ou mais</option><option value="45">45 dias ou mais</option><option value="60">60 dias ou mais</option><option value="90">90 dias ou mais</option>
+            <div class="form-group">
+              <label>Horário *</label>
+              <select id="pref-time" disabled>
+                <option value="">Selecione uma data primeiro</option>
               </select>
-              <span class="aj-lbl" style="margin-left:10px;">ou digite</span>
-              <input id="rel-aus-custom" class="aj-in" type="number" min="1" max="730" step="1" inputmode="numeric" placeholder="dias" style="width:90px;" oninput="renderRelAusentes()"></div>
-            <div id="rel-aus-lista"></div>
+              <div class="mb-slots" id="mb-slots" role="group" aria-label="Horários disponíveis"><p class="mb-slots-hint">Escolha um dia para ver os horários.</p></div>
+            </div>
+            <div class="form-row mb-actions">
+              <button class="btn-back" onclick="goBack(1)">← Voltar</button>
+              <button class="btn-next" onclick="mbIrParaDados()">Continuar →</button>
+            </div>
           </div>
-
-          <div class="aj-card">
-            <h3 class="aj-titulo">Pedir avaliação</h3>
-            <p class="aj-desc">Atendimentos concluídos nos últimos 14 dias que ainda não receberam o pedido. Quem já recebeu sai da lista.</p>
-            <div id="rel-aval-lista"></div>
+          <div class="mb-sub" id="step-2b">
+            <h3>Seus dados</h3>
+            <div class="form-group">
+              <label>Nome e Sobrenome *</label>
+              <input type="text" id="client-name" placeholder="Nome e sobrenome"
+                autocomplete="name" autocorrect="off" autocapitalize="words"/>
+            </div>
+            <div class="form-group">
+              <label>WhatsApp *</label>
+              <input type="tel" id="client-phone" placeholder="(85) 99999-9999"
+                maxlength="15" inputmode="tel" autocomplete="tel"/>
+            </div>
+            <div class="form-group" id="pagamento-form-group">
+              <label>Forma de Pagamento *</label>
+              <div class="options-list" id="pagamento-options-list"></div>
+            </div>
+            <div class="form-group">
+              <label>Observações</label>
+              <textarea id="obs" placeholder="Algo que queira nos informar..." rows="3"></textarea>
+            </div>
+            <div class="form-row mb-actions">
+              <button class="btn-back" onclick="mbVoltarParaDia()">← Voltar</button>
+              <button class="btn-next" onclick="goToConfirm()">Continuar →</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- RELATÓRIOS -->
-      <div class="tab-content" id="tab-relatorios">
-        <div style="max-width:980px;">
-          <div class="aj-card">
-            <h3 class="aj-titulo">Relatórios</h3>
-            <p class="aj-desc">Receita e atendimentos por mês e por serviço. Os atendimentos concluídos entram pela data do atendimento e as mensalidades de plano pela data do pagamento. Valores "zerados" no painel continuam aparecendo aqui, porque o relatório é o histórico; só o que você tirou da receita em "Editar receita" fica de fora.</p>
-            <div class="aj-linha" style="align-items:flex-end;">
-              <div class="aj-campo" style="max-width:190px;"><span class="aj-lbl">Mês</span><input type="month" id="relat-mes" class="aj-in" style="color-scheme:dark;" onchange="renderRelatorios()"></div>
-              <div class="aj-campo" style="flex:none;"><div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="aj-btn2" onclick="relatMesAtalho(0)">Este mês</button>
-                <button type="button" class="aj-btn2" onclick="relatMesAtalho(-1)">Mês passado</button>
-                <button type="button" class="aj-btn2" onclick="exportarRelatorioCSV()">Exportar CSV</button>
-              </div></div>
-            </div>
-          </div>
-          <div id="relat-resumo"></div>
-          <div class="aj-card"><h3 class="aj-titulo">Por serviço</h3><div id="relat-servicos"></div></div>
-          <div class="aj-card"><h3 class="aj-titulo">Por forma de pagamento</h3><div id="relat-pagamentos"></div></div>
-          <div class="aj-card"><h3 class="aj-titulo">Últimos 12 meses</h3><p class="aj-desc" style="margin-bottom:12px;">Toque em um mês para ver o detalhe dele.</p><div id="relat-meses"></div></div>
-        </div>
-      </div>
-
-      <!-- DATAS ESPECIAIS -->
-      <div class="tab-content" id="tab-datas">
-        <div style="max-width:800px;">
-          <div style="margin-bottom:28px;">
-            <h3 style="font-family:'Oswald',sans-serif;letter-spacing:2px;text-transform:uppercase;color:#F1EAD6;font-size:16px;margin-bottom:6px;">Datas Especiais de Atendimento</h3>
-            <p style="color:#94A4CC;font-size:13px;font-family:'Roboto',sans-serif;line-height:1.6;">Cadastre feriados ou datas específicas com horários diferenciados. Essas datas <strong style="color:#F1EAD6;">substituem</strong> a configuração semanal naquele dia — útil para feriados em que você vai abrir, ou dias normais que você vai fechar.</p>
-          </div>
-
-          <!-- Formulário para adicionar data -->
-          <div style="background:#0C1838;border:1px solid #16295C;border-radius:8px;padding:24px;margin-bottom:28px;">
-            <p style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;margin-bottom:18px;">Adicionar Data Especial</p>
-            <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;">
-              <div style="display:flex;flex-direction:column;gap:4px;">
-                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Data</span>
-                <input type="date" id="de-data"
-                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-size:14px;outline:none;color-scheme:dark;"/>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:4px;">
-                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Descrição</span>
-                <input type="text" id="de-desc" placeholder="Ex: Natal, Aniversário da cidade..."
-                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-size:14px;outline:none;width:220px;font-family:'Roboto',sans-serif;"/>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:4px;">
-                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Tipo</span>
-                <select id="de-tipo" onchange="toggleDETipo()"
-                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-size:14px;outline:none;font-family:'Roboto',sans-serif;cursor:pointer;">
-                  <option value="aberto">Aberto (horário especial)</option>
-                  <option value="fechado">Fechado (dia inteiro)</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Horários (visível só quando tipo=aberto) -->
-            <div id="de-horarios-wrap" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;align-items:flex-end;">
-              <div style="display:flex;flex-direction:column;gap:4px;">
-                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Abertura</span>
-                <input type="time" id="de-inicio" value="08:00"
-                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 12px;color:#F1EAD6;font-size:14px;outline:none;color-scheme:dark;"/>
-              </div>
-              <span style="color:#2C4E9E;font-size:20px;padding-bottom:10px;">→</span>
-              <div style="display:flex;flex-direction:column;gap:4px;">
-                <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Fechamento</span>
-                <input type="time" id="de-fim" value="17:00"
-                  style="background:#122452;border:1px solid #233F80;border-radius:4px;padding:10px 12px;color:#F1EAD6;font-size:14px;outline:none;color-scheme:dark;"/>
-              </div>
-              <!-- Almoço -->
-              <div style="display:flex;align-items:center;gap:8px;padding-bottom:4px;">
-                <div id="de-almoco-toggle" onclick="toggleDEAlmoco()"
-                  style="width:36px;height:20px;border-radius:10px;background:#233F80;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;">
-                  <div id="de-almoco-knob" style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left .2s;"></div>
-                </div>
-                <span style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#7183B4;">Intervalo de Almoço</span>
-              </div>
-              <div id="de-almoco-wrap" style="display:flex;gap:10px;align-items:flex-end;opacity:.3;pointer-events:none;">
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                  <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Início pausa</span>
-                  <input type="time" id="de-almoco-inicio" value="12:00"
-                    style="background:#122452;border:1px solid #16295C;border-radius:4px;padding:8px 10px;color:#F1EAD6;font-size:13px;outline:none;color-scheme:dark;"/>
-                </div>
-                <span style="color:#2C4E9E;font-size:16px;padding-bottom:10px;">→</span>
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                  <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#7183B4;text-transform:uppercase;">Fim pausa</span>
-                  <input type="time" id="de-almoco-fim" value="13:00"
-                    style="background:#122452;border:1px solid #16295C;border-radius:4px;padding:8px 10px;color:#F1EAD6;font-size:13px;outline:none;color-scheme:dark;"/>
-                </div>
-              </div>
-            </div>
-
-            <button onclick="adicionarDataEspecial()"
-              style="margin-top:20px;background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:12px 28px;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:4px;font-weight:700;">
-              Adicionar Data
-            </button>
-          </div>
-
-          <!-- Lista de datas cadastradas -->
-          <div>
-            <p style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#94A4CC;text-transform:uppercase;margin-bottom:12px;">Datas Cadastradas</p>
-            <div id="datas-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-          </div>
-
-          <div style="margin-top:36px;padding:20px;background:#0C1838;border:1px solid #122452;border-radius:6px;">
-            <p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#B4BEDC;text-transform:uppercase;margin-bottom:8px;">Como funciona</p>
-            <p style="font-size:13px;color:#94A4CC;line-height:1.7;">As datas especiais têm <strong style="color:#F1EAD6;">prioridade total</strong> sobre a grade semanal. Se você marcar um feriado como <em>Fechado</em>, o cliente não verá horários naquele dia mesmo que seja um dia normalmente ativo. Se marcar como <em>Aberto</em>, o cliente verá os horários especiais que você definir.</p>
-            <p style="font-size:12px;color:#7183B4;line-height:1.7;margin-top:10px;">Atenção: Se aparecer "Erro ao salvar", acesse o <strong style="color:#F1EAD6;">Firebase Console → Firestore → Regras</strong> e certifique-se que a coleção <code style="background:#0F1F45;padding:2px 6px;border-radius:3px;color:#B4BEDC;">config</code> tem permissão de escrita.</p>
+        <!-- Passo 3 -->
+        <div class="form-step" id="step-3">
+          <h3>Confirmar Agendamento</h3>
+          <div class="confirm-summary" id="confirm-summary"></div>
+          <div id="confirm-pix-box" style="display:none;"></div>
+          <div class="form-row mb-actions">
+            <button class="btn-back" onclick="goBack(2)">← Voltar</button>
+            <button class="btn-confirm" onclick="submitBooking()">✓ Confirmar</button>
           </div>
         </div>
-      </div>
 
-    </main>
-  </div>
-
-  <template id="tpl-tab-clientes">
-    <div class="tab-content" id="tab-clientes">
-
-      <!-- BANNER ANIVERSARIANTES -->
-      <div id="aniversariantes-banner" style="display:none;background:#1a1208;border:1px solid #4a3800;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
-        <div style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;color:#EBC531;text-transform:uppercase;margin-bottom:10px;">Aniversários Amanhã</div>
-        <div id="aniversariantes-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-
-      <!-- BANNER PLANOS PARA COBRAR -->
-      <div id="planos-cobrar-banner" class="so-planos" style="display:none;background:#1a1208;border:1px solid #4a3800;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
-        <div style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;color:#EBC531;text-transform:uppercase;margin-bottom:10px;">Planos para Cobrar</div>
-        <div id="planos-cobrar-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-
-      <!-- PLANOS MENSAIS -->
-      <details id="planos-details" class="so-planos" open style="margin-bottom:20px;">
-        <summary style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#94A4CC;text-transform:uppercase;cursor:pointer;padding:14px 18px;background:#0A1330;border:1px solid #122452;border-radius:8px;list-style:none;display:flex;align-items:center;gap:8px;">
-          Clientes com Plano <span id="planos-count" style="color:#EBC531;"></span>
-        </summary>
-        <div style="background:#0A1330;border:1px solid #122452;border-top:none;border-radius:0 0 8px 8px;padding:20px 18px;">
-          <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;">
-              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Cliente já cadastrado <em style="font-style:normal;color:#2C4E9E;">(opcional)</em></span>
-              <select id="plano-cli-select" onchange="preencherClientePlano(this.value)"
-                style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;">
-                <option value="">Selecionar...</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;">
-              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Nome *</span>
-              <input type="text" id="plano-nome" placeholder="Nome e sobrenome" autocapitalize="words" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;"/>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
-              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">WhatsApp *</span>
-              <input type="tel" id="plano-tel" placeholder="85999999999" maxlength="15" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;"/>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;min-width:170px;">
-              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Plano *</span>
-              <select id="plano-tipo" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;">
-<!-- opções preenchidas por JS a partir do config.js -->
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;min-width:150px;">
-              <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Dia do pagamento *</span>
-              <input type="date" id="plano-pago" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;"/>
-            </div>
-            <button onclick="salvarPlanoCliente()"
-              style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:10px 24px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;white-space:nowrap;">
-              Salvar Plano
-            </button>
-            <span id="plano-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#5E6E9E;align-self:center;"></span>
-          </div>
-          <div style="font-family:'Roboto',sans-serif;font-size:12px;color:#5E6E9E;margin-top:12px;line-height:1.5;">
-            O vencimento é calculado automaticamente: mesmo dia do mês seguinte. Ao salvar ou registrar um pagamento, o valor do plano entra no financeiro na data do pagamento. Para renovar, use "Registrar pagamento" na lista.
-          </div>
-          <div id="planos-lista" style="margin-top:20px;display:flex;flex-direction:column;gap:8px;"></div>
-        </div>
-      </details>
-
-      <!-- CADASTRO MANUAL -->
-      <details style="margin-bottom:20px;">
-        <summary style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:#94A4CC;text-transform:uppercase;cursor:pointer;padding:14px 18px;background:#0A1330;border:1px solid #122452;border-radius:8px;list-style:none;display:flex;align-items:center;gap:8px;">
-          Cadastrar Cliente Manualmente
-        </summary>
-        <div style="background:#0A1330;border:1px solid #122452;border-top:none;border-radius:0 0 8px 8px;padding:20px 18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
-          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;">
-            <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Nome *</span>
-            <input type="text" id="cad-nome" placeholder="Nome e sobrenome" autocapitalize="words"
-              style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;"/>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
-            <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">WhatsApp *</span>
-            <input type="tel" id="cad-tel" placeholder="85999999999" maxlength="15"
-              style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;"/>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px;min-width:150px;">
-            <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Nascimento <em style="font-style:normal;color:#2C4E9E;">(opcional)</em></span>
-            <input type="date" id="cad-nasc"
-              style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 12px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;"/>
-          </div>
-          <button onclick="cadastrarClienteManual()"
-            style="background:#1B3168;border:1px solid #2C4E9E;color:#F1EAD6;padding:10px 24px;border-radius:6px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;white-space:nowrap;">
-            Salvar Cliente
-          </button>
-          <span id="cad-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#5E6E9E;align-self:center;"></span>
-        </div>
-      </details>
-
-      <!-- BUSCA E ORDENAÇÃO -->
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
-        <input type="text" id="clientes-search" oninput="filtrarClientes()"
-          placeholder="Buscar cliente..."
-          style="background:#0F1F45;border:1px solid #233F80;border-radius:4px;padding:10px 16px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;flex:1;min-width:200px;"/>
-        <select id="clientes-sort" onchange="filtrarClientes()"
-          style="background:#0F1F45;border:1px solid #233F80;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:1px;outline:none;cursor:pointer;color-scheme:dark;">
-          <option value="nome">Ordenar: Nome A-Z</option>
-          <option value="visitas">Ordenar: + Visitas</option>
-          <option value="ticket">Ordenar: Maior Ticket</option>
-          <option value="gasto">Ordenar: Maior Gasto Total</option>
-          <option value="recente">Ordenar: + Recente</option>
-        </select>
-        <button onclick="abrirModalExcluirTodosClientes()"
-          style="background:transparent;border:1px solid rgba(176,48,48,0.4);color:#d45a5a;padding:10px 18px;border-radius:4px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;white-space:nowrap;transition:all .2s;"
-          onmouseover="this.style.background='rgba(176,48,48,0.1)';this.style.borderColor='#d45a5a'"
-          onmouseout="this.style.background='transparent';this.style.borderColor='rgba(176,48,48,0.4)'">
-          Excluir Todos
-        </button>
-      </div>
-
-      <!-- RESUMO GERAL -->
-      <div id="clientes-resumo" style="border-radius:8px;overflow:hidden;margin-bottom:28px;"></div>
-
-      <!-- LISTA -->
-      <div id="clientes-lista"></div>
-
-      <!-- DRAWER DE HISTÓRICO -->
-      <div id="cliente-drawer" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);" onclick="fecharClienteDrawer(event)">
-        <div id="cliente-drawer-box" style="position:absolute;right:0;top:0;bottom:0;width:min(520px,100vw);background:#0A1330;border-left:1px solid #122452;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-          <div style="padding:28px 28px 12px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #122452;position:sticky;top:0;background:#0A1330;z-index:1;">
-            <div>
-              <div style="font-family:'Playfair Display',Georgia,serif;font-size:28px;letter-spacing:2px;color:#F1EAD6;" id="drawer-nome">—</div>
-              <div style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;" id="drawer-tel">—</div>
-              <div style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;color:#7183B4;margin-top:4px;" id="drawer-nasc"></div>
-            </div>
-            <button onclick="fecharClienteDrawer()" style="background:none;border:none;color:#5E6E9E;font-size:18px;cursor:pointer;line-height:1;padding:4px;letter-spacing:0;">&#x2715;</button>
-          </div>
-          <div style="padding:24px 28px;" id="drawer-content"></div>
-        </div>
       </div>
     </div>
-  </template>
+  </section>
 
+  <!-- DEPOIMENTOS -->
+  <section id="depoimentos" class="section dep-section" style="display:none">
+    <div class="section-header">
+      <span class="section-tag"><b class="v3-num">06</b>O QUE DIZEM</span>
+      <h2>Clientes</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="dep-grid" id="dep-grid"></div>
+  </section>
 
-  <!-- MODAL EXCLUIR CLIENTE INDIVIDUAL -->
-  <div id="excluir-cliente-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000;align-items:center;justify-content:center;">
-    <div style="background:#0C1838;border:1px solid #1B3168;border-radius:2px;padding:40px 36px;max-width:380px;width:90%;text-align:center;box-shadow:0 40px 100px rgba(0,0,0,0.9);">
-      <div style="width:40px;height:1px;background:#b03030;margin:0 auto 28px;"></div>
-      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Excluir Cliente</h3>
-      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#8496C4;line-height:1.7;margin-bottom:28px;">
-        Tem certeza que deseja excluir <strong id="excluir-cliente-nome" style="color:#F1EAD6;"></strong>?<br/>
-        <span style="font-size:11px;color:#5E6E9E;">Esta ação não pode ser desfeita.</span>
-      </p>
-      <div style="display:flex;gap:10px;">
-        <button onclick="fecharModalExcluirCliente()"
-          style="flex:1;padding:12px;background:transparent;border:1px solid #1B3168;border-radius:4px;color:#8496C4;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;"
-          onmouseover="this.style.borderColor='#2C4E9E';this.style.color='#B4BEDC'"
-          onmouseout="this.style.borderColor='#1B3168';this.style.color='#8496C4'">
-          Cancelar
-        </button>
-        <button id="excluir-cliente-confirmar"
-          style="flex:1;padding:12px;background:rgba(176,48,48,0.15);border:1px solid rgba(176,48,48,0.5);border-radius:4px;color:#d45a5a;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;transition:all .2s;"
-          onmouseover="this.style.background='rgba(176,48,48,0.25)'"
-          onmouseout="this.style.background='rgba(176,48,48,0.15)'">
-          Excluir
-        </button>
+  <!-- AVALIAÇÃO -->
+  <section id="avaliacoes" class="section aval-section" style="display:none">
+    <div class="aval-box">
+      <h3>Gostou do atendimento?</h3>
+      <p>Sua avaliação ajuda outras pessoas a nos encontrar. Leva menos de um minuto.</p>
+      <a id="aval-link" class="aval-btn" href="#" target="_blank" rel="noopener">Avaliar a barbearia</a>
+    </div>
+  </section>
+
+  <!-- ONDE ESTAMOS -->
+  <section id="onde-estamos" class="section local-section" style="display:none">
+    <div class="section-header">
+      <span class="section-tag"><b class="v3-num">07</b>ONDE</span>
+      <h2>Estamos</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="local-card">
+      <div class="local-bloco" id="local-end" style="display:none">
+        <span class="local-lbl">Endereço</span>
+        <p id="local-end-txt"></p>
+        <a id="local-mapa" class="local-btn" href="#" target="_blank" rel="noopener" style="display:none">Abrir no mapa</a>
+      </div>
+      <div class="local-bloco" id="local-ig" style="display:none">
+        <span class="local-lbl">Instagram</span>
+        <a id="local-ig-link" class="local-ig" href="#" target="_blank" rel="noopener"></a>
+      </div>
+      <div class="local-bloco" id="local-hor" style="display:none">
+        <span class="local-lbl">Horário de atendimento</span>
+        <ul class="local-horas" id="local-horas"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL LOGIN / CADASTRO -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-box login-modal-box">
+      <div class="modal-icon">✂️</div>
+      <h3>Entrar / Cadastrar</h3>
+
+      <!-- Passo 1: telefone -->
+      <div class="login-step active" id="login-step-phone">
+        <p>Digite seu WhatsApp para entrar ou criar sua conta.</p>
+        <div class="form-group" style="text-align:left;margin-top:16px;">
+          <label>WhatsApp *</label>
+          <input type="tel" id="login-phone-input" placeholder="(85) 99999-9999"
+            maxlength="15" inputmode="tel" autocomplete="tel"/>
+        </div>
+        <p class="login-error" id="login-error-phone"></p>
+        <button class="btn-confirm" id="btn-login-next" onclick="loginCheckPhone()" style="margin-top:8px;width:100%;">Continuar →</button>
+        <button class="btn-back" onclick="closeLoginModal()" style="margin-top:8px;width:100%;">Fechar</button>
+      </div>
+
+      <!-- Passo 2: nome (só para novos) -->
+      <div class="login-step" id="login-step-name">
+        <p>Primeira vez por aqui! Qual o seu nome completo?</p>
+        <div class="form-group" style="text-align:left;margin-top:16px;">
+          <label>Nome e Sobrenome *</label>
+          <input type="text" id="login-name-input" placeholder="Nome e sobrenome"
+            autocomplete="name" autocorrect="off" autocapitalize="words"/>
+        </div>
+        <div class="form-group" style="text-align:left;margin-top:12px;">
+          <label style="display:flex;align-items:center;gap:6px;">
+            Data de Nascimento
+            <span style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:1px;color:#5E6E9E;text-transform:uppercase;background:#0F1F45;padding:2px 8px;border-radius:3px;">opcional</span>
+          </label>
+          <input type="date" id="login-birth-input"
+            style="color-scheme:dark;"
+            placeholder="dd/mm/aaaa"/>
+        </div>
+        <p class="login-error" id="login-error-name"></p>
+        <button class="btn-confirm" id="btn-login-register" onclick="loginRegister()" style="margin-top:8px;width:100%;">Cadastrar →</button>
+        <button class="btn-back" onclick="closeLoginModal()" style="margin-top:8px;width:100%;">Fechar</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL EXCLUIR TODOS OS CLIENTES -->
-  <div id="excluir-todos-clientes-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;">
-    <div style="background:#0C1838;border:1px solid #1B3168;border-radius:2px;padding:40px 36px;max-width:400px;width:90%;text-align:center;box-shadow:0 40px 100px rgba(0,0,0,0.9);">
-      <div style="width:40px;height:1px;background:#b03030;margin:0 auto 28px;"></div>
-      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Excluir Todos os Clientes</h3>
-      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#8496C4;line-height:1.7;margin-bottom:8px;">
-        Esta ação irá excluir <strong id="excluir-todos-count" style="color:#d45a5a;"></strong> da base de dados.
-      </p>
-      <p style="font-family:'Roboto',sans-serif;font-size:12px;color:#5E6E9E;line-height:1.6;margin-bottom:28px;">
-        Os agendamentos não serão afetados. Esta ação <strong style="color:#F1EAD6;">não pode ser desfeita</strong>.
-      </p>
-      <div style="margin-bottom:24px;padding:14px 18px;background:#1a0a0a;border:1px solid rgba(176,48,48,0.25);border-radius:4px;">
-        <p style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;margin-bottom:8px;">Confirme digitando</p>
-        <input type="text" id="excluir-todos-confirm-input" placeholder="EXCLUIR TUDO"
-          style="width:100%;background:#0f0f0f;border:1px solid #1B3168;border-radius:4px;padding:10px 14px;color:#F1EAD6;font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-align:center;outline:none;"
-          oninput="validarConfirmacaoExcluirTodos()"/>
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button onclick="fecharModalExcluirTodosClientes()"
-          style="flex:1;padding:12px;background:transparent;border:1px solid #1B3168;border-radius:4px;color:#8496C4;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;"
-          onmouseover="this.style.borderColor='#2C4E9E';this.style.color='#B4BEDC'"
-          onmouseout="this.style.borderColor='#1B3168';this.style.color='#8496C4'">
-          Cancelar
-        </button>
-        <button id="excluir-todos-confirmar" disabled
-          style="flex:1;padding:12px;background:rgba(176,48,48,0.08);border:1px solid rgba(176,48,48,0.2);border-radius:4px;color:#7183B4;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:not-allowed;transition:all .2s;">
-          Excluir Tudo
-        </button>
+  <!-- MODAL MEUS AGENDAMENTOS -->
+  <div class="modal-overlay" id="mybookings-modal">
+    <div class="modal-box mybookings-modal-box">
+      <div class="modal-icon">📋</div>
+      <h3>Meus Agendamentos</h3>
+      <div id="mybookings-list"></div>
+      <button class="btn-back" onclick="closeMyBookings()" style="margin-top:20px;width:100%;">Fechar</button>
+    </div>
+  </div>
+
+  <!-- MODAL PLANO -->
+  <div class="modal-overlay" id="plan-modal">
+    <div class="modal-box plan-modal-box">
+      <div class="modal-icon plan-modal-icon">✦</div>
+      <h3 id="plan-modal-title">Plano Essencial</h3>
+      <p id="plan-modal-desc">Ótima escolha! Antes de continuar, tem alguma dúvida sobre o plano? Pode perguntar agora — ou clique em <strong>Falar com a Gente</strong> e um de nós te responde pelo WhatsApp.</p>
+      <textarea id="plan-modal-question" placeholder="Escreva sua dúvida aqui (opcional)..." rows="3"></textarea>
+      <div class="plan-modal-actions">
+        <button class="btn-plan-cancel" onclick="closePlanModal()">Fechar</button>
+        <a id="plan-modal-wa" class="btn-plan-confirm" href="#" target="_blank">Falar com a Gente →</a>
       </div>
     </div>
   </div>
 
-  <!-- MODAL CONCLUIR TODOS -->
-  <div id="troca-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:28px 26px;max-width:440px;width:92%;max-height:92vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
-      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:6px;">Trocar plano</h3>
-      <div id="troca-cliente" style="font-family:'Oswald',sans-serif;font-size:15px;color:#EBC531;letter-spacing:.5px;"></div>
-      <div style="font-family:'Roboto',sans-serif;font-size:12px;color:#7183B4;margin:2px 0 18px;">Plano atual: <span id="troca-atual"></span></div>
-
-      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;">
-        <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Novo plano</span>
-        <select id="troca-novo" onchange="atualizarTrocarPlano('plano')" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;cursor:pointer;"></select>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
-        <label id="troca-modo-novo" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid #233F80;border-radius:6px;cursor:pointer;">
-          <input type="radio" name="troca-modo" value="novo" checked onchange="atualizarTrocarPlano('modo')" style="margin-top:3px;accent-color:#EBC531;">
-          <span style="font-family:'Roboto',sans-serif;font-size:12px;color:#94A4CC;line-height:1.5;"><strong style="color:#F1EAD6;">Começar novo ciclo</strong><br>Cobra o valor do novo plano e o vencimento passa a ser 1 mês depois da data da troca.</span>
-        </label>
-        <label id="troca-modo-manter" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid #233F80;border-radius:6px;cursor:pointer;">
-          <input type="radio" name="troca-modo" value="manter" onchange="atualizarTrocarPlano('modo')" style="margin-top:3px;accent-color:#EBC531;">
-          <span style="font-family:'Roboto',sans-serif;font-size:12px;color:#94A4CC;line-height:1.5;"><strong style="color:#F1EAD6;">Manter o vencimento atual</strong><br>Troca agora e o vencimento continua o mesmo. Por padrão cobra só a diferença de preço (se o novo plano for mais caro).</span>
-        </label>
-      </div>
-
-      <div style="display:flex;gap:12px;margin-bottom:14px;">
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
-          <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Data da troca</span>
-          <input type="date" id="troca-data" onchange="atualizarTrocarPlano('data')" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 12px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;color-scheme:dark;width:100%;"/>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
-          <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;color:#5E6E9E;text-transform:uppercase;">Valor no financeiro (R$)</span>
-          <input type="number" id="troca-valor" min="0" step="0.01" oninput="atualizarTrocarPlano('valor')" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 12px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;width:100%;"/>
-        </div>
-      </div>
-
-      <div id="troca-resumo" style="font-family:'Roboto',sans-serif;font-size:12px;color:#94A4CC;line-height:1.6;padding:10px 12px;background:#0A1330;border:1px solid #122452;border-radius:6px;margin-bottom:6px;"></div>
-      <div id="troca-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;min-height:16px;margin-bottom:12px;"></div>
-
-      <div style="display:flex;gap:12px;">
-        <button onclick="fecharTrocarPlano()" style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">Cancelar</button>
-        <button onclick="confirmarTrocarPlano()" style="flex:1;padding:12px;background:#EBC531;border:none;border-radius:6px;color:#070E24;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">Trocar plano</button>
-      </div>
+  <!-- MODAL SUCESSO -->
+  <div class="modal-overlay" id="success-modal">
+    <div class="modal-box">
+      <div class="modal-icon">✓</div>
+      <h3>Agendamento Enviado!</h3>
+      <p>Seu pedido foi registrado com sucesso.</p>
+      <p id="success-sinal" style="display:none;"></p>
+      <div id="success-pix-box" style="display:none;"></div>
+      <button onclick="closeModal()">Fechar</button>
     </div>
   </div>
 
-  <div id="zerar-receitas-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;">
-    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:30px 26px;max-width:420px;width:92%;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
-      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Zerar receitas</h3>
-      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;line-height:1.6;margin-bottom:12px;">
-        Isso zera o faturamento (atendimentos concluídos e mensalidades de planos) que está no painel hoje:
-        <strong id="zerar-receitas-valor" style="color:#EBC531;"></strong>.
-      </p>
-      <p style="font-family:'Roboto',sans-serif;font-size:12px;color:#7183B4;line-height:1.6;margin-bottom:16px;">
-        Clientes, agendamentos, histórico de visitas e planos <strong style="color:#F1EAD6;">não são apagados</strong> — só o dinheiro deixa de ser contado. Atendimentos e pagamentos feitos depois disso voltam a somar normalmente. Essa ação não pode ser desfeita.
-      </p>
-      <input type="text" id="zerar-receitas-input" placeholder="Digite ZERAR para confirmar" oninput="validarZerarReceitas()" autocomplete="off"
-        style="width:100%;background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:10px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;margin-bottom:8px;"/>
-      <div id="zerar-receitas-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;min-height:16px;margin-bottom:10px;color:#94A4CC;"></div>
-      <div style="display:flex;gap:12px;">
-        <button onclick="fecharZerarReceitas()" style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">Cancelar</button>
-        <button id="zerar-receitas-confirmar" onclick="confirmarZerarReceitas()" disabled style="flex:1;padding:12px;background:rgba(176,48,48,0.08);border:1px solid rgba(176,48,48,0.2);border-radius:6px;color:#7183B4;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:not-allowed;">Zerar</button>
-      </div>
-    </div>
-  </div>
+  <!-- OVERLAY MENU MOBILE -->
+  <div class="nav-overlay" id="nav-overlay" onclick="closeMenu()"></div>
 
-  <div id="editrec-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000;align-items:center;justify-content:center;">
-    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:24px 22px;max-width:680px;width:94%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
-      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:6px;">Editar receita</h3>
-      <p style="font-family:'Roboto',sans-serif;font-size:12px;color:#7183B4;line-height:1.5;margin-bottom:14px;">Corrija o valor de cada atendimento e de cada pagamento de plano. Use ✕ para tirar um item da receita (ele continua no histórico, só deixa de somar).</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-        <input type="date" id="editrec-de" onchange="renderEditarReceita()" title="De" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:8px 10px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;color-scheme:dark;"/>
-        <input type="date" id="editrec-ate" onchange="renderEditarReceita()" title="Até" style="background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:8px 10px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;color-scheme:dark;"/>
-        <input type="text" id="editrec-busca" oninput="renderEditarReceita()" placeholder="Buscar cliente..." style="flex:1;min-width:130px;background:#0F1F45;border:1px solid #233F80;border-radius:6px;padding:8px 12px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;"/>
-      </div>
-      <div id="editrec-resumo" style="font-family:'Roboto',sans-serif;font-size:12px;color:#94A4CC;margin-bottom:8px;"></div>
-      <div id="editrec-lista" style="overflow-y:auto;flex:1;min-height:120px;display:flex;flex-direction:column;gap:6px;padding-right:2px;"></div>
-      <div id="editrec-status" style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;min-height:16px;margin:10px 0 8px;color:#94A4CC;"></div>
-      <div style="display:flex;gap:12px;">
-        <button onclick="fecharEditarReceita()" style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">Cancelar</button>
-        <button id="editrec-salvar" onclick="salvarEditarReceita()" style="flex:1;padding:12px;background:#EBC531;border:none;border-radius:6px;color:#070E24;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">Salvar alterações</button>
-      </div>
-    </div>
-  </div>
+  <a href="#agendar" class="v3-sticky" aria-label="Agendar horário">Agendar horário</a>
+  <footer class="footer">
+    <p><span data-marca="nome">Minha Barbearia</span> &copy; <span data-marca="ano">2026</span>. Todos os direitos reservados.</p>
+  </footer>
 
-  <div id="concluir-todos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
-      
-      <h3 style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Concluir Todos</h3>
-      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;line-height:1.6;margin-bottom:28px;">
-        Isso vai marcar como <strong style="color:#1f9e54;">concluído</strong> todos os <strong id="concluir-todos-count" style="color:#F1EAD6;"></strong> agendamentos agendados e confirmados. Deseja continuar?
-      </p>
-      <div style="display:flex;gap:12px;justify-content:center;">
-        <button onclick="fecharModalConcluirTodos()"
-          style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">
-          Cancelar
-        </button>
-        <button onclick="confirmarConcluirTodos()"
-          style="flex:1;padding:12px;background:#1f9e54;border:none;border-radius:6px;color:#fff;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">
-          Confirmar
-        </button>
-      </div>
-    </div>
-  </div>
+  <script>aplicarMarca();</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="app.js"></script> 
+  <script src="extras-site.js"></script>
+  <script>
+    // Menu hamburger
+    const hamburger = document.getElementById('nav-hamburger');
+    const navLinks  = document.getElementById('nav-links');
+    const overlay   = document.getElementById('nav-overlay');
 
-  <!-- MODAL CONFIRMAR AGENDAMENTO -->
-  <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#0C1838;border:1px solid #16295C;border-radius:2px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.8);">
-      
-      <h3 id="confirm-modal-titulo" style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#F1EAD6;margin-bottom:10px;">Confirmar Agendamento</h3>
-      <p style="font-family:'Roboto',sans-serif;font-size:13px;color:#94A4CC;line-height:1.6;margin-bottom:28px;">
-        Deseja enviar a mensagem <span id="confirm-modal-tipo">de confirmação</span> para <strong id="confirm-modal-nome" style="color:#F1EAD6;"></strong> pelo WhatsApp?
-      </p>
-      <div style="display:flex;gap:12px;justify-content:center;">
-        <button id="confirm-modal-nao"
-          style="flex:1;padding:12px;background:transparent;border:1px solid #233F80;border-radius:6px;color:#94A4CC;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">
-          Não enviar
-        </button>
-        <button id="confirm-modal-sim"
-          style="flex:1;padding:12px;background:#F1EAD6;border:none;border-radius:6px;color:#070E24;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">
-          Sim, enviar
-        </button>
-      </div>
-    </div>
-  </div>
+    hamburger.addEventListener('click', () => {
+      const open = navLinks.classList.toggle('open');
+      hamburger.classList.toggle('open', open);
+      overlay.classList.toggle('open', open);
+      document.body.style.overflow = open ? 'hidden' : '';
+    });
 
-  <script src="config.js"></script>
-  <script src="admin.js?v=1"></script> 
-  <script src="extras-admin.js"></script>
-  <!-- ════════════════════════════════════════════════
-       MODAL — ATENDIMENTO AVULSO (walk-in)
-       ════════════════════════════════════════════════ -->
-  <div id="avulso-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;padding:16px;">
-    <div style="background:#0A1330;border:1px solid #16295C;border-radius:8px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 40px 100px rgba(0,0,0,0.9);position:relative;">
+    function closeMenu() {
+      navLinks.classList.remove('open');
+      hamburger.classList.remove('open');
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
 
-      <!-- Header -->
-      <div style="padding:24px 28px 18px;border-bottom:1px solid #122452;display:flex;align-items:flex-start;justify-content:space-between;position:sticky;top:0;background:#0A1330;z-index:1;">
-        <div>
-          <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:2px;color:#F1EAD6;">Atendimento Avulso</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;margin-top:3px;">Cliente sem agendamento · Walk-in</div>
-        </div>
-        <button onclick="fecharModalAvulso()" style="background:none;border:none;color:#2C4E9E;font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;border-radius:4px;transition:color .2s;" onmouseover="this.style.color='#F1EAD6'" onmouseout="this.style.color='#2C4E9E'">✕</button>
-      </div>
+    // Service worker PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .catch(e => console.warn('SW:', e));
+      });
+    }
+  </script>
+<script>
+/* Logo: fundo quadrado vira medalhão redondo (detecção automática) */
+(function () {
+  // Forma da logo:
+  //   'redonda'  → sempre recorta em círculo (ideal para emblemas redondos sobre fundo quadrado)
+  //   'auto'     → detecta sozinho: logo com fundo sólido vira redonda; logo transparente fica como está
+  //   'original' → não mexe na forma da logo
+  var FORMA = 'auto';
 
-      <!-- Body -->
-      <div style="padding:24px 28px;display:flex;flex-direction:column;gap:18px;">
+  // Fundo da tela inicial usando as cores do tema (sem azul fixo)
+  var CORRIGIR_FUNDO_HERO = false; // o style.css já usa as cores do tema
 
-        <!-- Cliente: busca ou nome livre -->
-        <div>
-          <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Cliente</label>
-          <input type="text" id="avulso-cliente" placeholder="Nome do cliente" autocomplete="off"
-            oninput="avulsoBuscarCliente(this.value)"
-            style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;transition:border-color .2s;"
-            onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
-          <!-- Sugestões de clientes cadastrados -->
-          <div id="avulso-sugestoes" style="display:none;background:#0C1838;border:1px solid #16295C;border-top:none;border-radius:0 0 6px 6px;overflow:hidden;max-height:180px;overflow-y:auto;"></div>
-          <input type="hidden" id="avulso-tel"/>
-        </div>
+  var css = '';
 
-        <!-- Serviço -->
-        <div>
-          <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Serviço</label>
-          <select id="avulso-servico" onchange="avulsoPreencherPreco()"
-            style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:14px;outline:none;cursor:pointer;color-scheme:dark;transition:border-color .2s;"
-            onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'">
-            <option value="">Selecionar serviço...</option>
-          </select>
-        </div>
+  if (CORRIGIR_FUNDO_HERO) {
+    css += [
+      '.hero .hero-bg {',
+      '  background:',
+      '    repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 28px),',
+      '    repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 84px),',
+      '    linear-gradient(180deg, var(--dark2) 0%, var(--black) 100%);',
+      '}',
+      '@supports (background: color-mix(in srgb, red 50%, transparent)) {',
+      '  .hero .hero-bg {',
+      '    background:',
+      '      radial-gradient(ellipse at 50% 32%, color-mix(in srgb, var(--gray) 28%, transparent) 0%, transparent 62%),',
+      '      repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 28px),',
+      '      repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 84px),',
+      '      linear-gradient(180deg, var(--dark2) 0%, var(--black) 100%);',
+      '  }',
+      '}',
+      ''
+    ].join('\n');
+  }
 
-        <!-- Valor + Data + Hora em linha -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-          <div>
-            <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Valor (R$)</label>
-            <input type="number" id="avulso-preco" placeholder="0,00" step="0.01" min="0"
-              style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 14px;color:#EBC531;font-family:'Playfair Display',Georgia,serif;font-size:18px;outline:none;letter-spacing:1px;transition:border-color .2s;"
-              onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
-          </div>
-          <div>
-            <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Data</label>
-            <input type="date" id="avulso-data"
-              style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 10px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;color-scheme:dark;transition:border-color .2s;"
-              onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
-          </div>
-          <div>
-            <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Hora</label>
-            <input type="time" id="avulso-hora"
-              style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 10px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;color-scheme:dark;transition:border-color .2s;"
-              onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
-          </div>
-        </div>
+  css += [
+    /* forma geral (site e painel) */
+    'img[data-logo].logo-medalhao { border-radius: 50%; object-fit: cover; aspect-ratio: 1 / 1; object-view-box: inset(2%); }',
+    'img[data-logo].logo-cartao { border-radius: 14px; object-fit: cover; }',
 
-        <!-- Observação -->
-        <div>
-          <label style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#5E6E9E;text-transform:uppercase;display:block;margin-bottom:8px;">Observação <span style="color:#233F80;">(opcional)</span></label>
-          <input type="text" id="avulso-obs" placeholder="Ex: Pagamento em dinheiro, desconto aplicado..."
-            style="width:100%;background:#0F1F45;border:1px solid #1B3168;border-radius:6px;padding:11px 14px;color:#F1EAD6;font-family:'Roboto',sans-serif;font-size:13px;outline:none;transition:border-color .2s;"
-            onfocus="this.style.borderColor='#EBC531'" onblur="this.style.borderColor='#1B3168'"/>
-        </div>
+    /* tela inicial */
+    '.hero-logo.logo-medalhao {',
+    '  width: min(240px, 58vw); height: auto; max-height: none; filter: none; margin: 0 auto 18px;',
+    '  box-shadow: 0 18px 50px rgba(0,0,0,0.65);',
+    '  box-shadow:',
+    '    0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),',
+    '    0 0 0 8px color-mix(in srgb, var(--accent) 7%, transparent),',
+    '    0 22px 55px rgba(0,0,0,0.65),',
+    '    0 0 90px color-mix(in srgb, var(--accent) 12%, transparent);',
+    '}',
+    '.hero-logo.logo-cartao { border-radius: 16px; }',
 
-        <!-- Preview do registro -->
-        <div id="avulso-preview" style="display:none;background:#0d0d0d;border:1px solid #122452;border-radius:6px;padding:14px 16px;">
-          <div style="font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:3px;color:#2C4E9E;text-transform:uppercase;margin-bottom:10px;">Resumo do Atendimento</div>
-          <div id="avulso-preview-body" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;"></div>
-        </div>
+    /* menu do topo */
+    '.nav-logo-img.logo-medalhao { width: 46px; height: 46px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }',
+    '@media (max-width: 768px) { .nav-logo-img.logo-medalhao { width: 38px; height: 38px; } }'
+  ].join('\n');
 
-        <!-- Feedback -->
-        <div id="avulso-status" style="display:none;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-align:center;padding:10px;border-radius:4px;"></div>
+  // ── Decide a forma de cada logo ─────────────────────────────────────────────
+  function quadrada(w, h) { return Math.abs(w / h - 1) < 0.15; }
 
-        <!-- Ações -->
-        <div style="display:flex;gap:10px;margin-top:4px;">
-          <button onclick="fecharModalAvulso()"
-            style="flex:1;padding:13px;background:transparent;border:1px solid #1B3168;border-radius:6px;color:#7183B4;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;"
-            onmouseover="this.style.borderColor='#2C4E9E';this.style.color='#B4BEDC'" onmouseout="this.style.borderColor='#1B3168';this.style.color='#7183B4'">
-            Cancelar
-          </button>
-          <button id="avulso-btn-salvar" onclick="salvarAtendimentoAvulso()"
-            style="flex:2;padding:13px;background:#EBC531;border:none;border-radius:6px;color:#070E24;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;cursor:pointer;transition:all .2s;"
-            onmouseover="this.style.background='#d4b87a'" onmouseout="this.style.background='#EBC531'">
-            Registrar Atendimento
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+  // Lê 4 cantinhos da imagem: se todos forem opacos, a logo tem fundo sólido (é uma "foto" quadrada)
+  function detectar(img, w, h) {
+    try {
+      var n = 40, cv = document.createElement('canvas');
+      cv.width = cv.height = n;
+      var ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0, n, n);
+      var cantos = [[1, 1], [n - 2, 1], [1, n - 2], [n - 2, n - 2]];
+      var solido = cantos.every(function (p) { return ctx.getImageData(p[0], p[1], 1, 1).data[3] > 235; });
+      if (!solido) return 'original';
+      return quadrada(w, h) ? 'redonda' : 'cartao';
+    } catch (e) {
+      return 'original'; // o navegador bloqueou a leitura (arquivo aberto direto do disco)
+    }
+  }
 
-  <!-- Botão flutuante no dashboard -->
-  <button id="btn-avulso-fab" onclick="abrirModalAvulso()"
-    style="display:none;position:fixed;bottom:80px;right:20px;z-index:500;background:#EBC531;border:none;border-radius:50px;padding:12px 20px;color:#070E24;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;box-shadow:0 8px 32px rgba(235, 197, 49,.35);align-items:center;gap:8px;transition:all .2s;"
-    onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 12px 40px rgba(235, 197, 49,.5)'"
-    onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 8px 32px rgba(235, 197, 49,.35)'">
-    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Avulso
-  </button>
+  function aplicar(img) {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) return;
+    var modo = FORMA === 'auto' ? detectar(img, w, h) : FORMA;
+    if (modo === 'redonda' && !quadrada(w, h)) modo = 'cartao';
+    img.classList.remove('logo-medalhao', 'logo-cartao');
+    if (modo === 'redonda') img.classList.add('logo-medalhao');
+    else if (modo === 'cartao') img.classList.add('logo-cartao');
+  }
 
-  <!-- BOTTOM NAV MOBILE -->
-  <nav class="bottom-nav" id="bottom-nav">
-    <a class="bottom-nav-item active" id="bnav-dashboard" onclick="showTab('dashboard', this); syncBottomNav('bnav-dashboard')">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard
-    </a>
-    <a class="bottom-nav-item" id="bnav-agendamentos" onclick="showTab('agendamentos', this); syncBottomNav('bnav-agendamentos')">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>Agenda
-    </a>
-    <a class="bottom-nav-item" id="bnav-horarios" onclick="showTab('horarios', this); syncBottomNav('bnav-horarios')">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>Horários
-    </a>
-    <a class="bottom-nav-item" id="bnav-datas" onclick="showTab('datas', this); syncBottomNav('bnav-datas')">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>Datas
-    </a>
-    <a class="bottom-nav-item" id="bnav-servicos" onclick="showTab('servicos', this); syncBottomNav('bnav-servicos')">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span>Ajustes
-    </a>
-    <a class="bottom-nav-item" id="bnav-clientes" onclick="showTab('clientes', this); syncBottomNav('bnav-clientes')">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span>Clientes
-    </a>
-    <a class="bottom-nav-item" id="bnav-relacionamento" onclick="showTab('relacionamento', this); syncBottomNav('bnav-relacionamento')">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>Contato
-    </a>
-    <a class="bottom-nav-item" id="bnav-relatorios" onclick="showTab('relatorios', this); syncBottomNav('bnav-relatorios')">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Relatórios
-    </a>
-    <a class="bottom-nav-item" id="bnav-sair" onclick="doLogout()">
-      <span class="bnav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></span>Sair
-    </a>
-  </nav>
+  function registrar(img) {
+    if (!img.dataset.formaOk) {
+      img.dataset.formaOk = '1';
+      img.addEventListener('load', function () { aplicar(img); }); // roda de novo se a logo for trocada
+      if (FORMA === 'redonda') img.classList.add('logo-medalhao');  // já nasce redonda, sem "piscar" quadrada
+    }
+    if (img.complete) aplicar(img);
+  }
 
-  
-<script>aplicarMarca();</script>
+  function iniciar() {
+    var st = document.createElement('style');
+    st.id = 'ajuste-visual';
+    st.textContent = css;
+    document.head.appendChild(st);
+    document.querySelectorAll('img[data-logo]').forEach(registrar);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
+  else iniciar();
+})();
+</script>
+<script>
+/* v2: barra de progresso, menu que encolhe, parallax do topo e entradas ao rolar */
+(function(){
+  var bar=document.createElement("div");bar.className="v2-progress";document.body.appendChild(bar);
+  var nav=document.querySelector(".navbar"),hero=document.querySelector(".hero-content");
+  var rm=matchMedia("(prefers-reduced-motion: reduce)").matches,tick=false;
+  function onScroll(){var y=scrollY,h=document.documentElement.scrollHeight-innerHeight;
+    bar.style.transform="scaleX("+(h>0?y/h:0)+")";
+    if(nav)nav.classList.toggle("v2-solid",y>40);
+    if(hero&&!rm&&y<innerHeight){hero.style.transform="translateY("+(y*.28)+"px)";hero.style.opacity=String(1-y/(innerHeight*.85));}
+    tick=false;}
+  addEventListener("scroll",function(){if(!tick){tick=true;requestAnimationFrame(onScroll);}},{passive:true});onScroll();
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}});},{threshold:.15,rootMargin:"0px 0px -40px 0px"});
+  function scan(){
+    document.querySelectorAll(".section-header").forEach(function(el){if(!el.dataset.v2){el.dataset.v2=1;io.observe(el);}});
+    document.querySelectorAll(".services-grid,.plans-grid").forEach(function(g){Array.prototype.forEach.call(g.children,function(c,i){if(!c.dataset.v2){c.dataset.v2=1;c.classList.add("v2r");c.style.setProperty("--d",(i%8)*0.06+"s");io.observe(c);}});});
+    document.querySelectorAll(".section-header>*,.booking-card,.cortes-slider-wrap").forEach(function(el,i){if(!el.dataset.v2){el.dataset.v2=1;el.classList.add("v2r");io.observe(el);}});
+  }
+  scan();new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+
+  <!-- Botão Agendar fixo (celular) -->
+  <a href="#agendar" class="mb-cta" id="mb-cta" aria-label="Agendar horário">
+    <span class="mb-cta-txt">Agendar horário</span><span class="mb-cta-arrow" aria-hidden="true">→</span>
+  </a>
+<script>
+/* Celular: botão Agendar fixo, horários em botões e agendamento dividido em telas */
+(function(){
+  var cta=document.getElementById("mb-cta"),sec=document.getElementById("agendar");
+  if(cta&&sec&&"IntersectionObserver" in window){
+    new IntersectionObserver(function(es){es.forEach(function(e){cta.classList.toggle("mb-hide",e.isIntersecting);});},{threshold:.15}).observe(sec);
+  }
+  function mostrar(id){["step-2a","step-2b"].forEach(function(x){var el=document.getElementById(x);if(el)el.classList.toggle("active",x===id);});
+    var card=document.querySelector(".booking-card");if(card)card.scrollIntoView({behavior:"smooth",block:"start"});}
+  window.mbIrParaDados=function(){
+    var d=document.getElementById("pref-date"),t=document.getElementById("pref-time");
+    if(!d.value){alert("Escolha o dia.");return;}
+    if(!t.value){alert("Escolha o horário.");return;}
+    mostrar("step-2b");
+  };
+  window.mbVoltarParaDia=function(){mostrar("step-2a");};
+  /* sempre que o passo 2 abrir, começa pelo dia e horário */
+  var s2=document.getElementById("step-2");
+  if(s2)new MutationObserver(function(){if(s2.classList.contains("active")&&!s2.dataset.mbOpen){s2.dataset.mbOpen=1;mostrar("step-2a");}if(!s2.classList.contains("active"))delete s2.dataset.mbOpen;}).observe(s2,{attributes:true,attributeFilter:["class"]});
+  /* horários: espelha a lista original em botões grandes */
+  var sel=document.getElementById("pref-time"),box=document.getElementById("mb-slots");
+  function render(){
+    if(!sel||!box)return;
+    var ops=[].slice.call(sel.options).filter(function(o){return o.value;});
+    box.innerHTML="";
+    if(!ops.length){var p=document.createElement("p");p.className="mb-slots-hint";p.textContent=(sel.options[0]&&sel.options[0].text)||"Sem horários";box.appendChild(p);return;}
+    ops.forEach(function(o){var b=document.createElement("button");b.type="button";b.className="mb-slot"+(o.value===sel.value?" sel":"");
+      b.textContent=o.text;b.disabled=o.disabled;b.setAttribute("aria-pressed",o.value===sel.value);
+      b.onclick=function(){sel.value=o.value;sel.dispatchEvent(new Event("change",{bubbles:true}));render();};box.appendChild(b);});
+  }
+  if(sel){new MutationObserver(render).observe(sel,{childList:true,subtree:true,attributes:true});sel.addEventListener("change",render);render();}
+})();
+</script>
+
+<script>
+/* Fundo vivo: listras de alfaiataria que acendem em dourado perto do mouse (ou sozinhas, no celular) */
+(function(){
+  var bg=document.querySelector('.v3-page-bg');
+  if(bg){
+    var reduz=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var W=innerWidth,H=innerHeight,tx=W*.68,ty=H*.32,cx=tx,cy=ty,last=0,ativo=false,ultimo=0;
+    var set=function(x,y){bg.style.setProperty('--lx',x.toFixed(0)+'px');bg.style.setProperty('--ly',y.toFixed(0)+'px');};
+    set(cx,cy);
+    if(!reduz){
+      addEventListener('resize',function(){W=innerWidth;H=innerHeight;},{passive:true});
+      addEventListener('pointermove',function(e){ativo=true;ultimo=performance.now();tx=e.clientX;ty=e.clientY;},{passive:true});
+      (function loop(t){
+        if(t-last>33){
+          last=t;
+          if(!ativo||t-ultimo>4000){tx=W*(.5+.34*Math.sin(t/5200));ty=H*(.44+.30*Math.sin(t/3700+1));}
+          cx+=(tx-cx)*.08;cy+=(ty-cy)*.08;set(cx,cy);
+        }
+        requestAnimationFrame(loop);
+      })(0);
+    }
+  }
+  /* Nome gigante só em contorno, deslizando devagar no fim do topo */
+  function nome(){
+    var tr=document.querySelector('.v3-bigtext-track'); if(!tr) return;
+    var a=document.querySelector('.hero-name-top'),b=document.querySelector('.hero-name-bottom');
+    var t=(((a&&a.textContent)||'')+' '+((b&&b.textContent)||'')).replace(/\s+/g,' ').trim().toUpperCase()||'BARBEARIA';
+    if(tr.getAttribute('data-n')===t) return; tr.setAttribute('data-n',t); tr.textContent='';
+    for(var k=0;k<2;k++){var set=document.createElement('div');set.className='v3-bigtext-set';
+      for(var j=0;j<4;j++){var sp=document.createElement('span');sp.textContent=t;set.appendChild(sp);}tr.appendChild(set);}
+  }
+  nome();setTimeout(nome,500);setTimeout(nome,2000);
+})();
+</script>
 </body>
 </html>
