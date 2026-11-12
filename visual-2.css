@@ -1,0 +1,135 @@
+/* ===== Visual 2.0 — carregar DEPOIS do style.css ===== */
+:root{--v3-ease:cubic-bezier(.2,.7,.2,1);--v3-r:18px;--v3-line:rgba(241,234,214,.10)}
+html{scroll-behavior:smooth}
+body{font-family:'Manrope',var(--font-body),sans-serif!important}
+
+/* Barra do topo: cápsula flutuante */
+.navbar{left:50%!important;right:auto!important;transform:translateX(-50%);width:min(1180px,calc(100% - 24px))!important;top:calc(10px + var(--sat))!important;
+  border:1px solid var(--v3-line)!important;border-radius:999px!important;padding:8px 10px 8px 16px!important;
+  background:color-mix(in srgb,var(--black) 72%,transparent)!important;backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%)}
+.navbar.v2-solid{padding:8px 10px 8px 16px!important;top:calc(8px + var(--sat))!important}
+.nav-logo-img{height:36px!important}
+.nav-links a{font-family:'Manrope',sans-serif!important;font-weight:600!important;letter-spacing:.3px!important;text-transform:none!important;font-size:14px!important}
+.btn-nav{border-radius:999px!important;background:var(--accent)!important;color:var(--black)!important;padding:10px 20px!important;border:0!important}
+
+/* Topo dividido: texto à esquerda, logo à direita */
+.hero{min-height:100svh!important;display:flex;align-items:center}
+.v3-hero{display:grid!important;grid-template-columns:1.15fr .85fr;align-items:center;gap:48px;width:min(1180px,calc(100% - 40px));margin:0 auto;padding:130px 0 90px!important;text-align:left!important}
+.v3-hero-text{display:flex;flex-direction:column;align-items:flex-start}
+.v3-eyebrow{display:inline-flex;align-items:center;gap:10px;font:600 12px/1 'Manrope',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--accent);
+  padding:9px 14px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;background:var(--accent-dim);margin-bottom:22px}
+.v3-hero .hero-title{line-height:1!important;text-align:left!important;margin:0!important}
+.v3-hero .hero-name{text-align:left!important;margin:0!important}
+.v3-hero .hero-name-top{font-size:clamp(22px,3.4vw,34px)!important;letter-spacing:10px!important;opacity:.9}
+.v3-hero .hero-name-bottom{font-size:clamp(52px,8.6vw,108px)!important;letter-spacing:2px!important;line-height:.95;margin-top:6px!important}
+.v3-hero .hero-sub{justify-content:flex-start!important;margin:22px 0 0!important;font-size:13px!important;letter-spacing:5px!important}
+.v3-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}
+.v3-cta .btn-hero{border-radius:999px!important;padding:16px 30px!important;background:var(--accent)!important;color:var(--black)!important;border:0!important;
+  font:700 15px/1 'Manrope',sans-serif!important;letter-spacing:.3px!important;text-transform:none!important;box-shadow:0 14px 40px -12px color-mix(in srgb,var(--accent) 60%,transparent)}
+.v3-btn-ghost{display:inline-flex;align-items:center;border-radius:999px;padding:16px 26px;border:1px solid var(--v3-line);color:var(--white);text-decoration:none;font:600 15px/1 'Manrope',sans-serif;transition:.3s var(--v3-ease)}
+.v3-btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.v3-facts{list-style:none;display:grid;grid-template-columns:repeat(3,auto);gap:28px;margin:44px 0 0;padding:22px 0 0;border-top:1px solid var(--v3-line)}
+.v3-facts strong{display:block;font:700 16px 'Manrope',sans-serif;color:var(--white)}
+.v3-facts span{font-size:13px;color:var(--gray2)}
+.v3-hero-art{position:relative;display:grid;place-items:center;aspect-ratio:1}
+.v3-hero .hero-logo{position:relative;width:62%!important;max-height:none!important;margin:0!important}
+@keyframes v3spin{to{transform:rotate(360deg)}}
+.hero::before{display:none}
+
+/* Títulos das seções: alinhados à esquerda e numerados */
+.section{padding-top:96px!important;padding-bottom:96px!important}
+.section-header{text-align:left!important;width:min(1180px,calc(100% - 40px));margin:0 auto 44px!important;display:flex;flex-direction:column;align-items:flex-start}
+.section-tag{display:inline-flex!important;align-items:center;gap:10px;font:600 12px/1 'Manrope',sans-serif!important;letter-spacing:3px!important;color:var(--gray2)!important}
+.v3-num{color:var(--accent);font-weight:700;padding-right:10px;border-right:1px solid var(--v3-line)}
+.section-header h2{font-size:clamp(34px,5vw,56px)!important;text-align:left!important;margin-top:10px!important}
+.section-line{margin:18px 0 0!important;width:64px!important;height:3px!important;border-radius:3px;background:var(--accent)!important}
+
+/* Cartões mais limpos */
+.service-card,.plan-card,.booking-card,.dep-card,.aval-card,.local-card{border-radius:var(--v3-r)!important;border:1px solid var(--v3-line)!important;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--dark3) 55%,transparent),color-mix(in srgb,var(--dark) 85%,transparent))!important;
+  transition:transform .35s var(--v3-ease),border-color .35s!important}
+.service-card:hover,.plan-card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--accent) 45%,transparent)!important}
+button,.btn,.btn-primary,.btn-secondary,input,select,textarea{border-radius:12px!important}
+.step span{border-radius:50%!important}
+
+/* Botão fixo "Agendar" (só celular) */
+.v3-sticky{display:none}
+
+@media (max-width:900px){
+  .v3-hero{grid-template-columns:1fr;gap:8px;padding:100px 0 70px!important;text-align:center!important}
+  .v3-hero-art{order:-1;width:min(240px,62vw);margin:0 auto}
+  .v3-hero-text{align-items:center}
+  .v3-hero .hero-title,.v3-hero .hero-name{text-align:center!important}
+  .v3-hero .hero-sub{justify-content:center!important}
+  .v3-cta{justify-content:center}
+  .v3-facts{grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;width:100%}
+  .v3-facts strong{font-size:14px}.v3-facts span{font-size:11px}
+}
+@media (max-width:768px){
+  .navbar{border-radius:16px!important}
+  .section{padding-top:64px!important;padding-bottom:64px!important}
+  .v3-cta{width:100%}.v3-cta a{flex:1;justify-content:center;text-align:center}
+  .v3-sticky{display:flex;position:fixed;z-index:900;left:16px;right:16px;bottom:calc(14px + var(--sab));justify-content:center;align-items:center;
+    padding:16px;border-radius:999px;background:var(--accent);color:var(--black);text-decoration:none;font:700 15px 'Manrope',sans-serif;
+    box-shadow:0 18px 40px -10px rgba(0,0,0,.7)}
+  .footer{padding-bottom:calc(90px + var(--sab))!important}
+}
+/* ajustes finos */
+.nav-links{align-items:center!important}
+.v3-hero .hero-logo{width:auto!important;height:68%!important;border-radius:0!important;box-shadow:none!important;border:0!important;outline:0!important;background:none!important}
+.v3-cta a{white-space:nowrap}
+@media (max-width:768px){
+  .v3-cta .btn-hero,.v3-btn-ghost{padding:15px 18px!important;font-size:14px!important}
+  .v3-hero .hero-logo{height:72%!important}
+  .v3-facts li:nth-child(3){display:none}.v3-facts{grid-template-columns:1fr 1fr}
+  .hero-scroll{display:none!important}
+}
+@media (max-width:768px){.whats-float{bottom:calc(84px + var(--sab))!important}}
+.nav-links a:not(.btn-nav){padding:10px 6px!important;margin:0!important;line-height:1!important}
+.service-card{padding:22px 24px!important;margin-bottom:12px!important}
+@media (max-width:900px){
+  .v3-hero-art{width:220px!important;height:220px;aspect-ratio:auto}
+  .v3-hero .hero-logo{height:160px!important;width:auto!important}
+}
+/* Botão "Agendar horário": sem o fundo preto que subia ao tocar/clicar */
+.v3-cta .btn-hero::before{display:none!important}
+.v3-cta .btn-hero:hover,.v3-cta .btn-hero:active{background:var(--accent2)!important;color:var(--black)!important}
+
+
+/* ===== Fundo do site: azul-marinho liso com uma luz dourada suave que acompanha o mouse ===== */
+.v3-page-bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;--lx:68vw;--ly:30vh;
+  background:radial-gradient(120% 90% at 72% 0%,#10204d 0%,#081029 58%,#060c20 100%)}
+.v3-page-bg::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(620px circle at var(--lx) var(--ly),rgba(235,197,49,.13),rgba(235,197,49,.04) 45%,transparent 72%)}
+
+/* Nome gigante em contorno no fim do topo */
+@keyframes v3big{to{transform:translateX(-50%)}}
+.v3-bigtext{position:absolute;left:0;right:0;bottom:3%;overflow:hidden;pointer-events:none;z-index:1;line-height:1}
+.v3-bigtext-track{display:flex;width:max-content;animation:v3big 90s linear infinite}
+.v3-bigtext-set{display:flex;flex:none}
+.v3-bigtext-set span{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(90px,15vw,230px);letter-spacing:.04em;white-space:nowrap;
+  color:transparent;-webkit-text-stroke:1px rgba(241,234,214,.085);padding-right:.5em}
+.hero-content{position:relative;z-index:4}
+
+/* Logo solta, flutuando sobre uma sombra no chão */
+@keyframes v3float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes v3ground{0%,100%{transform:scaleX(1);opacity:.55}50%{transform:scaleX(.82);opacity:.32}}
+.v3-hero .hero-logo{animation:v3float 7s ease-in-out infinite!important}
+.v3-hero-art::after{content:'';position:absolute;left:50%;top:86%;width:46%;height:16px;margin-left:-23%;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(0,0,0,.65),transparent);animation:v3ground 7s ease-in-out infinite}
+@media (max-width:900px){.v3-hero-art::after{top:88%}}
+
+/* Deixa o fundo aparecer em todo o site (seções e rodapé ficam translúcidos) */
+.hero-bg{background:radial-gradient(70% 55% at 50% 40%,color-mix(in srgb,var(--dark4) 60%,transparent) 0%,transparent 70%)!important}
+.services-section,.booking-section{background:linear-gradient(180deg,rgba(9,17,44,.50),rgba(9,17,44,.22))!important}
+.plans-section{background:transparent!important}
+.footer{background:rgba(7,14,36,.72)!important}
+
+@media (prefers-reduced-motion:reduce){.v3-hero .hero-logo,.v3-hero-art::after,.v3-bigtext-track{animation:none!important}}
+
+/* ===== Acabamento ===== */
+.v3-facts li{padding:0 0 0 14px;border-left:2px solid color-mix(in srgb,var(--accent) 55%,transparent)}
+.v3-facts strong{color:var(--accent)!important}
+.v3-cta .btn-hero:hover{transform:translateY(-2px);box-shadow:0 18px 44px -12px color-mix(in srgb,var(--accent) 70%,transparent)!important}
+.v3-cta .btn-hero,.btn-nav{transition:transform .25s var(--v3-ease),box-shadow .25s!important}
+.section-line{background:linear-gradient(90deg,var(--accent),transparent)!important;width:96px!important}
