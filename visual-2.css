@@ -180,3 +180,8 @@ button,.btn,.btn-primary,.btn-secondary,input,select,textarea{border-radius:12px
   .v3-sticky{padding:10px 18px!important;font-size:13px!important;max-width:calc(100vw - 96px)!important}
   body:has(.nav-links.open) .v3-sticky{display:none!important}
 }
+
+/* ===== Sem listras verticais no fundo do topo (restos da "parede de tijolos" antiga) ===== */
+.hero .hero-bg,.hero-bg{background:radial-gradient(70% 55% at 50% 40%,color-mix(in srgb,var(--dark4) 60%,transparent) 0%,transparent 70%)!important;
+  background-size:auto!important;background-position:0 0!important;background-repeat:no-repeat!important}
+.hero .hero-bg::before,.hero .hero-bg::after,.hero-bg::before,.hero-bg::after{content:none!important;display:none!important;background:none!important}
