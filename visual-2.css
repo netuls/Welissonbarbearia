@@ -148,3 +148,35 @@ button,.btn,.btn-primary,.btn-secondary,input,select,textarea{border-radius:12px
   .flut{z-index:960!important}
   .footer{padding-bottom:calc(84px + var(--sab))!important}
 }
+
+/* ===== Celular: menu (3 barrinhas) vira lista suspensa elegante ===== */
+@media (max-width:768px){
+  .nav-hamburger{border-radius:12px!important;transition:background .2s!important}
+  .nav-hamburger:active{background:rgba(241,234,214,.08)!important}
+  .nav-hamburger span{width:22px!important;background:var(--white)!important}
+  .nav-hamburger.open span{background:var(--accent)!important}
+
+  .nav-links{position:absolute!important;top:calc(100% + 10px)!important;left:0!important;right:0!important;bottom:auto!important;
+    width:auto!important;height:auto!important;max-height:none!important;
+    display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:4px!important;
+    padding:10px!important;margin:0!important;
+    background:linear-gradient(180deg,#0f1f45,#0a1330)!important;border:1px solid var(--v3-line)!important;border-left:1px solid var(--v3-line)!important;border-radius:18px!important;
+    box-shadow:0 30px 70px -20px rgba(0,0,0,.85)!important;
+    opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-10px) scale(.98)!important;transform-origin:top right;
+    transition:opacity .22s ease,transform .22s var(--v3-ease),visibility 0s .22s!important}
+  .nav-links.open{opacity:1;visibility:visible;pointer-events:auto;transform:none!important;
+    transition:opacity .22s ease,transform .22s var(--v3-ease),visibility 0s!important}
+
+  .nav-links a:not(.btn-nav){display:flex!important;align-items:center;justify-content:space-between;width:100%!important;min-height:0!important;
+    padding:15px 16px!important;margin:0!important;border:0!important;border-radius:12px!important;opacity:1!important;
+    color:var(--white)!important;font-size:15px!important;font-weight:600!important;letter-spacing:.2px!important}
+  .nav-links a:not(.btn-nav)::after{content:'\203A'!important;position:static!important;width:auto!important;height:auto!important;
+    background:none!important;transform:none!important;color:var(--accent);font-size:22px;line-height:1}
+  .nav-links a:not(.btn-nav):active{background:rgba(241,234,214,.07)!important}
+  .nav-links .btn-nav{display:flex!important;justify-content:center;align-items:center;margin-top:6px!important;padding:14px!important;
+    border-radius:12px!important;font-size:15px!important;min-height:0!important}
+
+  /* botão fixo "Agendar horário": ainda menor e some quando o menu está aberto */
+  .v3-sticky{padding:10px 18px!important;font-size:13px!important;max-width:calc(100vw - 96px)!important}
+  body:has(.nav-links.open) .v3-sticky{display:none!important}
+}
