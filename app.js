@@ -3,7 +3,7 @@
 // ================================================
 
 // Versão do código deste site (aparece no painel, em Ajustes > Sobre o sistema)
-const VERSAO_SISTEMA = '2026.10.1';
+const VERSAO_SISTEMA = '2026.11.1';
 // Garante os padrões de sinal, fidelidade e mensagens mesmo se o config.js for de uma versão mais antiga.
 BARBEARIA.politicas = Object.assign({
   sinalAtivo: true, sinalPct: 30, sinalMinPreco: 0, sinalTotalAcima: 0,   // sinal via Pix ao agendar (pagamento total acima de R$ X, se > 0)
@@ -12,6 +12,7 @@ BARBEARIA.politicas = Object.assign({
   aniversarioDescPct: 10,
   retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
   fidelTipo: 'desconto', fidelServicoId: '', aniversarioTipo: 'desconto', aniversarioServicoId: '', retornoTipo: 'desconto', retornoServicoId: '',   // prêmio de cada benefício: 'desconto' (%) ou 'servico' (cortesia)
+  primeiroCorteAtivo: false, primeiroCorteTipo: 'desconto', primeiroCorteDescPct: 0, primeiroCorteServicoId: '', primeiroCorteAlvoIds: [],   // promoção de 1º corte (AlvoIds = serviços de corte que valem a promoção)
   avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
   msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
   msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
@@ -431,7 +432,20 @@ function rotuloBeneficio(chave) {
 function retornoDisponivel() {
   return !!(beneficioConfig('retorno') && currentUser && currentUser.retornoOk === true);
 }
-function rotuloDesconto(tipo) { return tipo === 'aniversario' ? 'Aniversário' : tipo === 'retorno' ? 'Retorno' : 'Fidelidade'; }
+function rotuloDesconto(tipo) { return tipo === 'primeiroCorte' ? '1º corte' : tipo === 'aniversario' ? 'Aniversário' : tipo === 'retorno' ? 'Retorno' : 'Fidelidade'; }
+// Promoção de 1º corte: só para quem respondeu "nunca cortei" no cadastro e ainda não usou
+function primeiroCorteDisponivel() {
+  const p = BARBEARIA.politicas || {};
+  if (!p.primeiroCorteAtivo || !beneficioConfig('primeiroCorte') || !currentUser) return false;
+  return currentUser.primeiroCorteElegivel === true && currentUser.primeiroCorteUsado !== true;
+}
+// Só os serviços de corte marcados no painel valem. Sem nada marcado, usa como reserva qualquer serviço com "corte" no nome.
+function servicoElegivelPrimeiroCorte(service) {
+  if (!service) return false;
+  const ids = (BARBEARIA.politicas || {}).primeiroCorteAlvoIds;
+  if (Array.isArray(ids) && ids.length) return ids.includes(service.id);
+  return String(service.name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes('corte');
+}
 function fidelDisponivel() {
   const p = BARBEARIA.politicas || {};
   if (planoAtivo(currentUser, hojeISO())) return false;   // plano ativo na conta hoje: sem fidelidade
@@ -446,11 +460,15 @@ function aniversarioDisponivel() {
   return currentUser.anivUsadoAno !== new Date().getFullYear();
 }
 // Devolve o melhor benefício que vale agora (não soma): o de maior valor. Empate: fidelidade > aniversário > retorno.
-function descontoAtual() {
-  const refPreco = (typeof state !== 'undefined' && state && state.selected) ? Number(state.selected.price)
+function descontoAtual(service) {
+  const svc = service || ((typeof state !== 'undefined' && state && state.selected) ? state.selected : null);
+  const refPreco = svc ? Number(svc.price)
     : (SERVICES.length ? SERVICES.reduce((s, x) => s + Number(x.price), 0) / SERVICES.length : 0);
   let melhor = null;
-  [['fidelidade', 'fidel', fidelDisponivel()], ['aniversario', 'aniversario', aniversarioDisponivel()], ['retorno', 'retorno', retornoDisponivel()]].forEach(par => {
+  [['primeiroCorte', 'primeiroCorte', primeiroCorteDisponivel() && servicoElegivelPrimeiroCorte(svc)],
+   ['fidelidade', 'fidel', fidelDisponivel()],
+   ['aniversario', 'aniversario', aniversarioDisponivel()],
+   ['retorno', 'retorno', retornoDisponivel()]].forEach(par => {
     const c = par[2] ? beneficioConfig(par[1]) : null;
     if (!c) return;
     const valor = c.modo === 'servico' ? Number(c.servico.price) : refPreco * c.pct / 100;
@@ -461,7 +479,7 @@ function descontoAtual() {
 function precoCobrado(service) {
   if (servicoCoberto(service)) return 0;
   const base = Number(service.price);
-  const d = descontoAtual();
+  const d = descontoAtual(service);
   if (d && d.modo === 'servico') return d.servico.id === service.id ? 0 : base;   // o próprio serviço de cortesia sai sem custo
   if (!d || d.modo !== 'desconto') return base;
   return Math.round(base * (100 - d.pct)) / 100;
@@ -472,7 +490,7 @@ function descontoFidelidade(service) {
 // Benefício que vale neste atendimento (desconto que reduz o preço, ou serviço de cortesia em atendimento pago)
 function beneficioDoAtendimento(service) {
   if (!service || servicoCoberto(service)) return null;
-  const d = descontoAtual();
+  const d = descontoAtual(service);
   if (!d) return null;
   if (d.modo === 'servico') return Number(service.price) > 0 ? d : null;
   return descontoFidelidade(service) > 0 ? d : null;
@@ -481,22 +499,24 @@ function beneficioDoAtendimento(service) {
 async function refreshFidelidade() {
   const p = BARBEARIA.politicas || {};
   if (!currentUser || DEMO_MODE) return;
-  if (!(p.fidelAtivo && beneficioConfig('fidel')) && !beneficioConfig('aniversario') && !beneficioConfig('retorno')) { currentUser.fid = null; currentUser.retornoOk = false; return; }
+  if (!(p.fidelAtivo && beneficioConfig('fidel')) && !beneficioConfig('aniversario') && !beneficioConfig('retorno') && !(p.primeiroCorteAtivo && beneficioConfig('primeiroCorte'))) { currentUser.fid = null; currentUser.retornoOk = false; return; }
   try {
     const snap = await comTimeout(firebase.firestore().collection('agendamentos')
       .where('telefone', '==', phoneKey(currentUser.telefone || ''))
       .where('status', 'in', ['agendado', 'confirmado', 'concluido'])
       .get());
-    let contados = 0, usados = 0, anivAno = null, ultima = '', temFuturo = false;
+    let contados = 0, usados = 0, anivAno = null, ultima = '', temFuturo = false, pcUsado = false;
     const hoje = hojeISO();
     snap.docs.forEach(d => {
       const ag = d.data();
       if (ag.data && ag.data <= hoje && ag.data > ultima) ultima = ag.data;
       if (ag.data && ag.data >= hoje && ['agendado', 'confirmado'].includes(ag.status)) temFuturo = true;
       if (ag.aniversario) anivAno = Math.max(anivAno || 0, Number(ag.aniversario) || 0);
+      if (ag.primeiroCorte) pcUsado = true;
       if (ag.fidelidade) { usados++; return; }
       if (ag.status === 'concluido' && Number(ag.preco) > 0) contados++;
     });
+    currentUser.primeiroCorteUsado = pcUsado;
     const cada = Math.max(2, parseInt(p.fidelCada, 10) || 5);
     const ganhos = Math.floor(contados / cada);
     currentUser.fid = (p.fidelAtivo && beneficioConfig('fidel')) ? { contados, cada, usados, disponiveis: Math.max(0, ganhos - usados), noCiclo: contados % cada } : null;
@@ -511,6 +531,9 @@ async function refreshFidelidade() {
 function htmlFidelidade() {
   const p = BARBEARIA.politicas || {};
   const f = currentUser && currentUser.fid;
+  if (primeiroCorteDisponivel()) {
+    return `<div class="fid-box fid-ganhou"><strong>Promoção de 1º corte: ${rotuloBeneficio('primeiroCorte')}</strong><span>Vale no seu primeiro corte, aplicado na hora de agendar.</span></div>`;
+  }
   // A caixa segue o MESMO benefício que descontoAtual() aplica na hora de agendar (o de maior valor).
   const dAtual = descontoAtual();
   if (dAtual && dAtual.tipo === 'aniversario') {
@@ -608,11 +631,12 @@ function phoneKey(phone) {
 }
 
 // Verifica se cliente existe; se não, cria
-async function loginOrRegister(rawPhone, nome, nascimento) {
+async function loginOrRegister(rawPhone, nome, nascimento, jaCortou) {
   const key = phoneKey(rawPhone);
+  const elegivel = jaCortou === 'nao';   // respondeu que nunca cortou: entra na promoção de 1º corte
   if (DEMO_MODE) {
     // Não grava nada de verdade — só simula um cadastro local.
-    return { nome, telefone: key, nascimento: nascimento || '', novo: true };
+    return { nome, telefone: key, nascimento: nascimento || '', primeiroCorteElegivel: elegivel, novo: true };
   }
   const db = firebase.firestore();
   const ref = db.collection('clientes').doc(key);
@@ -621,11 +645,12 @@ async function loginOrRegister(rawPhone, nome, nascimento) {
     const data = {
       nome: nome,
       telefone: key,
+      primeiroCorteElegivel: elegivel,
       criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (nascimento) data.nascimento = nascimento;
     await ref.set(data);
-    return { nome, telefone: key, nascimento: nascimento || '', novo: true };
+    return { nome, telefone: key, nascimento: nascimento || '', primeiroCorteElegivel: elegivel, novo: true };
   }
   return { ...snap.data(), novo: false };
 }
@@ -677,6 +702,20 @@ function mostrarErroLogin(step, msg, inputId) {
   }
 }
 
+// Pergunta "já cortou aqui?" no cadastro (criada por JS, não precisa mexer no index.html)
+function garantirPerguntaPrimeiroCorte() {
+  if (document.getElementById('login-ja-cortou-box')) return;
+  const alvo = document.getElementById('btn-login-register');
+  if (!alvo) return;
+  const box = document.createElement('div');
+  box.id = 'login-ja-cortou-box';
+  box.style.cssText = 'margin:14px 0;font-family:Roboto,sans-serif;font-size:14px;color:#F1EAD6;';
+  box.innerHTML = `<p style="margin:0 0 8px;">Você já cortou aqui na ${BARBEARIA.nome} alguma vez?</p>
+    <label style="margin-right:18px;cursor:pointer;"><input type="radio" name="login-ja-cortou" value="sim"> Já cortei</label>
+    <label style="cursor:pointer;"><input type="radio" name="login-ja-cortou" value="nao"> Nunca cortei</label>`;
+  alvo.parentNode.insertBefore(box, alvo);
+}
+
 // ─── Modal de Login ────────────────────────────────
 window.openLoginModal = function() {
   document.getElementById('login-modal').classList.add('open');
@@ -686,6 +725,8 @@ window.openLoginModal = function() {
   document.getElementById('login-name-input').value = '';
   mostrarErroLogin('phone', '');
   mostrarErroLogin('name', '');
+  garantirPerguntaPrimeiroCorte();
+  document.querySelectorAll('input[name="login-ja-cortou"]').forEach(r => r.checked = false);
 };
 
 window.closeLoginModal = function() {
@@ -746,10 +787,15 @@ window.loginRegister = async function() {
     mostrarErroLogin('name', 'Digite seu nome completo (nome e sobrenome).', 'login-name-input');
     return;
   }
+  const respCorte = document.querySelector('input[name="login-ja-cortou"]:checked');
+  if (!respCorte) {
+    mostrarErroLogin('name', 'Responda se você já cortou aqui antes.');
+    return;
+  }
   const btn = document.getElementById('btn-login-register');
   btn.textContent = 'Salvando...'; btn.disabled = true;
   try {
-    currentUser = await comTimeout(loginOrRegister(raw, nome, nascimento));
+    currentUser = await comTimeout(loginOrRegister(raw, nome, nascimento, respCorte.value));
     saveSession(currentUser);
     closeLoginModal();
     renderAuthBar();
@@ -1013,13 +1059,15 @@ function renderServiceOptions() {
 
   list.innerHTML = SERVICES.map(s => {
     const coberto = servicoCoberto(s);
+    const d = coberto ? null : descontoAtual(s);
+    const estilo = 'font-family:Oswald,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;';
     const preco = coberto
-      ? '<span class="option-price" style="font-family:Oswald,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Incluso no plano</span>'
-      : (descontoAtual() && descontoAtual().modo === 'servico' && descontoAtual().servico.id === s.id)
-        ? '<span class="option-price" style="font-family:Oswald,sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Cortesia</span>'
-      : ((descontoAtual() && descontoAtual().modo === 'desconto')
-          ? `<span class="option-price"><s class="preco-antigo">R$${s.price.toFixed(2).replace('.', ',')}</s> R$${precoCobrado(s).toFixed(2).replace('.', ',')}</span>`
-          : `<span class="option-price">R$${s.price.toFixed(2).replace('.', ',')}</span>`);
+      ? `<span class="option-price" style="${estilo}">Incluso no plano</span>`
+      : (d && d.modo === 'servico' && d.servico.id === s.id)
+        ? `<span class="option-price" style="${estilo}">Cortesia</span>`
+      : (d && d.modo === 'desconto')
+        ? `<span class="option-price"><s class="preco-antigo">R$${s.price.toFixed(2).replace('.', ',')}</s> R$${precoCobrado(s).toFixed(2).replace('.', ',')}</span>`
+        : `<span class="option-price">R$${s.price.toFixed(2).replace('.', ',')}</span>`;
     return `
     <div class="option-item" id="opt-${s.id}" onclick="selectService('${s.id}')">
       <span>${s.name}</span>
@@ -1479,6 +1527,7 @@ window.submitBooking = async function() {
       if (dscAtual) {
         if (dscAtual.tipo === 'aniversario') novo.aniversario = new Date().getFullYear();
         else if (dscAtual.tipo === 'retorno') novo.retorno = true;
+        else if (dscAtual.tipo === 'primeiroCorte') novo.primeiroCorte = true;
         else novo.fidelidade = true;
         if (dscAtual.modo === 'servico') {
           novo.cortesia = dscAtual.servico.name;
@@ -1489,6 +1538,7 @@ window.submitBooking = async function() {
       await firebase.firestore().collection('agendamentos').add(novo);
       if (novo.aniversario && currentUser) { currentUser.anivUsadoAno = novo.aniversario; saveSession(currentUser); }
       if (novo.retorno && currentUser) { currentUser.retornoOk = false; saveSession(currentUser); }
+      if (novo.primeiroCorte && currentUser) { currentUser.primeiroCorteUsado = true; saveSession(currentUser); }
       sendWhatsAppNotification();
       // (confirmação para o cliente desativada: o agendamento vai só para o WhatsApp da barbearia)
     }
