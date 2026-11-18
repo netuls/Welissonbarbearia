@@ -705,15 +705,36 @@ function mostrarErroLogin(step, msg, inputId) {
 // Pergunta "já cortou aqui?" no cadastro (criada por JS, não precisa mexer no index.html)
 function garantirPerguntaPrimeiroCorte() {
   if (document.getElementById('login-ja-cortou-box')) return;
-  const alvo = document.getElementById('btn-login-register');
-  if (!alvo) return;
+  const erro = document.getElementById('login-error-name');
+  if (!erro) return;
+  if (!document.getElementById('login-ja-cortou-css')) {
+    const st = document.createElement('style');
+    st.id = 'login-ja-cortou-css';
+    st.textContent = `
+      #login-ja-cortou-box .jc-opcoes { display:flex; gap:10px; }
+      #login-ja-cortou-box .jc-op { flex:1; position:relative; cursor:pointer; margin:0 !important; letter-spacing:normal !important; }
+      #login-ja-cortou-box .jc-op input { position:absolute !important; opacity:0 !important; inset:0; width:100% !important; height:100% !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; box-shadow:none !important; cursor:pointer; }
+      #login-ja-cortou-box .jc-op span { display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:10px 12px;
+        background:#0F1F45; border:1px solid #233F80; border-radius:8px; color:#94A4CC;
+        font-family:'Oswald',sans-serif; font-size:13px; letter-spacing:1.5px; text-transform:uppercase; transition:all .15s; }
+      #login-ja-cortou-box .jc-op span::before { content:''; width:16px; height:16px; border-radius:50%; border:2px solid #5E6E9E; box-sizing:border-box; flex-shrink:0; transition:all .15s; }
+      #login-ja-cortou-box .jc-op input:checked + span { border-color:#EBC531; background:rgba(235,197,49,0.12); color:#F1EAD6; }
+      #login-ja-cortou-box .jc-op input:checked + span::before { border-color:#EBC531; background:#EBC531; box-shadow:inset 0 0 0 3px #0F1F45; }
+      #login-ja-cortou-box .jc-op input:focus-visible + span { outline:2px solid #EBC531; outline-offset:2px; }
+      #login-ja-cortou-box .jc-dica { margin:8px 0 0; font-family:'Roboto',sans-serif; font-size:12px; color:#5E6E9E; line-height:1.4; }
+    `;
+    document.head.appendChild(st);
+  }
   const box = document.createElement('div');
   box.id = 'login-ja-cortou-box';
-  box.style.cssText = 'margin:14px 0;font-family:Roboto,sans-serif;font-size:14px;color:#F1EAD6;';
-  box.innerHTML = `<p style="margin:0 0 8px;">Você já cortou aqui na ${BARBEARIA.nome} alguma vez?</p>
-    <label style="margin-right:18px;cursor:pointer;"><input type="radio" name="login-ja-cortou" value="sim"> Já cortei</label>
-    <label style="cursor:pointer;"><input type="radio" name="login-ja-cortou" value="nao"> Nunca cortei</label>`;
-  alvo.parentNode.insertBefore(box, alvo);
+  box.className = 'form-group';
+  box.style.cssText = 'text-align:left;margin-top:16px;';
+  box.innerHTML = `<label>Você já cortou aqui na ${BARBEARIA.nome}? *</label>
+    <div class="jc-opcoes">
+      <label class="jc-op"><input type="radio" name="login-ja-cortou" value="nao"><span>Nunca cortei</span></label>
+      <label class="jc-op"><input type="radio" name="login-ja-cortou" value="sim"><span>Já cortei</span></label>
+    </div>`;
+  erro.parentNode.insertBefore(box, erro);
 }
 
 // ─── Modal de Login ────────────────────────────────
