@@ -1,6 +1,6 @@
 // ── Firebase ─────────────────────────────────────
 // Versão do código deste painel (aparece em Ajustes > Sobre o sistema)
-const VERSAO_SISTEMA = '2026.10.1';
+const VERSAO_SISTEMA = '2026.11.1';
 // Garante os padrões de sinal, fidelidade e mensagens mesmo se o config.js for de uma versão mais antiga.
 BARBEARIA.politicas = Object.assign({
   sinalAtivo: true, sinalPct: 30, sinalMinPreco: 0, sinalTotalAcima: 0,   // sinal via Pix ao agendar (pagamento total acima de R$ X, se > 0)
@@ -9,6 +9,7 @@ BARBEARIA.politicas = Object.assign({
   aniversarioDescPct: 10,
   retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
   fidelTipo: 'desconto', fidelServicoId: '', aniversarioTipo: 'desconto', aniversarioServicoId: '', retornoTipo: 'desconto', retornoServicoId: '',   // prêmio de cada benefício: 'desconto' (%) ou 'servico' (cortesia)
+  primeiroCorteAtivo: false, primeiroCorteTipo: 'desconto', primeiroCorteDescPct: 0, primeiroCorteServicoId: '', primeiroCorteAlvoIds: [],   // promoção de 1º corte
   avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
   msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
   msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
@@ -3928,6 +3929,7 @@ function extrasAgdHTML(a) {
   }
   if (a.aniversario) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de aniversário</div>';
   if (a.retorno) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de retorno</div>';
+  if (a.primeiroCorte) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Promoção de 1º corte</div>';
   if (a.fidelidade) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de fidelidade</div>';
   if (a.remarcadoEm) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Remarcado pelo cliente</div>';
   return h;
@@ -3967,13 +3969,19 @@ function renderPoliticasEditor() {
   chk('aj-sinal-ativo', p.sinalAtivo); set('aj-sinal-pct', p.sinalPct); set('aj-sinal-min', p.sinalMinPreco || ''); set('aj-sinal-total', p.sinalTotalAcima || '');
   set('aj-cancel-horas', p.cancelHoras);
   chk('aj-fid-ativo', p.fidelAtivo); set('aj-fid-cada', p.fidelCada); set('aj-fid-desc', p.fidelDescPct); set('aj-aniv-desc', p.aniversarioDescPct); set('aj-ret-desc', p.retornoDescPct); set('aj-ret-dias', p.retornoDias);
-  [['fid', 'fidel'], ['aniv', 'aniversario'], ['ret', 'retorno']].forEach(par => {
+  [['fid', 'fidel'], ['aniv', 'aniversario'], ['ret', 'retorno'], ['pc', 'primeiroCorte']].forEach(par => {
     const sel = document.getElementById('aj-' + par[0] + '-serv');
     if (sel) sel.innerHTML = '<option value="">Escolha o serviço...</option>' + SERVICES.map(s => '<option value="' + escPlano(s.id) + '">' + escPlano(s.name) + '</option>').join('');
     set('aj-' + par[0] + '-tipo', p[par[1] + 'Tipo'] === 'servico' ? 'servico' : 'desconto');
     set('aj-' + par[0] + '-serv', p[par[1] + 'ServicoId'] || '');
   });
   ajBeneficioTipo();
+  chk('aj-pc-ativo', p.primeiroCorteAtivo); set('aj-pc-desc', p.primeiroCorteDescPct || '');
+  const boxAlvos = document.getElementById('aj-pc-alvos');
+  if (boxAlvos) {
+    const marcados = Array.isArray(p.primeiroCorteAlvoIds) ? p.primeiroCorteAlvoIds : [];
+    boxAlvos.innerHTML = SERVICES.map(s => '<label class="aj-check"><input type="checkbox" class="aj-pc-alvo-chk" value="' + escPlano(s.id) + '"' + (marcados.includes(s.id) ? ' checked' : '') + '> ' + escPlano(s.name) + '</label>').join('');
+  }
   set('aj-aval-link', p.avalLink); set('aj-msg-aniv', p.msgAniversario); set('aj-msg-ret', p.msgRetorno); set('aj-msg-aval', p.msgAvaliacao);
   ajStatus('aj-pol-status', ''); ajStatus('aj-pol2-status', '');
   atualizarAvisoSinal();
@@ -3981,7 +3989,7 @@ function renderPoliticasEditor() {
 }
 // Mostra o campo de % ou o de serviço, conforme o prêmio escolhido em cada benefício
 function ajBeneficioTipo() {
-  [['fid', 'aj-fid-desc'], ['aniv', 'aj-aniv-desc'], ['ret', 'aj-ret-desc']].forEach(par => {
+  [['fid', 'aj-fid-desc'], ['aniv', 'aj-aniv-desc'], ['ret', 'aj-ret-desc'], ['pc', 'aj-pc-desc']].forEach(par => {
     const t = document.getElementById('aj-' + par[0] + '-tipo'), wrap = document.getElementById('aj-' + par[0] + '-serv-wrap'), pc = document.getElementById(par[1]);
     if (!t) return;
     const serv = t.value === 'servico';
@@ -3994,9 +4002,11 @@ async function salvarPoliticas() {
   const txt = id => (document.getElementById(id).value || '').trim();
   const tipoDe = pre => (document.getElementById('aj-' + pre + '-tipo') || {}).value === 'servico' ? 'servico' : 'desconto';
   const servDe = pre => (document.getElementById('aj-' + pre + '-serv') || {}).value || '';
-  for (const [pre, nome] of [['fid', 'fidelidade'], ['aniv', 'aniversário'], ['ret', 'clientes que sumiram']]) {
+  for (const [pre, nome] of [['fid', 'fidelidade'], ['aniv', 'aniversário'], ['ret', 'clientes que sumiram'], ['pc', 'primeiro corte']]) {
     if (tipoDe(pre) === 'servico' && !servDe(pre)) { ajStatus('aj-pol2-status', 'Escolha o serviço de cortesia de ' + nome + '.', '#e05555'); return; }
   }
+  const alvosPc = [...document.querySelectorAll('.aj-pc-alvo-chk:checked')].map(c => c.value);
+  if (document.getElementById('aj-pc-ativo').checked && !alvosPc.length) { ajStatus('aj-pol2-status', 'Marque quais serviços de corte valem a promoção de 1º corte.', '#e05555'); return; }
   const link = txt('aj-aval-link');
   if (link && !/^https?:\/\//i.test(link)) { ajStatus('aj-pol2-status', 'O link de avaliação precisa começar com https://', '#e05555'); return; }
   const politicas = {
@@ -4007,6 +4017,10 @@ async function salvarPoliticas() {
     fidelCada: Math.round(num('aj-fid-cada', 2, 50, 5)), fidelDescPct: num('aj-fid-desc', 1, 100, 20), aniversarioDescPct: num('aj-aniv-desc', 0, 100, 10),
     retornoDescPct: num('aj-ret-desc', 0, 100, 0), retornoDias: Math.round(num('aj-ret-dias', 7, 730, 45)),
     fidelTipo: tipoDe('fid'), fidelServicoId: servDe('fid'), aniversarioTipo: tipoDe('aniv'), aniversarioServicoId: servDe('aniv'), retornoTipo: tipoDe('ret'), retornoServicoId: servDe('ret'),
+    primeiroCorteAtivo: document.getElementById('aj-pc-ativo').checked,
+    primeiroCorteTipo: tipoDe('pc'), primeiroCorteServicoId: servDe('pc'),
+    primeiroCorteDescPct: num('aj-pc-desc', 0, 100, 0),
+    primeiroCorteAlvoIds: alvosPc,
     avalLink: link, msgAniversario: txt('aj-msg-aniv'), msgRetorno: txt('aj-msg-ret'), msgAvaliacao: txt('aj-msg-aval'),
   };
   ['aj-pol-status', 'aj-pol2-status'].forEach(id => ajStatus(id, 'Salvando...'));
