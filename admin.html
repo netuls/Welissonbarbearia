@@ -534,6 +534,14 @@
               <div class="aj-campo"><span class="aj-lbl">Quem sumiu: o prêmio é</span><select class="aj-in" id="aj-ret-tipo" onchange="ajBeneficioTipo()"><option value="desconto">Desconto (%)</option><option value="servico">Serviço de cortesia</option></select></div>
               <div class="aj-campo" id="aj-ret-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (quem sumiu)</span><select class="aj-in" id="aj-ret-serv"></select></div>
             </div>
+            <div style="border-top:1px solid #122452;margin:8px 0 16px;"></div>
+            <label class="aj-chk"><input type="checkbox" id="aj-pc-ativo"> Promoção de 1º corte ligada (vale só para quem diz que nunca cortou)</label>
+            <div class="aj-campo"><span class="aj-lbl">Serviços de corte que valem a promoção</span><div class="aj-checks" id="aj-pc-alvos"></div></div>
+            <div class="aj-linha">
+              <div class="aj-campo"><span class="aj-lbl">1º corte: o prêmio é</span><select class="aj-in" id="aj-pc-tipo" onchange="ajBeneficioTipo()"><option value="desconto">Desconto (%)</option><option value="servico">Serviço de cortesia</option></select></div>
+              <div class="aj-campo"><span class="aj-lbl">Desconto do 1º corte (%)</span><input class="aj-in" id="aj-pc-desc" type="number" min="0" max="100" step="1" inputmode="numeric"></div>
+              <div class="aj-campo" id="aj-pc-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (1º corte)</span><select class="aj-in" id="aj-pc-serv"></select></div>
+            </div>
             <div class="aj-campo"><span class="aj-lbl">Link para avaliar (Google, por exemplo)</span><input class="aj-in" id="aj-aval-link" placeholder="https://g.page/r/..." inputmode="url"></div>
             <div class="aj-campo"><span class="aj-lbl">Mensagem de aniversário</span><textarea class="aj-in" id="aj-msg-aniv" rows="3"></textarea></div>
             <div class="aj-campo"><span class="aj-lbl">Mensagem para clientes que sumiram</span><textarea class="aj-in" id="aj-msg-ret" rows="3"></textarea></div>
