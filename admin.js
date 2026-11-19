@@ -10,7 +10,7 @@ BARBEARIA.politicas = Object.assign({
   retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
   fidelTipo: 'desconto', fidelServicoId: '', aniversarioTipo: 'desconto', aniversarioServicoId: '', retornoTipo: 'desconto', retornoServicoId: '',   // prêmio de cada benefício: 'desconto' (%) ou 'servico' (cortesia)
   primeiroCorteAtivo: false, primeiroCorteTipo: 'desconto', primeiroCorteDescPct: 0, primeiroCorteServicoId: '', primeiroCorteAlvoIds: [],   // promoção de 1º corte
-  diaDescontoAtivo: false, diaDescontoDia: 2, diaDescontoPct: 10,          // desconto num dia fixo da semana (0=dom ... 6=sáb)
+  diaDescontoAtivo: false, diaDescontoDia: 2, diaDescontoPct: 10, diaDescontoServicoIds: [],   // desconto num dia fixo da semana (0=dom ... 6=sáb)
   avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
   msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
   msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
@@ -3985,6 +3985,13 @@ function renderPoliticasEditor() {
     const marcados = Array.isArray(p.primeiroCorteAlvoIds) ? p.primeiroCorteAlvoIds : [];
     boxAlvos.innerHTML = SERVICES.map(s => '<label class="aj-check"><input type="checkbox" class="aj-pc-alvo-chk" value="' + escPlano(s.id) + '"' + (marcados.includes(s.id) ? ' checked' : '') + '> ' + escPlano(s.name) + '</label>').join('');
   }
+  const boxDd = document.getElementById('aj-dd-alvos');
+  if (boxDd) {
+    const normDd = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    let marcadosDd = Array.isArray(p.diaDescontoServicoIds) ? p.diaDescontoServicoIds : [];
+    if (!marcadosDd.length) marcadosDd = SERVICES.filter(s => normDd(s.name) === 'corte degrade').map(s => s.id);   // padrão: Corte Degradê
+    boxDd.innerHTML = SERVICES.map(s => '<label class="aj-check"><input type="checkbox" class="aj-dd-alvo-chk" value="' + escPlano(s.id) + '"' + (marcadosDd.includes(s.id) ? ' checked' : '') + '> ' + escPlano(s.name) + '</label>').join('');
+  }
   set('aj-aval-link', p.avalLink); set('aj-msg-aniv', p.msgAniversario); set('aj-msg-ret', p.msgRetorno); set('aj-msg-aval', p.msgAvaliacao);
   ajStatus('aj-pol-status', ''); ajStatus('aj-pol2-status', '');
   atualizarAvisoSinal();
@@ -4010,6 +4017,8 @@ async function salvarPoliticas() {
   }
   const alvosPc = [...document.querySelectorAll('.aj-pc-alvo-chk:checked')].map(c => c.value);
   if (document.getElementById('aj-pc-ativo').checked && !alvosPc.length) { ajStatus('aj-pol2-status', 'Marque quais serviços de corte valem a promoção de 1º corte.', '#e05555'); return; }
+  const alvosDd = [...document.querySelectorAll('.aj-dd-alvo-chk:checked')].map(c => c.value);
+  if (document.getElementById('aj-dd-ativo').checked && !alvosDd.length) { ajStatus('aj-pol2-status', 'Marque em qual serviço vale o dia de desconto da semana.', '#e05555'); return; }
   if (document.getElementById('aj-dd-ativo').checked && !(num('aj-dd-pct', 0, 100, 0) > 0)) { ajStatus('aj-pol2-status', 'Informe o desconto (%) do dia de desconto da semana.', '#e05555'); return; }
   const link = txt('aj-aval-link');
   if (link && !/^https?:\/\//i.test(link)) { ajStatus('aj-pol2-status', 'O link de avaliação precisa começar com https://', '#e05555'); return; }
@@ -4026,7 +4035,7 @@ async function salvarPoliticas() {
     primeiroCorteDescPct: num('aj-pc-desc', 0, 100, 0),
     primeiroCorteAlvoIds: alvosPc,
     diaDescontoAtivo: document.getElementById('aj-dd-ativo').checked,
-    diaDescontoDia: Math.round(num('aj-dd-dia', 0, 6, 2)), diaDescontoPct: num('aj-dd-pct', 0, 100, 10),
+    diaDescontoDia: Math.round(num('aj-dd-dia', 0, 6, 2)), diaDescontoPct: num('aj-dd-pct', 0, 100, 10), diaDescontoServicoIds: alvosDd,
     avalLink: link, msgAniversario: txt('aj-msg-aniv'), msgRetorno: txt('aj-msg-ret'), msgAvaliacao: txt('aj-msg-aval'),
   };
   ['aj-pol-status', 'aj-pol2-status'].forEach(id => ajStatus(id, 'Salvando...'));
