@@ -13,6 +13,7 @@ BARBEARIA.politicas = Object.assign({
   retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
   fidelTipo: 'desconto', fidelServicoId: '', aniversarioTipo: 'desconto', aniversarioServicoId: '', retornoTipo: 'desconto', retornoServicoId: '',   // prêmio de cada benefício: 'desconto' (%) ou 'servico' (cortesia)
   primeiroCorteAtivo: false, primeiroCorteTipo: 'desconto', primeiroCorteDescPct: 0, primeiroCorteServicoId: '', primeiroCorteAlvoIds: [],   // promoção de 1º corte (AlvoIds = serviços de corte que valem a promoção)
+  diaDescontoAtivo: false, diaDescontoDia: 2, diaDescontoPct: 10,          // desconto num dia fixo da semana (0=dom ... 6=sáb)
   avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
   msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
   msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
@@ -432,7 +433,7 @@ function rotuloBeneficio(chave) {
 function retornoDisponivel() {
   return !!(beneficioConfig('retorno') && currentUser && currentUser.retornoOk === true);
 }
-function rotuloDesconto(tipo) { return tipo === 'primeiroCorte' ? '1º corte' : tipo === 'aniversario' ? 'Aniversário' : tipo === 'retorno' ? 'Retorno' : 'Fidelidade'; }
+function rotuloDesconto(tipo) { return tipo === 'diaSemana' ? 'Dia de desconto' : tipo === 'primeiroCorte' ? '1º corte' : tipo === 'aniversario' ? 'Aniversário' : tipo === 'retorno' ? 'Retorno' : 'Fidelidade'; }
 // Promoção de 1º corte: só para quem respondeu "nunca cortei" no cadastro e ainda não usou
 function primeiroCorteDisponivel() {
   const p = BARBEARIA.politicas || {};
@@ -459,8 +460,22 @@ function aniversarioDisponivel() {
   if (!mes || mes !== new Date().getMonth() + 1) return false;
   return currentUser.anivUsadoAno !== new Date().getFullYear();
 }
+// Dia de desconto: um dia fixo da semana com % de desconto (configurado no painel, em Ajustes)
+const DIAS_SEMANA_NOME = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+function diaDescontoConfig() {
+  const p = BARBEARIA.politicas || {};
+  const pct = Math.min(100, Math.max(0, Number(p.diaDescontoPct) || 0));
+  const dia = parseInt(p.diaDescontoDia, 10);
+  if (!p.diaDescontoAtivo || !(pct > 0) || !(dia >= 0 && dia <= 6)) return null;
+  return { dia, pct, nome: DIAS_SEMANA_NOME[dia] };
+}
+function diaDescontoVale(dataISO) {
+  const c = diaDescontoConfig();
+  if (!c || !/^\d{4}-\d{2}-\d{2}$/.test(String(dataISO || ''))) return false;
+  return new Date(dataISO + 'T12:00:00').getDay() === c.dia;
+}
 // Devolve o melhor benefício que vale agora (não soma): o de maior valor. Empate: fidelidade > aniversário > retorno.
-function descontoAtual(service) {
+function descontoAtual(service, ignorarDia) {
   const svc = service || ((typeof state !== 'undefined' && state && state.selected) ? state.selected : null);
   const refPreco = svc ? Number(svc.price)
     : (SERVICES.length ? SERVICES.reduce((s, x) => s + Number(x.price), 0) / SERVICES.length : 0);
@@ -474,6 +489,12 @@ function descontoAtual(service) {
     const valor = c.modo === 'servico' ? Number(c.servico.price) : refPreco * c.pct / 100;
     if (!melhor || valor > melhor.valor) melhor = Object.assign({ tipo: par[0], valor }, c);
   });
+  // Dia de desconto: só vale quando o dia escolhido no calendário é o dia da promoção
+  const dd = (!ignorarDia && typeof state !== 'undefined' && state && diaDescontoVale(state.date)) ? diaDescontoConfig() : null;
+  if (dd) {
+    const valorDia = refPreco * dd.pct / 100;
+    if (!melhor || valorDia > melhor.valor) melhor = { tipo: 'diaSemana', valor: valorDia, modo: 'desconto', pct: dd.pct };
+  }
   return melhor;
 }
 function precoCobrado(service) {
@@ -532,10 +553,10 @@ function htmlFidelidade() {
   const p = BARBEARIA.politicas || {};
   const f = currentUser && currentUser.fid;
   if (primeiroCorteDisponivel()) {
-    return `<div class="fid-box fid-ganhou"><strong>Promoção de 1º corte: ${rotuloBeneficio('primeiroCorte')}</strong><span>Válido somente no seu 1º corte. Nos próximos, vale o preço normal. O desconto é aplicado na hora de agendar.</span></div>`;
+    return `<div class="fid-box fid-ganhou"><strong>Promoção de 1º corte</strong><span>Válido somente no seu 1º corte. Nos próximos, vale o preço normal. O desconto é aplicado na hora de agendar.</span></div>`;
   }
   // A caixa segue o MESMO benefício que descontoAtual() aplica na hora de agendar (o de maior valor).
-  const dAtual = descontoAtual();
+  const dAtual = descontoAtual(null, true);
   if (dAtual && dAtual.tipo === 'aniversario') {
     return `<div class="fid-box fid-ganhou"><strong>Feliz aniversário! ${rotuloBeneficio('aniversario')}</strong><span>Vale no seu próximo atendimento pago este mês, aplicado na hora de agendar.</span></div>`;
   }
@@ -595,7 +616,7 @@ function extraConfirmHTML(sel) {
   let h = '';
   const dsc = beneficioDoAtendimento(sel);
   if (dsc && dsc.modo === 'servico') h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">${dsc.servico.id === sel.id ? 'Este atendimento sai sem custo (cortesia)' : 'Cortesia: ' + dsc.servico.name + ', sem custo'}</span></div>`;
-  else if (dsc) h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">${dsc.pct}% de desconto: -${R(descontoFidelidade(sel))}${dsc.tipo === 'primeiroCorte' ? ' (válido só no 1º corte)' : ''}</span></div>`;
+  else if (dsc) h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">${dsc.tipo === 'primeiroCorte' ? 'Desconto: -' + R(descontoFidelidade(sel)) + ' (válido só no 1º corte)' : dsc.pct + '% de desconto: -' + R(descontoFidelidade(sel))}</span></div>`;
   const sinal = sinalDoServico(sel);
   if (sinal > 0) {
     const resto = Math.round((precoCobrado(sel) - sinal) * 100) / 100;
@@ -1077,6 +1098,20 @@ function renderServiceOptions() {
     promo.innerHTML = '';
   }
 
+  // Aviso do dia de desconto da semana (todos veem)
+  let dia = document.getElementById('promo-dia-semana');
+  if (!dia) {
+    dia = document.createElement('div');
+    dia.id = 'promo-dia-semana';
+    dia.className = 'promo-pc';
+    list.parentNode.insertBefore(dia, list);
+  }
+  const ddc = diaDescontoConfig();
+  if (ddc) {
+    dia.innerHTML = `Dia de desconto: toda <strong>${ddc.nome}</strong>, <strong>${ddc.pct}% de desconto</strong> nos serviços. O desconto é aplicado quando você escolhe esse dia no agendamento.`;
+    dia.style.display = '';
+  } else { dia.style.display = 'none'; dia.innerHTML = ''; }
+
   // Aviso do plano ativo
   let info = document.getElementById('plano-info');
   if (!info) {
@@ -1327,7 +1362,7 @@ function renderCalendario() {
     if (isPast || isFechado) {
       cells += `<div style="text-align:center;padding:8px 4px;font-family:'Roboto',sans-serif;font-size:13px;color:#393939;border:1px solid #202020;border-radius:4px;${isFechado && !isPast ? 'text-decoration:line-through;' : ''}">${d}</div>`;
     } else {
-      cells += `<div class="cal-dia" onclick="selecionarData('${dateStr}')" style="text-align:center;padding:8px 4px;font-family:'Roboto',sans-serif;font-size:13px;color:${isSel?'#0B0B0B':'#F1EAD6'};background:${isSel?'#D9D9D9':'transparent'};border:1px solid ${isSel?'#D9D9D9':'#393939'};border-radius:4px;cursor:pointer;transition:all 0.2s;">${d}</div>`;
+      cells += `<div class="cal-dia" onclick="selecionarData('${dateStr}')" style="text-align:center;padding:8px 4px;font-family:'Roboto',sans-serif;font-size:13px;color:${isSel?'#0B0B0B':'#F1EAD6'};background:${isSel?'#D9D9D9':'transparent'};border:1px solid ${isSel?'#D9D9D9':'#393939'};border-radius:4px;cursor:pointer;transition:all 0.2s;">${d}${diaDescontoVale(dateStr) ? '<span style="display:block;width:5px;height:5px;border-radius:50%;background:#EBC531;margin:3px auto 0;"></span>' : ''}</div>`;
     }
   }
   wrap.innerHTML = `
@@ -1341,6 +1376,7 @@ function renderCalendario() {
       <span style="font-size:11px;color:#787878;font-family:'Roboto',sans-serif;">■ <span style="color:#F1EAD6;">Disponível</span></span>
       <span style="font-size:11px;color:#787878;font-family:'Roboto',sans-serif;">■ <span style="color:#4A4A4A;">Indisponível</span></span>
       <span style="font-size:11px;color:#D9D9D9;font-family:'Roboto',sans-serif;">■ <span style="color:#D9D9D9;">Selecionado</span></span>
+      ${diaDescontoConfig() ? '<span style="font-size:11px;color:#EBC531;font-family:Roboto,sans-serif;">● Dia de desconto</span>' : ''}
     </div>`;
 }
 
@@ -1567,6 +1603,7 @@ window.submitBooking = async function() {
         if (dscAtual.tipo === 'aniversario') novo.aniversario = new Date().getFullYear();
         else if (dscAtual.tipo === 'retorno') novo.retorno = true;
         else if (dscAtual.tipo === 'primeiroCorte') novo.primeiroCorte = true;
+        else if (dscAtual.tipo === 'diaSemana') { /* só registra o preço original abaixo; não consome fidelidade */ }
         else novo.fidelidade = true;
         if (dscAtual.modo === 'servico') {
           novo.cortesia = dscAtual.servico.name;
