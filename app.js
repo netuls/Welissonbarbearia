@@ -1059,6 +1059,26 @@ function renderServiceOptions() {
   const list = document.getElementById('options-list');
   if (!list) return;
 
+  // Destaque da promoção de 1º corte (mesmo estilo do cartão de plano em destaque)
+  let promo = document.getElementById('promo-primeiro-corte');
+  if (!promo) {
+    promo = document.createElement('div');
+    promo.id = 'promo-primeiro-corte';
+    list.parentNode.insertBefore(promo, list);
+  }
+  const pcCfg = (BARBEARIA.politicas || {}).primeiroCorteAtivo ? beneficioConfig('primeiroCorte') : null;
+  const pcMostrar = !!pcCfg && (currentUser ? primeiroCorteDisponivel() : true);
+  if (pcMostrar) {
+    promo.className = 'promo-pc';
+    promo.innerHTML = `<span class="promo-pc-badge">SÓ NO 1º CORTE</span>
+      <strong class="promo-pc-titulo">Promoção de 1º corte: ${rotuloBeneficio('primeiroCorte')}</strong>
+      <span class="promo-pc-txt">Vale uma única vez, só no seu primeiro corte aqui. Nos próximos, o preço é o normal.${currentUser ? '' : ' Para ganhar, cadastre-se marcando "Nunca cortei".'}</span>`;
+    promo.style.display = '';
+  } else {
+    promo.style.display = 'none';
+    promo.innerHTML = '';
+  }
+
   // Aviso do plano ativo
   let info = document.getElementById('plano-info');
   if (!info) {
