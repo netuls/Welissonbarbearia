@@ -1070,9 +1070,13 @@ function renderServiceOptions() {
   const pcMostrar = !!pcCfg && (currentUser ? primeiroCorteDisponivel() : true);
   if (pcMostrar) {
     promo.className = 'promo-pc';
-    promo.innerHTML = `<span class="promo-pc-badge">SÓ NO 1º CORTE</span>
-      <strong class="promo-pc-titulo">Promoção de 1º corte: ${rotuloBeneficio('primeiroCorte')}</strong>
-      <span class="promo-pc-txt">Vale uma única vez, só no seu primeiro corte aqui. Nos próximos, o preço é o normal.${currentUser ? '' : ' Para ganhar, cadastre-se marcando "Nunca cortei".'}</span>`;
+    promo.innerHTML = `<div class="promo-pc-icone"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/></svg></div>
+      <div class="promo-pc-corpo">
+        <span class="promo-pc-eyebrow">Exclusivo para novos clientes</span>
+        <strong class="promo-pc-titulo">Condição especial no seu 1º corte</strong>
+        <span class="promo-pc-txt">Válida uma única vez, só no primeiro corte aqui na barbearia. Nos próximos, o valor é o normal.${currentUser ? '' : ' Para aproveitar, cadastre-se marcando "Nunca cortei".'}</span>
+      </div>
+      <span class="promo-pc-selo">Só no 1º corte</span>`;
     promo.style.display = '';
   } else {
     promo.style.display = 'none';
