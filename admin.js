@@ -10,6 +10,7 @@ BARBEARIA.politicas = Object.assign({
   retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
   fidelTipo: 'desconto', fidelServicoId: '', aniversarioTipo: 'desconto', aniversarioServicoId: '', retornoTipo: 'desconto', retornoServicoId: '',   // prêmio de cada benefício: 'desconto' (%) ou 'servico' (cortesia)
   primeiroCorteAtivo: false, primeiroCorteTipo: 'desconto', primeiroCorteDescPct: 0, primeiroCorteServicoId: '', primeiroCorteAlvoIds: [],   // promoção de 1º corte
+  diaDescontoAtivo: false, diaDescontoDia: 2, diaDescontoPct: 10,          // desconto num dia fixo da semana (0=dom ... 6=sáb)
   avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
   msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
   msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
@@ -3931,6 +3932,7 @@ function extrasAgdHTML(a) {
   if (a.retorno) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de retorno</div>';
   if (a.primeiroCorte) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Promoção de 1º corte</div>';
   if (a.fidelidade) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Desconto de fidelidade</div>';
+  if (Number(a.precoOriginal) > 0 && !a.fidelidade && !a.aniversario && !a.retorno && !a.primeiroCorte && !a.cortesia) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Dia de desconto</div>';
   if (a.remarcadoEm) h += '<div style="font-size:11px;margin-top:4px;font-family:Roboto,sans-serif;color:#94A4CC;">Remarcado pelo cliente</div>';
   return h;
 }
@@ -3969,6 +3971,7 @@ function renderPoliticasEditor() {
   chk('aj-sinal-ativo', p.sinalAtivo); set('aj-sinal-pct', p.sinalPct); set('aj-sinal-min', p.sinalMinPreco || ''); set('aj-sinal-total', p.sinalTotalAcima || '');
   set('aj-cancel-horas', p.cancelHoras);
   chk('aj-fid-ativo', p.fidelAtivo); set('aj-fid-cada', p.fidelCada); set('aj-fid-desc', p.fidelDescPct); set('aj-aniv-desc', p.aniversarioDescPct); set('aj-ret-desc', p.retornoDescPct); set('aj-ret-dias', p.retornoDias);
+  chk('aj-dd-ativo', p.diaDescontoAtivo); set('aj-dd-dia', p.diaDescontoDia == null ? 2 : p.diaDescontoDia); set('aj-dd-pct', p.diaDescontoPct == null ? 10 : p.diaDescontoPct);
   [['fid', 'fidel'], ['aniv', 'aniversario'], ['ret', 'retorno'], ['pc', 'primeiroCorte']].forEach(par => {
     const sel = document.getElementById('aj-' + par[0] + '-serv');
     if (sel) sel.innerHTML = '<option value="">Escolha o serviço...</option>' + SERVICES.map(s => '<option value="' + escPlano(s.id) + '">' + escPlano(s.name) + '</option>').join('');
@@ -4007,6 +4010,7 @@ async function salvarPoliticas() {
   }
   const alvosPc = [...document.querySelectorAll('.aj-pc-alvo-chk:checked')].map(c => c.value);
   if (document.getElementById('aj-pc-ativo').checked && !alvosPc.length) { ajStatus('aj-pol2-status', 'Marque quais serviços de corte valem a promoção de 1º corte.', '#e05555'); return; }
+  if (document.getElementById('aj-dd-ativo').checked && !(num('aj-dd-pct', 0, 100, 0) > 0)) { ajStatus('aj-pol2-status', 'Informe o desconto (%) do dia de desconto da semana.', '#e05555'); return; }
   const link = txt('aj-aval-link');
   if (link && !/^https?:\/\//i.test(link)) { ajStatus('aj-pol2-status', 'O link de avaliação precisa começar com https://', '#e05555'); return; }
   const politicas = {
@@ -4021,6 +4025,8 @@ async function salvarPoliticas() {
     primeiroCorteTipo: tipoDe('pc'), primeiroCorteServicoId: servDe('pc'),
     primeiroCorteDescPct: num('aj-pc-desc', 0, 100, 0),
     primeiroCorteAlvoIds: alvosPc,
+    diaDescontoAtivo: document.getElementById('aj-dd-ativo').checked,
+    diaDescontoDia: Math.round(num('aj-dd-dia', 0, 6, 2)), diaDescontoPct: num('aj-dd-pct', 0, 100, 10),
     avalLink: link, msgAniversario: txt('aj-msg-aniv'), msgRetorno: txt('aj-msg-ret'), msgAvaliacao: txt('aj-msg-aval'),
   };
   ['aj-pol-status', 'aj-pol2-status'].forEach(id => ajStatus(id, 'Salvando...'));
