@@ -467,6 +467,7 @@ function diaDescontoConfig() {
   const pct = Math.min(100, Math.max(0, Number(p.diaDescontoPct) || 0));
   const dia = parseInt(p.diaDescontoDia, 10);
   if (!p.diaDescontoAtivo || !(pct > 0) || !(dia >= 0 && dia <= 6)) return null;
+  if (typeof currentUser !== 'undefined' && currentUser && planoAtivo(currentUser, hojeISO())) return null;   // quem tem plano ativo não participa do dia de desconto
   return { dia, pct, nome: DIAS_SEMANA_NOME[dia] };
 }
 // Serviços que valem o desconto do dia: os marcados no painel; sem nada marcado, vale só o "Corte Degradê"
