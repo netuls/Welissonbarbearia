@@ -13,7 +13,7 @@ BARBEARIA.politicas = Object.assign({
   retornoDescPct: 0, retornoDias: 45,                                      // desconto para quem está sem vir há N dias (0 = desligado)
   fidelTipo: 'desconto', fidelServicoId: '', aniversarioTipo: 'desconto', aniversarioServicoId: '', retornoTipo: 'desconto', retornoServicoId: '',   // prêmio de cada benefício: 'desconto' (%) ou 'servico' (cortesia)
   primeiroCorteAtivo: false, primeiroCorteTipo: 'desconto', primeiroCorteDescPct: 0, primeiroCorteServicoId: '', primeiroCorteAlvoIds: [],   // promoção de 1º corte (AlvoIds = serviços de corte que valem a promoção)
-  diaDescontoAtivo: false, diaDescontoDia: 2, diaDescontoPct: 10,          // desconto num dia fixo da semana (0=dom ... 6=sáb)
+  diaDescontoAtivo: false, diaDescontoDia: 2, diaDescontoPct: 10, diaDescontoServicoIds: [],   // desconto num dia fixo da semana (0=dom ... 6=sáb)
   avalLink: '',                                                            // link de avaliação (ex.: Google Meu Negócio)
   msgAniversario: 'Olá, {nome}! Feliz aniversário! 🎉 A equipe da {barbearia} preparou um presente: {desconto} de desconto no seu próximo atendimento este mês. É só agendar pelo site.',
   msgRetorno: 'Olá, {nome}! Faz um tempinho que você não passa na {barbearia}. Bora renovar o visual? Agende seu horário pelo site quando quiser.',
@@ -469,6 +469,16 @@ function diaDescontoConfig() {
   if (!p.diaDescontoAtivo || !(pct > 0) || !(dia >= 0 && dia <= 6)) return null;
   return { dia, pct, nome: DIAS_SEMANA_NOME[dia] };
 }
+// Serviços que valem o desconto do dia: os marcados no painel; sem nada marcado, vale só o "Corte Degradê"
+function servicosDiaDesconto() {
+  const ids = (BARBEARIA.politicas || {}).diaDescontoServicoIds;
+  if (Array.isArray(ids) && ids.length) return SERVICES.filter(sv => ids.includes(sv.id));
+  const norm = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return SERVICES.filter(sv => norm(sv.name) === 'corte degrade');
+}
+function servicoValeDiaDesconto(service) {
+  return !!service && servicosDiaDesconto().some(sv => sv.id === service.id);
+}
 function diaDescontoVale(dataISO) {
   const c = diaDescontoConfig();
   if (!c || !/^\d{4}-\d{2}-\d{2}$/.test(String(dataISO || ''))) return false;
@@ -490,7 +500,7 @@ function descontoAtual(service, ignorarDia) {
     if (!melhor || valor > melhor.valor) melhor = Object.assign({ tipo: par[0], valor }, c);
   });
   // Dia de desconto: só vale quando o dia escolhido no calendário é o dia da promoção
-  const dd = (!ignorarDia && typeof state !== 'undefined' && state && diaDescontoVale(state.date)) ? diaDescontoConfig() : null;
+  const dd = (!ignorarDia && svc && servicoValeDiaDesconto(svc) && typeof state !== 'undefined' && state && diaDescontoVale(state.date)) ? diaDescontoConfig() : null;
   if (dd) {
     const valorDia = refPreco * dd.pct / 100;
     if (!melhor || valorDia > melhor.valor) melhor = { tipo: 'diaSemana', valor: valorDia, modo: 'desconto', pct: dd.pct };
@@ -1107,8 +1117,9 @@ function renderServiceOptions() {
     list.parentNode.insertBefore(dia, list);
   }
   const ddc = diaDescontoConfig();
-  if (ddc) {
-    dia.innerHTML = `Dia de desconto: toda <strong>${ddc.nome}</strong>, <strong>${ddc.pct}% de desconto</strong> nos serviços. O desconto é aplicado quando você escolhe esse dia no agendamento.`;
+  const ddServ = servicosDiaDesconto().map(sv => sv.name);
+  if (ddc && ddServ.length) {
+    dia.innerHTML = `Dia de desconto: toda <strong>${ddc.nome}</strong>, <strong>${ddc.pct}% de desconto</strong> no serviço <strong>${ddServ.join(', ')}</strong>. O desconto é aplicado quando você escolhe esse dia no agendamento.`;
     dia.style.display = '';
   } else { dia.style.display = 'none'; dia.innerHTML = ''; }
 
