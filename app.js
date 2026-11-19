@@ -1070,7 +1070,7 @@ function renderServiceOptions() {
   const pcMostrar = !!currentUser && primeiroCorteDisponivel();
   if (pcMostrar) {
     promo.className = 'promo-pc';
-    promo.innerHTML = `<span class="promo-pc-tag">1º CORTE</span> Promoção válida <strong>somente no seu 1º corte</strong>, uma única vez. Nos próximos, o valor é o normal.`;
+    promo.innerHTML = `Promoção de <strong>1º corte</strong> ativa. Válida somente no seu 1º corte, uma única vez. Nos próximos, o valor é o normal.`;
     promo.style.display = '';
   } else {
     promo.style.display = 'none';
