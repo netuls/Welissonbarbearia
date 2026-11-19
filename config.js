@@ -1,13 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════
-//  CONFIGURAÇÃO DO SITE — Welisson Barber
+//  CONFIGURAÇÃO DO SITE — Wellisson Barber
 //  Arquivo gerado por criar-sistema.html. Depois de instalado, nome, logo, WhatsApp e
 //  planos podem ser mudados pela aba "Ajustes" do painel (as cores também), sem editar este arquivo.
 // ═══════════════════════════════════════════════════════════════════
 const BARBEARIA = {
-  nome: "Welisson Barber",
-  marca: { linha1: "Welisson", linha2: "Barber" },
-  nomePainel: "Welisson Barber Admin",
-  nomeCurto: "Welisson",
+  nome: "Wellisson Barber",
+  marca: { linha1: "Wellisson", linha2: "Barber" },
+  nomePainel: "Wellisson Barber Admin",
+  nomeCurto: "Wellisson",
   whatsapp: "5585982358729",
   whatsappAvisos: "5585982358729",
   modoDemonstracao: false,
