@@ -532,7 +532,7 @@ function htmlFidelidade() {
   const p = BARBEARIA.politicas || {};
   const f = currentUser && currentUser.fid;
   if (primeiroCorteDisponivel()) {
-    return `<div class="fid-box fid-ganhou"><strong>Promoção de 1º corte: ${rotuloBeneficio('primeiroCorte')}</strong><span>Vale no seu primeiro corte, aplicado na hora de agendar.</span></div>`;
+    return `<div class="fid-box fid-ganhou"><strong>Promoção de 1º corte: ${rotuloBeneficio('primeiroCorte')}</strong><span>Válido somente no seu 1º corte. Nos próximos, vale o preço normal. O desconto é aplicado na hora de agendar.</span></div>`;
   }
   // A caixa segue o MESMO benefício que descontoAtual() aplica na hora de agendar (o de maior valor).
   const dAtual = descontoAtual();
@@ -595,7 +595,7 @@ function extraConfirmHTML(sel) {
   let h = '';
   const dsc = beneficioDoAtendimento(sel);
   if (dsc && dsc.modo === 'servico') h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">${dsc.servico.id === sel.id ? 'Este atendimento sai sem custo (cortesia)' : 'Cortesia: ' + dsc.servico.name + ', sem custo'}</span></div>`;
-  else if (dsc) h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">${dsc.pct}% de desconto: -${R(descontoFidelidade(sel))}</span></div>`;
+  else if (dsc) h += `<div class="confirm-row"><label>${rotuloDesconto(dsc.tipo)}</label><span style="font-size:13px;">${dsc.pct}% de desconto: -${R(descontoFidelidade(sel))}${dsc.tipo === 'primeiroCorte' ? ' (válido só no 1º corte)' : ''}</span></div>`;
   const sinal = sinalDoServico(sel);
   if (sinal > 0) {
     const resto = Math.round((precoCobrado(sel) - sinal) * 100) / 100;
@@ -1091,7 +1091,7 @@ function renderServiceOptions() {
         : `<span class="option-price">R$${s.price.toFixed(2).replace('.', ',')}</span>`;
     return `
     <div class="option-item" id="opt-${s.id}" onclick="selectService('${s.id}')">
-      <span>${s.name}</span>
+      <span>${s.name}${(d && d.tipo === 'primeiroCorte') ? '<small style="display:block;font-size:11px;opacity:.8;margin-top:2px;">Preço promocional válido só no 1º corte</small>' : ''}</span>
       ${preco}
     </div>`;
   }).join('');
