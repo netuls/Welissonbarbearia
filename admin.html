@@ -542,6 +542,12 @@
               <div class="aj-campo"><span class="aj-lbl">Desconto do 1º corte (%)</span><input class="aj-in" id="aj-pc-desc" type="number" min="0" max="100" step="1" inputmode="numeric"></div>
               <div class="aj-campo" id="aj-pc-serv-wrap" style="display:none;"><span class="aj-lbl">Serviço de cortesia (1º corte)</span><select class="aj-in" id="aj-pc-serv"></select></div>
             </div>
+            <div style="border-top:1px solid #122452;margin:8px 0 16px;"></div>
+            <label class="aj-chk"><input type="checkbox" id="aj-dd-ativo"> Dia de desconto da semana ligado (aparece para o cliente e vale para quem agendar nesse dia)</label>
+            <div class="aj-linha">
+              <div class="aj-campo"><span class="aj-lbl">Dia da semana com desconto</span><select class="aj-in" id="aj-dd-dia"><option value="0">Domingo</option><option value="1">Segunda-feira</option><option value="2">Terça-feira</option><option value="3">Quarta-feira</option><option value="4">Quinta-feira</option><option value="5">Sexta-feira</option><option value="6">Sábado</option></select></div>
+              <div class="aj-campo"><span class="aj-lbl">Desconto nesse dia (%)</span><input class="aj-in" id="aj-dd-pct" type="number" min="1" max="100" step="1" inputmode="numeric"></div>
+            </div>
             <div class="aj-campo"><span class="aj-lbl">Link para avaliar (Google, por exemplo)</span><input class="aj-in" id="aj-aval-link" placeholder="https://g.page/r/..." inputmode="url"></div>
             <div class="aj-campo"><span class="aj-lbl">Mensagem de aniversário</span><textarea class="aj-in" id="aj-msg-aniv" rows="3"></textarea></div>
             <div class="aj-campo"><span class="aj-lbl">Mensagem para clientes que sumiram</span><textarea class="aj-in" id="aj-msg-ret" rows="3"></textarea></div>
