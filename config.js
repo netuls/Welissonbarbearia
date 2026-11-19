@@ -197,7 +197,7 @@ const BARBEARIA = {
   fonte: "assinatura",   // letra do nome no topo (mudável na aba Ajustes do painel)
 };
 
-const VERSAO_CONFIG = '2026.10.1';   // versão do config.js (conferida no painel, em Ajustes > Sobre o sistema)
+const VERSAO_CONFIG = '2026.11.1';   // versão do config.js (conferida no painel, em Ajustes > Sobre o sistema)
 // ═══════════════════════════════════════════════════════════════════
 //  A partir daqui não precisa mexer.
 // ═══════════════════════════════════════════════════════════════════
