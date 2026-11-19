@@ -1,4 +1,4 @@
-const CACHE_NAME = 'welisson-barber-v2';   // troque o número (v3, v4...) se um dia precisar forçar todos a baixarem tudo de novo
+const CACHE_NAME = 'wellisson-barber-v3';   // troque o número (v3, v4...) se um dia precisar forçar todos a baixarem tudo de novo
 
 // Arquivos essenciais para funcionar offline (site do cliente)
 const STATIC_ASSETS = [
